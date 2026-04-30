@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
+use Psr\Log\LoggerInterface;
 
 use App\Services\Payment\IdempotencyService;
 use Illuminate\Bus\Queueable;
@@ -10,54 +13,74 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Log\LogManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
-
-/**
- * Class CleanupExpiredIdempotencyRecordsJob
- *
- * Queued job for async processing.
- * Maintains correlation_id for full traceability.
- * Retries and timeout configured per job.
- *
- * @see \Illuminate\Contracts\Queue\ShouldQueue
- * @package App\Jobs
- */
 final class CleanupExpiredIdempotencyRecordsJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $tries = 3;
-    public int $timeout = 300;  // 5 минут
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct(
+    public int $timeout = 300;
+
+    private readonly string $correlationId;
+
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly LogManager $logger,
-    )
-    {
-        //
+        private readonly DatabaseManager $db,) {
+        $this->correlationId = Str::uuid()->toString();
+        $this->onQueue('cleanup');
     }
 
-    /**
-     * Execute the job.
-     */
+    public function tags(): array
+    {
+        return ['cleanup', 'idempotency'];
+    }
+
+    public function retryUntil(): \DateTime
+    {
+        return CarbonImmutable::now()->addHours(1);
+    }
+
     public function handle(IdempotencyService $service): void
     {
+        $this->logger->channel('audit')->$this->logger->info('[CleanupIdempotencyJob] Started', [
+            'correlation_id' => $this->correlationId,
+        ]);
+
         try {
             $deletedCount = $service->cleanup();
 
-            $this->logger->channel('audit')->info('Idempotency cleanup job completed', [
+            $this->db->table('idempotency_cleanup_logs')->insert([
                 'deleted_records' => $deletedCount,
-                'job_id' => $this->job?->getJobId(),
+                'correlation_id' => $this->correlationId,
+                'completed_at' => CarbonImmutable::now(),
+            ]);
+
+            $this->logger->channel('audit')->$this->logger->info('[CleanupIdempotencyJob] Completed', [
+                'deleted_records' => $deletedCount,
+                'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->logger->channel('audit')->error('Idempotency cleanup job failed', [
+            $this->logger->channel('audit')->error('[CleanupIdempotencyJob] Failed', [
+                'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
+
             throw $e;
         }
     }
-}
 
+    public function failed(\Throwable $exception): void
+    {
+        $this->logger->channel('audit')->error('[CleanupIdempotencyJob] Failed permanently', [
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+}

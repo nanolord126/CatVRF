@@ -1,9 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 /**
  * Class PersonalAccessToken
@@ -20,40 +22,35 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class PersonalAccessToken extends Model
 {
-
     protected $table = 'personal_access_tokens';
 
-        protected $fillable = [
-            'name',
-            'token',
-            'abilities',
-            'expires_at',
-        ];
+    protected $fillable = [
+        'name',
+        'token',
+        'abilities',
+        'expires_at',
+    ];
 
-        protected $casts = [
-            'abilities' => 'json',
-            'expires_at' => 'datetime',
-        ];
+    protected $casts = [
+        'abilities' => 'json',
+        'expires_at' => 'datetime',
+    ];
 
     /**
      * The number of models to return for pagination.
      */
     protected $perPage = 25;
 
-
     /**
      * Get the string representation of this object.
-     *
-     * @return string
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new');
+        return self::class.'::'.($this->id ?? 'new');
     }
 }

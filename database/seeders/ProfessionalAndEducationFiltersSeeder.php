@@ -23,14 +23,18 @@ final class ProfessionalAndEducationFiltersSeeder extends Seeder
     private function seedEvents()
     {
         $f = Filter::create(['vertical' => 'Events', 'name' => 'Event Type', 'type' => 'select']);
-        foreach (['Concert', 'Workshop', 'Festival', 'Private Party'] as $v) FilterValue::create(['filter_id' => $f->id, 'value' => $v, 'label' => $v]);
+        foreach (['Concert', 'Workshop', 'Festival', 'Private Party'] as $v) {
+            FilterValue::create(['filter_id' => $f->id, 'value' => $v, 'label' => $v]);
+        }
         Filter::create(['vertical' => 'Events', 'name' => 'Zero-Waste Certified', 'type' => 'boolean']);
     }
 
     private function seedSports()
     {
         $f = Filter::create(['vertical' => 'Sports', 'name' => 'Intensity', 'type' => 'select']);
-        foreach (['Low', 'Medium', 'Hardcore', 'Pro'] as $v) FilterValue::create(['filter_id' => $f->id, 'value' => $v, 'label' => $v]);
+        foreach (['Low', 'Medium', 'Hardcore', 'Pro'] as $v) {
+            FilterValue::create(['filter_id' => $f->id, 'value' => $v, 'label' => $v]);
+        }
         Filter::create(['vertical' => 'Sports', 'name' => 'Wearable Sync Ready', 'type' => 'boolean']);
     }
 
@@ -38,8 +42,8 @@ final class ProfessionalAndEducationFiltersSeeder extends Seeder
     {
         $f = Filter::create(['vertical' => 'Education', 'name' => 'Metaverse Compatible', 'type' => 'boolean']);
         $f = Filter::create(['vertical' => 'Education', 'name' => 'Course Level', 'type' => 'select']);
-        foreach (['Beginner', 'Advanced', 'Masters', 'PhD Prep'] as $v) FilterValue::create(['filter_id' => $f->id, 'value' => $v, 'label' => $v]);
+        foreach (['Beginner', 'Advanced', 'Masters', 'PhD Prep'] as $v) {
+            FilterValue::create(['filter_id' => $f->id, 'value' => $v, 'label' => $v]);
+        }
     }
 }
-
-

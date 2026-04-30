@@ -10,10 +10,11 @@ use Illuminate\Console\Command;
 final class GenerateVerticalLayers extends Command
 {
     protected $signature = 'vertical:generate {vertical_name} {vertical_slug}';
+
     protected $description = 'Generate 9-layer architecture for a vertical';
 
     public function __construct(
-        private VerticalGeneratorService $generator,
+        private readonly VerticalGeneratorService $generator,
     ) {
         parent::__construct();
     }

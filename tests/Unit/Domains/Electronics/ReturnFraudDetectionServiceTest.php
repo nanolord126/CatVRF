@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Electronics;
 
@@ -20,33 +22,16 @@ final class ReturnFraudDetectionServiceTest extends TestCase
     use RefreshDatabase;
 
     private ReturnFraudDetectionService $service;
+
     private FraudControlService $fraud;
+
     private FraudMLService $fraudML;
+
     private UserBehaviorAnalyzerService $behaviorAnalyzer;
+
     private Cache $cache;
+
     private DatabaseManager $db;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->fraud->method('check')->willReturn(null);
-
-        $this->fraudML = $this->createMock(FraudMLService::class);
-        $this->behaviorAnalyzer = $this->createMock(UserBehaviorAnalyzerService::class);
-        $this->cache = app(Cache::class);
-        $this->db = app(DatabaseManager::db);
-
-        $this->service = new ReturnFraudDetectionService(
-            $this->fraud,
-            $this->fraudML,
-            $this->behaviorAnalyzer,
-            $this->cache,
-            $this->db,
-            app('log'),
-        );
-    }
 
     #[Test]
     public function it_detects_legitimate_return(): void
@@ -257,6 +242,28 @@ final class ReturnFraudDetectionServiceTest extends TestCase
         $this->assertNull($minimalDuration);
     }
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->fraud->method('check')->willReturn(null);
+
+        $this->fraudML = $this->createMock(FraudMLService::class);
+        $this->behaviorAnalyzer = $this->createMock(UserBehaviorAnalyzerService::class);
+        $this->cache = app(Cache::class);
+        $this->db = app(DatabaseManager::db);
+
+        $this->service = new ReturnFraudDetectionService(
+            $this->fraud,
+            $this->fraudML,
+            $this->behaviorAnalyzer,
+            $this->cache,
+            $this->db,
+            app('log'),
+        );
+    }
+
     private function analyzeDeviceCondition(string $condition): float
     {
         $conditionScores = [
@@ -313,7 +320,7 @@ final class ReturnFraudDetectionServiceTest extends TestCase
         $presentFields = 0;
 
         foreach ($requiredFields as $field) {
-            if (isset($metadata[$field]) && !empty($metadata[$field])) {
+            if (isset($metadata[$field]) && ! empty($metadata[$field])) {
                 $presentFields++;
             }
         }

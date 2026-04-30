@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\UserTasteML;
 
@@ -22,18 +24,10 @@ final class UserTasteMLTest extends TestCase
 
     private TasteMLService $mlService;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tasteService = resolve(UserTasteProfileService::class);
-        $this->mlService = resolve(TasteMLService::class);
-    }
-
     /**
      * Тест: Создание профиля вкусов пользователя
      */
-    public function testCreateUserTasteProfile(): void
+    public function test_create_user_taste_profile(): void
     {
         $user = User::factory()->create();
         $tenantId = $this->tenant()->id;
@@ -50,7 +44,7 @@ final class UserTasteMLTest extends TestCase
     /**
      * Тест: Установка размеров пользователя
      */
-    public function testSetSizeProfile(): void
+    public function test_set_size_profile(): void
     {
         $user = User::factory()->create();
         $tenantId = $this->tenant()->id;
@@ -74,7 +68,7 @@ final class UserTasteMLTest extends TestCase
     /**
      * Тест: Установка явных предпочтений
      */
-    public function testSetExplicitPreferences(): void
+    public function test_set_explicit_preferences(): void
     {
         $user = User::factory()->create();
         $tenantId = $this->tenant()->id;
@@ -99,7 +93,7 @@ final class UserTasteMLTest extends TestCase
     /**
      * Тест: Отключение персонализации
      */
-    public function testDisablePersonalization(): void
+    public function test_disable_personalization(): void
     {
         $user = User::factory()->create();
         $tenantId = $this->tenant()->id;
@@ -115,7 +109,7 @@ final class UserTasteMLTest extends TestCase
     /**
      * Тест: Вычисление cosine similarity
      */
-    public function testCosineSimilarity(): void
+    public function test_cosine_similarity(): void
     {
         $vectorA = [0.1, 0.2, 0.3, 0.4, 0.5];
         $vectorB = [0.1, 0.2, 0.3, 0.4, 0.5];
@@ -129,7 +123,7 @@ final class UserTasteMLTest extends TestCase
     /**
      * Тест: Cosine similarity между разными векторами
      */
-    public function testCosineSimilarityDifferentVectors(): void
+    public function test_cosine_similarity_different_vectors(): void
     {
         $vectorA = [1.0, 0.0, 0.0];
         $vectorB = [0.0, 1.0, 0.0];
@@ -143,7 +137,7 @@ final class UserTasteMLTest extends TestCase
     /**
      * Тест: Получение рекомендаций на основе ML
      */
-    public function testGetMLRecommendations(): void
+    public function test_get_ml_recommendations(): void
     {
         $user = User::factory()->create();
         $tenantId = $this->tenant()->id;
@@ -178,7 +172,7 @@ final class UserTasteMLTest extends TestCase
     /**
      * Тест: Обновление профиля после взаимодействия
      */
-    public function testUpdateProfileFromInteraction(): void
+    public function test_update_profile_from_interaction(): void
     {
         $user = User::factory()->create();
         $tenantId = $this->tenant()->id;
@@ -205,7 +199,7 @@ final class UserTasteMLTest extends TestCase
     /**
      * Тест: Dispatch UserInteractionEvent
      */
-    public function testUserInteractionEventDispatched(): void
+    public function test_user_interaction_event_dispatched(): void
     {
         $user = User::factory()->create();
         $tenantId = $this->tenant()->id;
@@ -227,7 +221,7 @@ final class UserTasteMLTest extends TestCase
     /**
      * Тест: Статистика профиля
      */
-    public function testGetProfileStats(): void
+    public function test_get_profile_stats(): void
     {
         $user = User::factory()->create();
         $tenantId = $this->tenant()->id;
@@ -244,7 +238,7 @@ final class UserTasteMLTest extends TestCase
     /**
      * Тест: Кэширование явных предпочтений
      */
-    public function testExplicitPreferencesCaching(): void
+    public function test_explicit_preferences_caching(): void
     {
         $user = User::factory()->create();
         $tenantId = $this->tenant()->id;
@@ -259,5 +253,13 @@ final class UserTasteMLTest extends TestCase
         $retrieved2 = $this->tasteService->getExplicitPreferences($user->id, $tenantId);
 
         $this->assertEquals($retrieved1, $retrieved2);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tasteService = resolve(UserTasteProfileService::class);
+        $this->mlService = resolve(TasteMLService::class);
     }
 }

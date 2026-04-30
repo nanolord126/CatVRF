@@ -7,6 +7,8 @@ namespace App\Domains\Auto\Taxi\Infrastructure\Eloquent\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * Class Vehicle
@@ -26,16 +28,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Auto\Taxi\Infrastructure\Eloquent\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class Vehicle extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
+
+    public $incrementing = false;
 
     protected $table = 'taxi_vehicles';
-    public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -57,17 +61,16 @@ final class Vehicle extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
+        self::addGlobalScope('tenant', function ($query) {
             if (function_exists('tenant') && tenant()) {
                 $query->where('tenant_id', tenant()->id);
             }
         });
 
-        static::creating(function ($model) {
-            if (!$model->uuid) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+        self::creating(function ($model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
             }
         });
     }
-
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Electronics;
 
@@ -19,30 +21,14 @@ final class SerialNumberValidationServiceTest extends TestCase
     use RefreshDatabase;
 
     private SerialNumberValidationService $service;
+
     private FraudControlService $fraud;
+
     private FraudMLService $fraudML;
+
     private Cache $cache;
+
     private DatabaseManager $db;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->fraud->method('check')->willReturn(null);
-
-        $this->fraudML = $this->createMock(FraudMLService::class);
-        $this->cache = app(Cache::class);
-        $this->db = app(DatabaseManager::class);
-
-        $this->service = new SerialNumberValidationService(
-            $this->fraud,
-            $this->fraudML,
-            $this->cache,
-            $this->db,
-            app('log'),
-        );
-    }
 
     #[Test]
     public function it_validates_serial_number_successfully(): void
@@ -213,6 +199,26 @@ final class SerialNumberValidationServiceTest extends TestCase
         $secondResult = $this->service->validateSerialNumber($dto);
 
         $this->assertEquals($firstResult->fraudProbability, $secondResult->fraudProbability);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->fraud->method('check')->willReturn(null);
+
+        $this->fraudML = $this->createMock(FraudMLService::class);
+        $this->cache = app(Cache::class);
+        $this->db = app(DatabaseManager::class);
+
+        $this->service = new SerialNumberValidationService(
+            $this->fraud,
+            $this->fraudML,
+            $this->cache,
+            $this->db,
+            app('log'),
+        );
     }
 
     private function analyzeSerialPattern(string $serialNumber): array

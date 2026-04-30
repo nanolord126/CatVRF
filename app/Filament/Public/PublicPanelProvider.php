@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Public;
 
@@ -7,6 +9,14 @@ use Filament\Navigation\NavigationItem;
 use Filament\PanelProvider;
 use Filament\Panel;
 use Filament\Support\Colors\Color;
+use App\Http\Middleware\Authenticate;
+use Filament\Pages\Dashboard;
+use Filament\Widgets\AccountWidget;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Session\Middleware\EncryptCookies;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 final class PublicPanelProvider extends PanelProvider
 {
@@ -26,21 +36,21 @@ final class PublicPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Public/Resources'), for: 'App\\Filament\\Public\\Resources')
             ->discoverPages(in: app_path('Filament/Public/Pages'), for: 'App\\Filament\\Public\\Pages')
             ->pages([
-                \Filament\Pages\Dashboard::class,
+                Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Public/Widgets'), for: 'App\\Filament\\Public\\Widgets')
             ->widgets([
-                \Filament\Widgets\AccountWidget::class,
+                AccountWidget::class,
             ])
             ->middleware([
-                \Illuminate\Session\Middleware\EncryptCookies::class,
-                \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-                \Illuminate\Session\Middleware\StartSession::class,
-                \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-                \Illuminate\Routing\Middleware\SubstituteBindings::class,
+                EncryptCookies::class,
+                AddQueuedCookiesToResponse::class,
+                StartSession::class,
+                ShareErrorsFromSession::class,
+                SubstituteBindings::class,
             ])
             ->authMiddleware([
-                \App\Http\Middleware\Authenticate::class,
+                Authenticate::class,
             ])
             ->authGuard('web')
             ->navigationGroups([

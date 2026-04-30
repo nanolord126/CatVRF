@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class () extends Migration {
     /**
      * Run the migrations.
      */
@@ -20,7 +21,8 @@ return new class extends Migration
             $table->unsignedInteger('available_at');
             $table->unsignedInteger('created_at');
 
-            $table->string('correlation_id')->nullable()->index();        });
+            $table->string('correlation_id')->nullable()->index();
+        });
 
         Schema::create('job_batches', function (Blueprint $table) {
             $table->string('id')->primary();
@@ -44,7 +46,8 @@ return new class extends Migration
             $table->longText('exception');
             $table->timestamp('failed_at')->useCurrent();
 
-            $table->string('correlation_id')->nullable()->index();        });
+            $table->string('correlation_id')->nullable()->index();
+        });
     }
 
     /**
@@ -57,4 +60,3 @@ return new class extends Migration
         Schema::dropIfExists('failed_jobs');
     }
 };
-

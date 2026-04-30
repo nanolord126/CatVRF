@@ -1,60 +1,25 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\VehicleRentalResource\Pages;
 
-use Carbon\Carbon;
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
 
-
-
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\DatabaseManager;
 
 final class CreateVehicleRental extends CreateRecord
 {
-    public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
-
-
     protected static string $resource = VehicleRentalResource::class;
 
-        protected function mutateFormDataBeforeCreate(array $data): array
-        {
-            $correlationId = Str::uuid()->toString();
-            $data['tenant_id'] = filament()->getTenant()->id;
-            $data['uuid'] = Str::uuid()->toString();
-            $data['correlation_id'] = $correlationId;
-
-            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'vehicle_rental', amount: 0, correlationId: $correlationId ?? '');
-
-            if ($fraudCheck['blocked']) {
-                throw new \RuntimeException('Операция заблокирована системой безопасности');
-            }
-
-            return $data;
-        }
-
-        protected function afterCreate(): void
-        {
-            $this->db->transaction(function () {
-                $this->logger->info('VehicleRental created', [
-                    'correlation_id' => $this->record->correlation_id,
-                    'rental_id' => $this->record->id,
-                ]);
-
-                if ($this->record->status === 'active') {
-                    event(new VehicleRentalStarted(
-                        $this->record,
-                        $this->record->correlation_id
-                    ));
-                }
-            });
-
-            $this->notification->make()
-                ->success()
-                ->title('Аренда оформлена')
-                ->send();
-        }
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard) {}
 
     /**
      * Get the string representation of this instance.
@@ -63,7 +28,7 @@ final class CreateVehicleRental extends CreateRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -74,8 +39,46 @@ final class CreateVehicleRental extends CreateRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $correlationId = Str::uuid()->toString();
+        $data['tenant_id'] = filament()->getTenant()->id;
+        $data['uuid'] = Str::uuid()->toString();
+        $data['correlation_id'] = $correlationId;
+
+        $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'vehicle_rental', amount: 0, correlationId: $correlationId ?? '');
+
+        if ($fraudCheck['blocked']) {
+            throw new \RuntimeException('Операция заблокирована системой безопасности');
+        }
+
+        return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $this->db->transaction(function () {
+            $this->logger->$this->logger->info('VehicleRental created', [
+                'correlation_id' => $this->record->correlation_id,
+                'rental_id' => $this->record->id,
+            ]);
+
+            if ($this->record->status === 'active') {
+                $this->eventDispatcher->dispatch(new VehicleRentalStarted(
+                    $this->record,
+                    $this->record->correlation_id
+                ));
+            }
+        });
+
+        $this->notification->make()
+            ->success()
+            ->title('Аренда оформлена')
+            ->send();
     }
 }

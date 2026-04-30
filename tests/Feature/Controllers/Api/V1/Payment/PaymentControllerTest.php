@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Controllers\Api\V1\Payment;
 
@@ -18,12 +20,6 @@ final class PaymentControllerTest extends TestCase
 
     private User $user;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->user = User::factory()->create();
-    }
-
     // ── init: auth ────────────────────────────────────────────────────
 
     public function test_init_returns_401_for_unauthenticated(): void
@@ -31,7 +27,7 @@ final class PaymentControllerTest extends TestCase
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => 1000,
             'operation_type' => 'food_order',
-            'idempotency_key' => 'test-key-' . uniqid(),
+            'idempotency_key' => 'test-key-'.uniqid(),
         ]);
 
         $response->assertStatus(401);
@@ -45,7 +41,7 @@ final class PaymentControllerTest extends TestCase
 
         $response = $this->postJson('/api/v1/payments/init', [
             'operation_type' => 'food_order',
-            'idempotency_key' => 'test-key-' . uniqid(),
+            'idempotency_key' => 'test-key-'.uniqid(),
         ]);
 
         $response->assertStatus(422);
@@ -57,7 +53,7 @@ final class PaymentControllerTest extends TestCase
 
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => 1000,
-            'idempotency_key' => 'test-key-' . uniqid(),
+            'idempotency_key' => 'test-key-'.uniqid(),
         ]);
 
         $response->assertStatus(422);
@@ -82,7 +78,7 @@ final class PaymentControllerTest extends TestCase
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => 0,
             'operation_type' => 'food_order',
-            'idempotency_key' => 'test-key-' . uniqid(),
+            'idempotency_key' => 'test-key-'.uniqid(),
         ]);
 
         $response->assertStatus(422);
@@ -95,7 +91,7 @@ final class PaymentControllerTest extends TestCase
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => -500,
             'operation_type' => 'food_order',
-            'idempotency_key' => 'test-key-' . uniqid(),
+            'idempotency_key' => 'test-key-'.uniqid(),
         ]);
 
         $response->assertStatus(422);
@@ -110,7 +106,7 @@ final class PaymentControllerTest extends TestCase
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => 5000,
             'operation_type' => 'food_order',
-            'idempotency_key' => 'unique-key-' . uniqid(),
+            'idempotency_key' => 'unique-key-'.uniqid(),
         ]);
 
         $response->assertStatus(201);
@@ -123,7 +119,7 @@ final class PaymentControllerTest extends TestCase
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => 5000,
             'operation_type' => 'food_order',
-            'idempotency_key' => 'unique-key-' . uniqid(),
+            'idempotency_key' => 'unique-key-'.uniqid(),
         ]);
 
         $response->assertJson(['success' => true]);
@@ -136,7 +132,7 @@ final class PaymentControllerTest extends TestCase
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => 5000,
             'operation_type' => 'food_order',
-            'idempotency_key' => 'unique-key-' . uniqid(),
+            'idempotency_key' => 'unique-key-'.uniqid(),
         ]);
 
         $response->assertJsonStructure(['data' => ['payment_id']]);
@@ -149,7 +145,7 @@ final class PaymentControllerTest extends TestCase
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => 5000,
             'operation_type' => 'food_order',
-            'idempotency_key' => 'unique-key-' . uniqid(),
+            'idempotency_key' => 'unique-key-'.uniqid(),
         ]);
 
         $response->assertJsonStructure(['data' => ['transaction_id']]);
@@ -162,7 +158,7 @@ final class PaymentControllerTest extends TestCase
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => 5000,
             'operation_type' => 'food_order',
-            'idempotency_key' => 'unique-key-' . uniqid(),
+            'idempotency_key' => 'unique-key-'.uniqid(),
         ]);
 
         $response->assertJsonPath('data.status', 'authorized');
@@ -175,7 +171,7 @@ final class PaymentControllerTest extends TestCase
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => 5000,
             'operation_type' => 'food_order',
-            'idempotency_key' => 'unique-key-' . uniqid(),
+            'idempotency_key' => 'unique-key-'.uniqid(),
         ]);
 
         $response->assertJsonStructure(['data' => ['amount']]);
@@ -188,7 +184,7 @@ final class PaymentControllerTest extends TestCase
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => 5000,
             'operation_type' => 'food_order',
-            'idempotency_key' => 'unique-key-' . uniqid(),
+            'idempotency_key' => 'unique-key-'.uniqid(),
         ]);
 
         $response->assertJsonStructure(['data' => ['currency']]);
@@ -201,7 +197,7 @@ final class PaymentControllerTest extends TestCase
         $response = $this->postJson('/api/v1/payments/init', [
             'amount' => 5000,
             'operation_type' => 'food_order',
-            'idempotency_key' => 'unique-key-' . uniqid(),
+            'idempotency_key' => 'unique-key-'.uniqid(),
         ]);
 
         $response->assertJsonStructure(['correlation_id']);
@@ -212,7 +208,7 @@ final class PaymentControllerTest extends TestCase
     public function test_init_returns_200_when_same_idempotency_key_used_twice(): void
     {
         $this->actingAs($this->user, 'sanctum');
-        $key = 'idempotency-key-' . uniqid();
+        $key = 'idempotency-key-'.uniqid();
 
         $this->postJson('/api/v1/payments/init', [
             'amount' => 5000,
@@ -249,5 +245,11 @@ final class PaymentControllerTest extends TestCase
 
         // Either 403 (wrong tenant) or 404 (not found) — both are acceptable security responses
         $this->assertContains($response->getStatusCode(), [403, 404]);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->user = User::factory()->create();
     }
 }

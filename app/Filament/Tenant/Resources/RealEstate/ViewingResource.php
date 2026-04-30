@@ -21,11 +21,16 @@ final class ViewingResource extends Resource
     protected static ?string $model = ViewingAppointmentModel::class;
 
     protected static ?string $navigationIcon   = 'heroicon-o-calendar-days';
+
     protected static ?string $navigationGroup  = 'Недвижимость';
+
     protected static ?string $navigationLabel  = 'Показы';
+
     protected static ?string $modelLabel       = 'Показ объекта';
+
     protected static ?string $pluralModelLabel = 'Показы объектов';
-    protected static ?int    $navigationSort   = 20;
+
+    protected static ?int $navigationSort   = 20;
 
     // ── Form ──────────────────────────────────────────────────────────────────
 
@@ -68,8 +73,8 @@ final class ViewingResource extends Resource
                         ->label('Причина отмены')
                         ->rows(2)
                         ->columnSpan(2)
-                        ->visible(static fn (Forms\Get $get): bool =>
-                            $get('status') === ViewingStatusEnum::Cancelled->value
+                        ->visible(
+                            static fn (Forms\Get $get): bool => $get('status') === ViewingStatusEnum::Cancelled->value
                         ),
                 ]),
         ]);

@@ -6,8 +6,9 @@ namespace App\Domains\Advertising\Infrastructure\Persistence;
 
 use App\Domains\Advertising\Domain\Entities\AdCampaign;
 use App\Domains\Advertising\Domain\Interfaces\AdCampaignRepositoryInterface;
-use App\Models\Advertising\AdCampaign as AdCampaignModel;
+use App\Domains\Advertising\Models\AdCampaign as AdCampaignModel;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 final class EloquentAdCampaignRepository implements AdCampaignRepositoryInterface
@@ -15,12 +16,14 @@ final class EloquentAdCampaignRepository implements AdCampaignRepositoryInterfac
     public function findById(int $id): ?AdCampaign
     {
         $model = AdCampaignModel::find($id);
+
         return $model ? $this->toEntity($model) : null;
     }
 
     public function findByUuid(string $uuid): ?AdCampaign
     {
         $model = AdCampaignModel::where('uuid', $uuid)->first();
+
         return $model ? $this->toEntity($model) : null;
     }
 
@@ -50,12 +53,12 @@ final class EloquentAdCampaignRepository implements AdCampaignRepositoryInterfac
     {
         return AdCampaignModel::where('tenant_id', $tenantId)
             ->where('status', 'active')
-            ->where('start_at', '<=', Carbon::now())
-            ->where('end_at', '>=', Carbon::now())
+            ->where('start_at', '<=', CarbonImmutable::now())
+            ->where('end_at', '>=', CarbonImmutable::now())
             ->get()
             ->map(fn (AdCampaignModel $model) => $this->toEntity($model));
     }
-    
+
     public function updateSpent(int $campaignId, int $amount): void
     {
         AdCampaignModel::where('id', $campaignId)->increment('spent', $amount);

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Verticals\Beauty;
 
@@ -11,8 +13,9 @@ use App\Notifications\BaseSmsNotification;
  */
 final class AppointmentConfirmedNotification extends BaseMailableNotification
 {
-    private string $type = 'beauty.appointment.confirmed';
-    private string $template = 'emails.beauty.appointment_confirmed';
+    private readonly string $type = 'beauty.appointment.confirmed';
+
+    private readonly string $template = 'emails.beauty.appointment_confirmed';
 
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
@@ -38,8 +41,9 @@ final class AppointmentConfirmedNotification extends BaseMailableNotification
  */
 final class AppointmentReminderNotification extends BaseSmsNotification
 {
-    private string $type = 'beauty.appointment.reminder.24h';
-    private string $template = 'sms.beauty.reminder_24h';
+    private readonly string $type = 'beauty.appointment.reminder.24h';
+
+    private readonly string $template = 'sms.beauty.reminder_24h';
 
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
@@ -50,6 +54,7 @@ final class AppointmentReminderNotification extends BaseSmsNotification
     {
         $masterName = $this->data['master_name'] ?? 'Мастер';
         $appointmentTime = $this->data['appointment_datetime'] ?? 'завтра';
+
         return "Напоминаем о записи к $masterName на завтра ($appointmentTime). Салон: {$this->data['salon_name']}.";
     }
 }
@@ -59,17 +64,17 @@ final class AppointmentReminderNotification extends BaseSmsNotification
  */
 final class AppointmentFinalReminderNotification extends BaseInAppNotification
 {
-    private string $type = 'beauty.appointment.reminder.2h';
+    private readonly string $type = 'beauty.appointment.reminder.2h';
 
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
         parent::__construct($userId, $tenantId, $appointmentData, channels: ['push', 'database']);
 
         $this->title('Визит в салон через 2 часа')
-             ->message("{$appointmentData['master_name']} ждёт вас в {$appointmentData['salon_name']}")
-             ->type('warning')
-             ->autoClose(10000)
-             ->withAction('Показать маршрут', '/salon/' . ($appointmentData['salon_id'] ?? ''));
+            ->message("{$appointmentData['master_name']} ждёт вас в {$appointmentData['salon_name']}")
+            ->type('warning')
+            ->autoClose(10000)
+            ->withAction('Показать маршрут', '/salon/'.($appointmentData['salon_id'] ?? ''));
     }
 }
 
@@ -78,8 +83,9 @@ final class AppointmentFinalReminderNotification extends BaseInAppNotification
  */
 final class AppointmentCanceledBySalonNotification extends BaseMailableNotification
 {
-    private string $type = 'beauty.appointment.canceled_by_salon';
-    private string $template = 'emails.beauty.appointment_canceled';
+    private readonly string $type = 'beauty.appointment.canceled_by_salon';
+
+    private readonly string $template = 'emails.beauty.appointment_canceled';
 
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
@@ -103,18 +109,18 @@ final class AppointmentCanceledBySalonNotification extends BaseMailableNotificat
  */
 final class ReviewRequestNotification extends BaseInAppNotification
 {
-    private string $type = 'beauty.review_request';
+    private readonly string $type = 'beauty.review_request';
 
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
         parent::__construct($userId, $tenantId, $appointmentData, channels: ['database', 'push']);
 
         $this->title('Помогите другим клиентам')
-             ->message("Оцените работу {$appointmentData['master_name']} в {$appointmentData['salon_name']}")
-             ->type('info')
-             ->autoClose(8000)
-             ->withAction('Оставить отзыв', '/review/' . ($appointmentData['appointment_id'] ?? ''))
-             ->addFrontendData('service_name', $appointmentData['service_name'] ?? null);
+            ->message("Оцените работу {$appointmentData['master_name']} в {$appointmentData['salon_name']}")
+            ->type('info')
+            ->autoClose(8000)
+            ->withAction('Оставить отзыв', '/review/'.($appointmentData['appointment_id'] ?? ''))
+            ->addFrontendData('service_name', $appointmentData['service_name'] ?? null);
     }
 }
 
@@ -123,8 +129,9 @@ final class ReviewRequestNotification extends BaseInAppNotification
  */
 final class PromoOfferNotification extends BaseMailableNotification
 {
-    private string $type = 'beauty.promo_offer';
-    private string $template = 'emails.beauty.promo_offer';
+    private readonly string $type = 'beauty.promo_offer';
+
+    private readonly string $template = 'emails.beauty.promo_offer';
 
     public function __construct(int $userId, int $tenantId, array $promoData)
     {

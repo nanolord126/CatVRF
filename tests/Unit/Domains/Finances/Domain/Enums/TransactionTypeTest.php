@@ -125,7 +125,7 @@ final class TransactionTypeTest extends TestCase
     }
 
     #[Test]
-    public function tryFrom_returns_null_for_invalid_value(): void
+    public function try_from_returns_null_for_invalid_value(): void
     {
         self::assertNull(TransactionType::tryFrom('invalid'));
         self::assertNull(TransactionType::tryFrom(''));

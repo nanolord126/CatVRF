@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Beauty;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Auth\Guard;
@@ -32,19 +36,19 @@ final class AnalyticsController extends Controller
 
         try {
             $tenantId = (int) $request->header('X-Tenant-ID', '0');
-            $from = $request->input('from', now()->subDays(30)->toDateString());
-            $to = $request->input('to', now()->toDateString());
+            $from = $request->input('from', CarbonImmutable::now()->subDays(30)->toDateString());
+            $to = $request->input('to', CarbonImmutable::now()->toDateString());
 
             $revenue = $this->db->table('beauty_appointments')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'confirmed')
-                ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
+                ->whereBetween('created_at', [$from, $to.' 23:59:59'])
                 ->sum('price');
 
             $count = $this->db->table('beauty_appointments')
                 ->where('tenant_id', $tenantId)
                 ->where('status', 'confirmed')
-                ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
+                ->whereBetween('created_at', [$from, $to.' 23:59:59'])
                 ->count();
 
             return $this->response->json([
@@ -79,12 +83,12 @@ final class AnalyticsController extends Controller
 
         try {
             $tenantId = (int) $request->header('X-Tenant-ID', '0');
-            $from = $request->input('from', now()->subDays(30)->toDateString());
-            $to = $request->input('to', now()->toDateString());
+            $from = $request->input('from', CarbonImmutable::now()->subDays(30)->toDateString());
+            $to = $request->input('to', CarbonImmutable::now()->toDateString());
 
             $byStatus = $this->db->table('beauty_appointments')
                 ->where('tenant_id', $tenantId)
-                ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
+                ->whereBetween('created_at', [$from, $to.' 23:59:59'])
                 ->selectRaw('status, COUNT(*) as total')
                 ->groupBy('status')
                 ->get()
@@ -129,7 +133,7 @@ final class AnalyticsController extends Controller
                 ->leftJoin('beauty_appointments', function ($join) {
                     $join->on('beauty_masters.id', '=', 'beauty_appointments.master_id')
                         ->where('beauty_appointments.status', '=', 'confirmed')
-                        ->where('beauty_appointments.created_at', '>=', now()->subDays(30));
+                        ->where('beauty_appointments.created_at', '>=', CarbonImmutable::now()->subDays(30));
                 })
                 ->selectRaw('beauty_masters.id, beauty_masters.full_name, beauty_masters.rating, COUNT(beauty_appointments.id) as appointments_count')
                 ->groupBy('beauty_masters.id', 'beauty_masters.full_name', 'beauty_masters.rating')

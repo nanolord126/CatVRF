@@ -1,23 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\ML;
 
 use Tests\TestCase;
 use App\Services\ML\FraudMLModelValidator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Log;
 
 final class FraudMLModelValidatorTest extends TestCase
 {
     use RefreshDatabase;
 
     private FraudMLModelValidator $validator;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->validator = app(FraudMLModelValidator::class);
-    }
 
     public function test_validate_model_with_good_metrics(): void
     {
@@ -159,5 +154,11 @@ final class FraudMLModelValidatorTest extends TestCase
 
         $this->assertArrayHasKey('validation_timestamp', $result);
         $this->assertNotEmpty($result['validation_timestamp']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->validator = app(FraudMLModelValidator::class);
     }
 }

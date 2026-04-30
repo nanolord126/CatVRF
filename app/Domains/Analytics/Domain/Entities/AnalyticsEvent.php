@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Analytics\Domain\Entities;
 
+use Carbon\CarbonImmutable;
+
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
@@ -19,8 +21,6 @@ use Illuminate\Support\Str;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Analytics\Domain\Entities
  */
 final class AnalyticsEvent
 {
@@ -35,8 +35,7 @@ final class AnalyticsEvent
         private readonly ?string $device_fingerprint,
         private readonly Carbon $created_at,
         private readonly string $correlation_id
-    ) {
-}
+    ) {}
 
     public static function create(
         int $tenant_id,
@@ -57,7 +56,7 @@ final class AnalyticsEvent
             vertical: $vertical,
             ip_address: $ip_address,
             device_fingerprint: $device_fingerprint,
-            created_at: Carbon::now(),
+            created_at: CarbonImmutable::now(),
             correlation_id: $correlation_id
         );
     }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * RateLimitException — CatVRF 2026 Component.
@@ -7,19 +9,20 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/ratelimitexception
  * @see https://catvrf.ru/docs/ratelimitexception
  * @see https://catvrf.ru/docs/ratelimitexception
  */
 
-
 namespace App\Exceptions;
 
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\Request;
@@ -34,8 +37,6 @@ use Illuminate\Http\JsonResponse;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Exceptions
  */
 final class RateLimitException extends \Exception
 {
@@ -59,16 +60,14 @@ final class RateLimitException extends \Exception
             'message' => $this->getMessage(),
         ], 429)
             ->header('Retry-After', $this->retryAfter)
-            ->header('X-RateLimit-Reset', now()->addSeconds($this->retryAfter)->timestamp);
+            ->header('X-RateLimit-Reset', CarbonImmutable::now()->addSeconds($this->retryAfter)->timestamp);
     }
 
     /**
      * Get the string representation of this object.
-     *
-     * @return string
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new');
+        return self::class.'::'.($this->id ?? 'new');
     }
 }

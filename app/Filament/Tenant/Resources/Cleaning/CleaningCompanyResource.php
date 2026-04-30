@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Cleaning;
 
@@ -6,181 +8,187 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Filament\Forms;
-use Filament\Tables;
+use App\Filament\Tenant\Resources\Cleaning\Pages\CreateCleaningCompany;
+use App\Filament\Tenant\Resources\Cleaning\Pages\EditCleaningCompany;
+use App\Filament\Tenant\Resources\Cleaning\Pages\ListCleaningCompanies;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Filters\TernaryFilter;
 
 final class CleaningCompanyResource extends Resource
 {
-
     protected static ?string $model = CleaningCompany::class;
 
-        protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
-        protected static ?string $navigationGroup = 'Cleaning Services';
-        protected static ?int $navigationSort = 1;
+    protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
 
-        public static function form(Form $form): Form
-        {
-            return $form
-                ->schema([
-                    Group::make()
-                        ->schema([
-                            Section::make('Core Identity')
-                                ->description('Basic legal and brand information for the company.')
-                                ->schema([
-                                    TextInput::make('name')
-                                        ->required()
-                                        ->maxLength(255)
-                                        ->placeholder('e.g., CleanPro Services Ltd.'),
+    protected static ?string $navigationGroup = 'Cleaning Services';
 
-                                    TextInput::make('inn')
-                                        ->label('Tax ID (INN)')
-                                        ->length(10)
-                                        ->numeric()
-                                        ->helperText('Required for B2B contracts')
-                                        ->placeholder('77XXXXXXXX'),
+    protected static ?int $navigationSort = 1;
 
-                                    Select::make('type')
-                                        ->options([
-                                            'local' => 'Local Provider',
-                                            'aggregator' => 'Aggregator/Marketplace',
-                                            'premium' => 'Premium/Elite Service',
-                                            'industrial' => 'Industrial/Commercial Only',
-                                        ])
-                                        ->default('local')
-                                        ->required(),
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Group::make()
+                    ->schema([
+                        Section::make('Core Identity')
+                            ->description('Basic legal and brand information for the company.')
+                            ->schema([
+                                TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->placeholder('e.g., CleanPro Services Ltd.'),
 
-                                    Toggle::make('is_verified')
-                                        ->label('Verified by Platform')
-                                        ->onIcon('heroicon-m-check-badge')
-                                        ->offIcon('heroicon-m-x-circle')
-                                        ->default(false),
-                                ])
-                                ->columns(2),
+                                TextInput::make('inn')
+                                    ->label('Tax ID (INN)')
+                                    ->length(10)
+                                    ->numeric()
+                                    ->helperText('Required for B2B contracts')
+                                    ->placeholder('77XXXXXXXX'),
 
-                            Section::make('Operation Settings')
-                                ->description('JSONB configuration for the company behavior.')
-                                ->schema([
-                                    TagsInput::make('tags')
-                                        ->placeholder('Add service tags: eco-friendly, fast, 24/7'),
+                                Select::make('type')
+                                    ->options([
+                                        'local' => 'Local Provider',
+                                        'aggregator' => 'Aggregator/Marketplace',
+                                        'premium' => 'Premium/Elite Service',
+                                        'industrial' => 'Industrial/Commercial Only',
+                                    ])
+                                    ->default('local')
+                                    ->required(),
 
-                                    Textarea::make('settings.description')
-                                        ->label('Public Bio')
-                                        ->rows(5)
-                                        ->columnSpanFull(),
+                                Toggle::make('is_verified')
+                                    ->label('Verified by Platform')
+                                    ->onIcon('heroicon-m-check-badge')
+                                    ->offIcon('heroicon-m-x-circle')
+                                    ->default(false),
+                            ])
+                            ->columns(2),
 
-                                    TextInput::make('settings.commission_percent')
-                                        ->label('Platform Commission (%)')
-                                        ->numeric()
-                                        ->default(14)
-                                        ->suffix('%')
-                                        ->required(),
-                                ])
-                                ->columns(2),
-                        ])
-                        ->columnSpan(['lg' => 2]),
+                        Section::make('Operation Settings')
+                            ->description('JSONB configuration for the company behavior.')
+                            ->schema([
+                                TagsInput::make('tags')
+                                    ->placeholder('Add service tags: eco-friendly, fast, 24/7'),
 
-                    Group::make()
-                        ->schema([
-                            Section::make('Metadata/Security')
-                                ->schema([
-                                    TextInput::make('uuid')
-                                        ->disabled()
-                                        ->label('Entity UUID')
-                                        ->placeholder('System generated'),
+                                Textarea::make('settings.description')
+                                    ->label('Public Bio')
+                                    ->rows(5)
+                                    ->columnSpanFull(),
 
-                                    TextInput::make('correlation_id')
-                                        ->disabled()
-                                        ->label('Active Trace ID')
-                                        ->placeholder('Active correlation ID'),
+                                TextInput::make('settings.commission_percent')
+                                    ->label('Platform Commission (%)')
+                                    ->numeric()
+                                    ->default(14)
+                                    ->suffix('%')
+                                    ->required(),
+                            ])
+                            ->columns(2),
+                    ])
+                    ->columnSpan(['lg' => 2]),
 
-                                    TextInput::make('rating')
-                                        ->disabled()
-                                        ->numeric()
-                                        ->label('Average Rating')
-                                        ->default(5.00)
-                                        ->step(0.01),
+                Group::make()
+                    ->schema([
+                        Section::make('Metadata/Security')
+                            ->schema([
+                                TextInput::make('uuid')
+                                    ->disabled()
+                                    ->label('Entity UUID')
+                                    ->placeholder('System generated'),
 
-                                    TextInput::make('created_at')
-                                        ->disabled()
-                                        ->label('Registry Date')
-                                        ->placeholder('System creation time'),
-                                ]),
-                        ])
-                        ->columnSpan(['lg' => 1]),
-                ])
-                ->columns(3);
-        }
+                                TextInput::make('correlation_id')
+                                    ->disabled()
+                                    ->label('Active Trace ID')
+                                    ->placeholder('Active correlation ID'),
 
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    TextColumn::make('name')
-                        ->searchable()
-                        ->sortable()
-                        ->weight('bold')
-                        ->description(fn (CleaningCompany $record) => $record->type),
+                                TextInput::make('rating')
+                                    ->disabled()
+                                    ->numeric()
+                                    ->label('Average Rating')
+                                    ->default(5.00)
+                                    ->step(0.01),
 
-                    TextColumn::make('inn')
-                        ->label('INN')
-                        ->copyable()
-                        ->searchable(),
+                                TextInput::make('created_at')
+                                    ->disabled()
+                                    ->label('Registry Date')
+                                    ->placeholder('System creation time'),
+                            ]),
+                    ])
+                    ->columnSpan(['lg' => 1]),
+            ])
+            ->columns(3);
+    }
 
-                    IconColumn::make('is_verified')
-                        ->boolean()
-                        ->label('Verified')
-                        ->sortable(),
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('name')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold')
+                    ->description(fn (CleaningCompany $record) => $record->type),
 
-                    TextColumn::make('rating')
-                        ->label('Rating')
-                        ->numeric(decimalPlaces: 2)
-                        ->color('warning')
-                        ->sortable(),
+                TextColumn::make('inn')
+                    ->label('INN')
+                    ->copyable()
+                    ->searchable(),
 
-                    TextColumn::make('services_count')
-                        ->counts('services')
-                        ->label('Services Offered')
-                        ->badge(),
+                IconColumn::make('is_verified')
+                    ->boolean()
+                    ->label('Verified')
+                    ->sortable(),
 
-                    TextColumn::make('created_at')
-                        ->dateTime()
-                        ->label('Joined At')
-                        ->sortable()
-                        ->toggleable(isToggledHiddenByDefault: true),
-                ])
-                ->filters([
-                    SelectFilter::make('type')
-                        ->options([
-                            'local' => 'Local',
-                            'aggregator' => 'Aggregator',
-                            'premium' => 'Premium',
-                            'industrial' => 'Industrial',
-                        ]),
-                    \Filament\Tables\Filters\TernaryFilter::make('is_verified'),
-                ])
-                ->actions([
-                    \Filament\Tables\Actions\EditAction::make(),
-                    \Filament\Tables\Actions\ViewAction::make(),
-                ])
-                ->bulkActions([
-                    \Filament\Tables\Actions\DeleteBulkAction::make(),
-                ]);
-        }
+                TextColumn::make('rating')
+                    ->label('Rating')
+                    ->numeric(decimalPlaces: 2)
+                    ->color('warning')
+                    ->sortable(),
 
-        public static function getEloquentQuery(): Builder
-        {
-            return parent::getEloquentQuery()
-                ->withCount('services')
-                ->orderBy('is_verified', 'desc')
-                ->orderBy('rating', 'desc');
-        }
+                TextColumn::make('services_count')
+                    ->counts('services')
+                    ->label('Services Offered')
+                    ->badge(),
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => \App\Filament\Tenant\Resources\Cleaning\Pages\ListCleaningCompanies::route('/'),
-                'create' => \App\Filament\Tenant\Resources\Cleaning\Pages\CreateCleaningCompany::route('/create'),
-                'edit' => \App\Filament\Tenant\Resources\Cleaning\Pages\EditCleaningCompany::route('/{record}/edit'),
-            ];
-        }
+                TextColumn::make('created_at')
+                    ->dateTime()
+                    ->label('Joined At')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                SelectFilter::make('type')
+                    ->options([
+                        'local' => 'Local',
+                        'aggregator' => 'Aggregator',
+                        'premium' => 'Premium',
+                        'industrial' => 'Industrial',
+                    ]),
+                TernaryFilter::make('is_verified'),
+            ])
+            ->actions([
+                EditAction::make(),
+                ViewAction::make(),
+            ])
+            ->bulkActions([
+                DeleteBulkAction::make(),
+            ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withCount('services')
+            ->orderBy('is_verified', 'desc')
+            ->orderBy('rating', 'desc');
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => ListCleaningCompanies::route('/'),
+            'create' => CreateCleaningCompany::route('/create'),
+            'edit' => EditCleaningCompany::route('/{record}/edit'),
+        ];
+    }
 }

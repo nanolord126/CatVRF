@@ -29,7 +29,8 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 
 final class ValidateWebhookSignature
 {
-
+
+
     public function __construct(
             private readonly WebhookSignatureValidator $validator,
             private readonly LogManager $logger,
@@ -44,7 +45,7 @@ final class ValidateWebhookSignature
             $signature = $request->header('X-Signature') ?? $request->header('Authorization');
             $payload = $request->getContent();
 
-            if (!$signature || !Validator::validate($provider, $payload, $signature)) {
+            if (!$signature || !$this->validator->validate($provider, $payload, $signature)) {
                 $this->logger->channel('webhook_errors')->warning('Invalid webhook signature', [
                     'provider' => $provider,
                     'path' => $request->path(),

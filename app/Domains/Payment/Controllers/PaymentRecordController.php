@@ -6,10 +6,11 @@ namespace App\Domains\Payment\Controllers;
 
 use App\Domains\Payment\DTOs\CreatePaymentRecordDto;
 use App\Domains\Payment\DTOs\UpdatePaymentRecordDto;
+use App\Domains\Payment\Models\PaymentRecord;
 use App\Domains\Payment\Resources\PaymentRecordResource;
-use App\Domains\Payment\Services\PaymentService;
+use Modules\Payment\Application\Services\PaymentService;
+use App\Domains\FraudML\Services\FraudControlService;
 use App\Services\AuditService;
-use App\Services\FraudControlService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,12 +25,12 @@ use Psr\Log\LoggerInterface;
 final class PaymentRecordController
 {
     public function __construct(
-        private readonly PaymentService $paymentService,
         private readonly FraudControlService $fraud,
         private readonly AuditService $audit,
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
         private readonly ResponseFactory $response,
+        private readonly PaymentService $paymentService,
     ) {}
 
     /**
@@ -37,7 +38,7 @@ final class PaymentRecordController
      */
     public function show(int $id, Request $request): JsonResponse
     {
-        $record = $this->paymentService->findById($id);
+        $record = PaymentRecord::find($id);
 
         if ($record === null) {
             return $this->response->json([
@@ -62,7 +63,7 @@ final class PaymentRecordController
     public function store(Request $request): JsonResponse
     {
         $dto = CreatePaymentRecordDto::from($request);
-        $record = $this->paymentService->create($dto);
+        $record = PaymentRecord::create($dto->toArray());
 
         $this->logger->info('Payment record created via API', [
             'payment_record_id' => $record->id,
@@ -91,7 +92,12 @@ final class PaymentRecordController
             providerResponse: $request->input('provider_response'),
         );
 
-        $record = $this->paymentService->updateStatus($dto);
+        $record = PaymentRecord::findOrFail($id);
+        $record->update([
+            'status' => $dto->status,
+            'provider_payment_id' => $dto->providerPaymentId,
+            'provider_response' => $dto->providerResponse,
+        ]);
 
         return $this->response->json([
             'success' => true,

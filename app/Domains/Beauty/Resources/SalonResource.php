@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Carbon\CarbonImmutable;
 
 final class SalonResource extends JsonResource
 {
@@ -32,15 +35,14 @@ final class SalonResource extends JsonResource
     /**
      * Дополнительные метаданные в ответе.
      *
-     * @param \Illuminate\Http\Request $request
      * @return array<string, mixed>
      */
-    public function with(\Illuminate\Http\Request $request): array
+    public function with(Request $request): array
     {
         return [
             'meta' => [
                 'correlation_id' => $request->attributes->get('correlation_id'),
-                'generated_at'   => now()->toIso8601String(),
+                'generated_at'   => CarbonImmutable::now()->toIso8601String(),
             ],
         ];
     }
@@ -52,8 +54,8 @@ final class SalonResource extends JsonResource
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
+     *
      * @author CatVRF Team
      * @license Proprietary
      */

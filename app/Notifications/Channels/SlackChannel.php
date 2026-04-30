@@ -1,10 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Channels;
 
 use Psr\Log\LoggerInterface;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\Factory as HttpClientFactory;
 
 /**
  * Slack Notification Channel — отправляет уведомления через Slack Incoming Webhooks.
@@ -25,6 +27,7 @@ final class SlackChannel
      */
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly HttpClientFactory $http,
     ) {}
 
     /**
@@ -35,11 +38,12 @@ final class SlackChannel
      */
     public function send(object $notifiable, Notification $notification): void
     {
-        if (!method_exists($notification, 'toSlack')) {
+        if (! method_exists($notification, 'toSlack')) {
             $this->logger->warning('Notification does not have toSlack method', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id ?? null,
             ]);
+
             return;
         }
 
@@ -59,19 +63,19 @@ final class SlackChannel
                 'username' => $slackData['username'] ?? config('notifications.channels.slack.username', 'CatVRF Bot'),
             ];
 
-            if (!empty($slackData['blocks'])) {
+            if (! empty($slackData['blocks'])) {
                 $payload['blocks'] = $slackData['blocks'];
             }
 
-            $response = Http::timeout(10)->post($webhookUrl, $payload);
+            $response = $this->http->timeout(10)->post($webhookUrl, $payload);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 throw new \RuntimeException(
-                    'Slack webhook error: HTTP ' . $response->status() . ' — ' . $response->body()
+                    'Slack webhook error: HTTP '.$response->status().' — '.$response->body()
                 );
             }
 
-            $this->logger->info('Slack notification sent', [
+            $this->logger->$this->logger->info('Slack notification sent', [
                 'type'           => method_exists($notification, 'getType') ? $notification->getType() : get_class($notification),
                 'channel'        => $payload['channel'],
                 'correlation_id' => method_exists($notification, 'getCorrelationId') ? $notification->getCorrelationId() : null,
@@ -95,7 +99,7 @@ final class SlackChannel
      * произвольных alert-сообщений.
      */
     public function sendDirect(
-        string  $text,
+        string $text,
         ?string $channel = null,
         ?string $correlationId = null,
     ): void {
@@ -105,6 +109,7 @@ final class SlackChannel
             $this->logger->warning('Slack webhook URL not configured, skipping', [
                 'correlation_id' => $correlationId,
             ]);
+
             return;
         }
 
@@ -114,20 +119,20 @@ final class SlackChannel
             'username' => config('notifications.channels.slack.username', 'CatVRF Bot'),
         ];
 
-        $response = Http::timeout(10)->post($webhookUrl, $payload);
+        $response = $this->http->timeout(10)->post($webhookUrl, $payload);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $this->logger->error('Slack direct send failed', [
                 'response'       => $response->body(),
                 'correlation_id' => $correlationId,
             ]);
 
             throw new \RuntimeException(
-                'Slack webhook error: HTTP ' . $response->status() . ' — ' . $response->body()
+                'Slack webhook error: HTTP '.$response->status().' — '.$response->body()
             );
         }
 
-        $this->logger->info('Slack direct message sent', [
+        $this->logger->$this->logger->info('Slack direct message sent', [
             'channel'        => $payload['channel'],
             'correlation_id' => $correlationId,
         ]);

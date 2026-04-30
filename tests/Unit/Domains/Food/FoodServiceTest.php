@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Food;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for FoodService.
- *
- * @covers \App\Domains\Food\Domain\Services\FoodService
- */
-final class FoodServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Food\Domain\Services\FoodService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'FoodService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Food\Domain\Services\FoodService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'FoodService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Food');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Food\Domain\Services\FoodService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'FoodService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('FoodService exists and is instantiable', function () {
+    $this->assertServiceExists('FoodService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Food\Domain\Services\FoodService::class, 'create'),
-            'FoodService must implement create()'
-        );
-    }
+test('FoodService follows clean architecture', function () {
+    $this->assertCleanArchitecture('FoodService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Food\Domain\Services\FoodService::class, 'update'),
-            'FoodService must implement update()'
-        );
-    }
+test('FoodService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('FoodService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Food\Domain\Services\FoodService::class, 'delete'),
-            'FoodService must implement delete()'
-        );
-    }
+test('FoodService enforces quota limits', function () {
+    $this->testServiceWithQuota('FoodService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Food\Domain\Services\FoodService::class, 'list'),
-            'FoodService must implement list()'
-        );
-    }
+test('FoodService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('FoodService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Food\Domain\Services\FoodService::class, 'getById'),
-            'FoodService must implement getById()'
-        );
-    }
+test('FoodService has proper caching', function () {
+    $cacheKey = 'food:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('FoodService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('FoodService dispatches proper events', function () {
+    $eventClass = "App\Domains\Food\Events\FoodProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('FoodService'));
+        $service->process([]);
+    });
+});
+
+test('FoodService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Food\Jobs\ProcessFoodJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('FoodService'));
+        $service->processAsync([]);
+    });
+});
+
+test('FoodService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('FoodService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('FoodService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('FoodService'));
+        $service->process([]);
+    }, 'FoodService processed');
+});
+
+test('FoodService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

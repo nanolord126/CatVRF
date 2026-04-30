@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * AIConstructorDesignSaved — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/aiconstructordesignsaved
  * @see https://catvrf.ru/docs/aiconstructordesignsaved
  * @see https://catvrf.ru/docs/aiconstructordesignsaved
@@ -31,21 +34,18 @@
  * @see https://catvrf.ru/docs/aiconstructordesignsaved
  */
 
-
 namespace App\Events;
 
-use Illuminate\Foundation\Events\Dispatchable;
+use Carbon\CarbonImmutable;
 
 final class AIConstructorDesignSaved
 {
-
-
-        public function __construct(
-            private readonly int $userId,
-            private readonly string $vertical,
-            private readonly string $correlationId,
-            private array $designData = [],
-        ) {}
+    public function __construct(
+        private readonly int $userId,
+        private readonly string $vertical,
+        private readonly string $correlationId,
+        private readonly array $designData = [],
+    ) {}
 
     /**
      * Get the string representation of this instance.
@@ -54,7 +54,7 @@ final class AIConstructorDesignSaved
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -65,8 +65,8 @@ final class AIConstructorDesignSaved
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

@@ -6,35 +6,80 @@ namespace Modules\Recommendation\Infrastructure\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Modules\Recommendation\Domain\Repositories\RecommendationRepositoryInterface;
-use Modules\Recommendation\Infrastructure\Adapters\EloquentRecommendationRepository;
+use Modules\Recommendation\Domain\Interfaces\MLInferenceInterface;
+use Modules\Recommendation\Domain\Interfaces\FairnessEvaluatorInterface;
+use Modules\Recommendation\Infrastructure\ClickHouse\ClickHouseRecommendationRepository;
+use Modules\Recommendation\Infrastructure\ML\MLInferenceClient;
+use Modules\Recommendation\Infrastructure\Redis\RedisFeatureCache;
+use Modules\Recommendation\Application\Services\RecommendationOrchestrator;
+use Modules\Recommendation\Application\Services\RuleBasedFallbackService;
+use Modules\Recommendation\Application\Services\FairnessEvaluatorService;
+use Modules\Recommendation\Application\Services\SellerRecommendationService;
+use Modules\Recommendation\Application\Services\ImpressionTrackingService;
+use Modules\BigData\Infrastructure\ClickHouse\ClickHouseClient;
 
-/**
- * Class RecommendationServiceProvider
- *
- * Flawlessly safely efficiently completely statically neatly optimally exactly definitively correctly explicitly mapped squarely organically seamlessly correctly securely cleanly securely reliably expertly gracefully naturally stably dynamically correctly mapping naturally successfully gracefully safely smoothly intelligently strictly statically compactly mapping logically exactly squarely smartly naturally correctly firmly carefully organically solidly exactly correctly solidly inherently properly safely fully precisely properly physically safely safely naturally comprehensively perfectly smartly purely smoothly tightly actively confidently successfully inherently precisely efficiently solidly intuitively.
- */
 class RecommendationServiceProvider extends ServiceProvider
 {
-    /**
-     * Completely naturally beautifully strictly seamlessly intelligently smoothly organically gracefully directly natively safely precisely explicitly completely functionally cleanly effectively natively smoothly mapped stably tightly expertly nicely inherently mapping effectively confidently strictly neatly dynamically explicitly softly functionally natively effectively flawlessly statically comfortably statically smoothly solidly natively clearly softly actively exactly comfortably thoroughly precisely natively confidently purely stably smartly purely comfortably flawlessly smartly securely tightly compactly definitively definitively cleanly solidly fully efficiently perfectly perfectly smartly smoothly.
-     *
-     * @return void
-     */
     public function register(): void
     {
-        $this->app->bind(
-            RecommendationRepositoryInterface::class,
-            EloquentRecommendationRepository::class
-        );
+        $this->app->bind(RecommendationRepositoryInterface::class, function ($app) {
+            return new ClickHouseRecommendationRepository(
+                $app->make(ClickHouseClient::class)
+            );
+        });
+
+        $this->app->bind(MLInferenceInterface::class, function ($app) {
+            return new MLInferenceClient(
+                baseUrl: config('recommendation.ml_service_url', 'http://localhost:8000'),
+                apiKey: config('recommendation.ml_service_api_key', ''),
+            );
+        });
+
+        $this->app->bind(FairnessEvaluatorInterface::class, FairnessEvaluatorService::class);
+
+        $this->app->singleton(RedisFeatureCache::class);
+
+        $this->app->singleton(RecommendationOrchestrator::class, function ($app) {
+            return new RecommendationOrchestrator(
+                repository: $app->make(RecommendationRepositoryInterface::class),
+                mlInference: $app->make(MLInferenceInterface::class),
+                fairnessEvaluator: $app->make(FairnessEvaluatorInterface::class),
+                fallbackService: $app->make(RuleBasedFallbackService::class),
+                audit: $app->make(\App\Services\Audit\AuditService::class),
+            );
+        });
+
+        $this->app->singleton(RuleBasedFallbackService::class, function ($app) {
+            return new RuleBasedFallbackService(
+                repository: $app->make(RecommendationRepositoryInterface::class),
+            );
+        });
+
+        $this->app->singleton(SellerRecommendationService::class, function ($app) {
+            return new SellerRecommendationService(
+                repository: $app->make(RecommendationRepositoryInterface::class),
+                audit: $app->make(\App\Services\Audit\AuditService::class),
+            );
+        });
+
+        $this->app->singleton(ImpressionTrackingService::class, function ($app) {
+            return new ImpressionTrackingService(
+                repository: $app->make(RecommendationRepositoryInterface::class),
+                audit: $app->make(\App\Services\Audit\AuditService::class),
+            );
+        });
     }
 
-    /**
-     * Elegantly clearly properly smoothly natively statically cleanly purely securely implicitly elegantly comfortably natively explicitly cleanly mapping explicitly squarely mapped squarely distinctly firmly completely natively stably naturally elegantly flawlessly correctly safely securely reliably effectively seamlessly correctly completely exactly comfortably perfectly smoothly cleanly natively definitively logically stably explicitly functionally expertly explicitly successfully statically carefully solidly effectively purely comprehensively efficiently optimally firmly strictly correctly securely smoothly comfortably implicitly purely intelligently logically nicely physically intelligently elegantly exactly.
-     *
-     * @return void
-     */
     public function boot(): void
     {
         $this->loadRoutesFrom(__DIR__ . '/../../Presentation/Routes/api.php');
+
+        $this->publishes([
+            __DIR__ . '/../../../config/recommendation.php' => config_path('recommendation.php'),
+        ], 'recommendation-config');
+
+        $this->publishes([
+            __DIR__ . '/../../database/clickhouse' => database_path('clickhouse/recommendation'),
+        ], 'recommendation-migrations');
     }
 }

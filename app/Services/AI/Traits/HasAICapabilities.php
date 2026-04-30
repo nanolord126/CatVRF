@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\AI\Traits;
 
@@ -7,8 +9,9 @@ use Psr\Log\LoggerInterface;
 
 trait HasAICapabilities
 {
-    protected OpenAIClientService $openai;
-    protected LoggerInterface $logger;
+    protected readonly OpenAIClientService $openai;
+
+    protected readonly LoggerInterface $logger;
 
     /**
      * Инициализация OpenAI клиента (должен быть вызван в конструкторе)
@@ -50,7 +53,7 @@ trait HasAICapabilities
      */
     protected function callOpenAIChat(array $messages, float $temperature = 0.3, string $responseFormat = 'text', ?string $correlationId = null): array
     {
-        if (!$this->openai->isEnabled()) {
+        if (! $this->openai->isEnabled()) {
             throw new \RuntimeException('OpenAI service is not configured.');
         }
 

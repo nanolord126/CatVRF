@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -20,15 +22,6 @@ final class ListBooks extends ListRecords
     public function getTitle(): string
     {
         return 'Книги';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Добавить книгу')
-                ->icon('heroicon-m-plus'),
-        ];
     }
 
     public function table(Table $table): Table
@@ -58,7 +51,7 @@ final class ListBooks extends ListRecords
                     ->toggleable(),
                 TextColumn::make('price_kopecks')
                     ->label('Цена')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable(),
                 IconColumn::make('is_available')
                     ->label('Доступна')
@@ -87,5 +80,14 @@ final class ListBooks extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Добавить книгу')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

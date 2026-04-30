@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Http\Controllers;
 
@@ -22,7 +24,7 @@ final class TaxiFleetManagementController extends Controller
             'model' => 'required|string|max:255',
             'license_plate' => 'required|string|max:50',
             'class' => 'nullable|string|in:economy,comfort,business,van',
-            'year' => 'required|integer|min:1990|max:' . (date('Y') + 1),
+            'year' => 'required|integer|min:1990|max:'.(date('Y') + 1),
             'color' => 'nullable|string|max:100',
             'documents' => 'nullable|array',
             'metadata' => 'nullable|array',
@@ -34,7 +36,7 @@ final class TaxiFleetManagementController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'vehicle' => $vehicle,
         ]);
@@ -61,7 +63,7 @@ final class TaxiFleetManagementController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'maintenance' => $maintenance,
         ]);
@@ -82,7 +84,7 @@ final class TaxiFleetManagementController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'maintenance' => $maintenance,
         ]);
@@ -107,7 +109,7 @@ final class TaxiFleetManagementController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'inspection' => $inspection,
         ]);
@@ -128,7 +130,7 @@ final class TaxiFleetManagementController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'inspection' => $inspection,
         ]);
@@ -145,7 +147,7 @@ final class TaxiFleetManagementController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'overview' => $overview,
         ]);
@@ -158,7 +160,7 @@ final class TaxiFleetManagementController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'history' => $history,
         ]);

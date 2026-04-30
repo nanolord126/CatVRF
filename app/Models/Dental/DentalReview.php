@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Dental;
-
-
 
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
@@ -14,60 +14,35 @@ use Illuminate\Support\Str;
 
 final class DentalReview extends Model
 {
+    use HasFactory;
+    use SoftDeletes;
+
+    protected $table = 'dental_reviews';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'clinic_id',
+        'dentist_id',
+        'client_id',
+        'rating',
+        'comment',
+        'is_verified',
+        'correlation_id',
+        'tags',
+    ];
+
+    protected $casts = [
+        'tags' => 'json',
+        'rating' => 'integer',
+        'is_verified' => 'boolean',
+        'tenant_id' => 'integer',
+    ];
+
     public function __construct(
         private readonly Request $request,
         private readonly LoggerInterface $logger,
     ) {}
-
-    use HasFactory, SoftDeletes;
-
-        protected $table = 'dental_reviews';
-
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'clinic_id',
-            'dentist_id',
-            'client_id',
-            'rating',
-            'comment',
-            'is_verified',
-            'correlation_id',
-            'tags',
-        ];
-
-        protected $casts = [
-            'tags' => 'json',
-            'rating' => 'integer',
-            'is_verified' => 'boolean',
-            'tenant_id' => 'integer',
-        ];
-
-    /**
-     * Boot logic for automatic UUID and tenant scoping.
-     */
-    protected static function booted(): void
-    {
-        static::creating(function (self $model) {
-            $model->uuid = $model->uuid ?? (string) Str::uuid();
-            $model->correlation_id = $model->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
-
-            if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
-                $model->tenant_id = tenant()->id;
-            }
-        });
-
-        static::created(function (self $model) {
-            // Re-calculate dentist and clinic ratings
-            $model->recalculateRatings();
-        });
-
-        static::addGlobalScope('tenant', function ($builder) {
-            if (function_exists('tenant') && tenant()) {
-                $builder->where('tenant_id', tenant()->id);
-            }
-        });
-    }
 
     /**
      * Relations: Clinic being reviewed.
@@ -96,11 +71,37 @@ final class DentalReview extends Model
         $dentistReviews = self::where('dentist_id', $this->dentist_id)->where('is_verified', true)->avg('rating');
         $this->dentist()->update(['rating' => (int) ($dentistReviews * 100)]);
 
-        $this->logger->info('Professional ratings recalculated', [
+        $this->logger->$this->logger->info('Professional ratings recalculated', [
             'clinic_id' => $this->clinic_id,
             'dentist_id' => $this->dentist_id,
             'review_id' => $this->id,
             'correlation_id' => $this->correlation_id,
         ]);
+    }
+
+    /**
+     * Boot logic for automatic UUID and tenant scoping.
+     */
+    protected static function booted(): void
+    {
+        self::creating(function (self $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            $model->correlation_id = $model->correlation_id ?? $this->request->header('X-Correlation-ID', (string) Str::uuid());
+
+            if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
+                $model->tenant_id = tenant()->id;
+            }
+        });
+
+        self::created(function (self $model) {
+            // Re-calculate dentist and clinic ratings
+            $model->recalculateRatings();
+        });
+
+        self::addGlobalScope('tenant', function ($builder) {
+            if (function_exists('tenant') && tenant()) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

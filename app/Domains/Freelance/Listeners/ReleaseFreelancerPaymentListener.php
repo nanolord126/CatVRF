@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\Listeners;
 
@@ -6,7 +8,6 @@ use App\Domains\Freelance\Events\PaymentMilestoneReleased;
 use App\Services\AuditService;
 use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -14,8 +15,6 @@ use Psr\Log\LoggerInterface;
  *
  * Начисляет фрилансеру оплату за завершённый milestone
  * (минус комиссия платформы). Работает асинхронно.
- *
- * @package App\Domains\Freelance\Listeners
  */
 final readonly class ReleaseFreelancerPaymentListener implements ShouldQueue
 {
@@ -25,9 +24,9 @@ final readonly class ReleaseFreelancerPaymentListener implements ShouldQueue
     private const COMMISSION_RATE = 0.14;
 
     public function __construct(
-        private AuditService $audit,
-        private WalletService $wallet,
-        private LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly WalletService $wallet,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -72,7 +71,7 @@ final readonly class ReleaseFreelancerPaymentListener implements ShouldQueue
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Freelancer milestone payment released', [
+        $this->logger->$this->logger->info('Freelancer milestone payment released', [
             'contract_id' => $contract->id,
             'freelancer_id' => $contract->freelancer_id,
             'milestone' => $milestoneNumber,

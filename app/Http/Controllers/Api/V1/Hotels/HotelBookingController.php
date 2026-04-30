@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Hotels;
@@ -11,34 +12,6 @@ use App\Domains\Hotels\DTOs\BookRoomDto;
 
 final class HotelBookingController extends Controller
 {
-    public function __construct(
-        private readonly HotelBookingService $bookingService,
-    ) {}
-
-    public function store(Request $request): JsonResponse
-    {
-        $dto = BookRoomDto::fromRequest($request);
-        
-        try {
-            $booking = $this->bookingService->bookRoom($dto);
-            return new JsonResponse([
-                "success" => true,
-                "data" => [
-                    "booking_id" => $booking->id,
-                    "total_price" => $booking->total_price,
-                    "status" => $booking->status,
-                ],
-                "correlation_id" => $dto->correlationId,
-            ], 201);
-        } catch (\Throwable $e) {
-            return new JsonResponse([
-                "success" => false,
-                "message" => $e->getMessage(),
-                "correlation_id" => $dto->correlationId,
-            ], 400);
-        }
-    }
-
     /**
      * Component: HotelBookingController
      *
@@ -46,13 +19,41 @@ final class HotelBookingController extends Controller
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
      */
     /**
      * Version identifier for this component.
      */
     private const VERSION = '1.0.0';
+
+    public function __construct(
+        private readonly HotelBookingService $bookingService,
+    ) {}
+
+    public function store(Request $request): JsonResponse
+    {
+        $dto = BookRoomDto::fromRequest($request);
+
+        try {
+            $booking = $this->bookingService->bookRoom($dto);
+
+            return new JsonResponse([
+                'success' => true,
+                'data' => [
+                    'booking_id' => $booking->id,
+                    'total_price' => $booking->total_price,
+                    'status' => $booking->status,
+                ],
+                'correlation_id' => $dto->correlationId,
+            ], 201);
+        } catch (\Throwable $e) {
+            return new JsonResponse([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'correlation_id' => $dto->correlationId,
+            ], 400);
+        }
+    }
 
     /**
      * HotelBookingController — CatVRF 2026 Component.
@@ -61,8 +62,8 @@ final class HotelBookingController extends Controller
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
+     *
      * @author CatVRF Team
      * @license Proprietary
      */

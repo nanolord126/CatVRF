@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Events;
 
@@ -10,13 +12,15 @@ use Illuminate\Queue\SerializesModels;
 
 /**
  * Tourism Booking Confirmed Event
- * 
+ *
  * Fired when a booking is confirmed after payment and biometric verification.
  * Triggers video call scheduling and CRM status update.
  */
 final class TourismBookingConfirmedEvent
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
 
     public function __construct(
         public readonly TourBooking $booking,
@@ -25,6 +29,6 @@ final class TourismBookingConfirmedEvent
 
     public function broadcastOn(): PrivateChannel
     {
-        return new PrivateChannel('tourism.bookings.' . $this->booking->user_id);
+        return new PrivateChannel('tourism.bookings.'.$this->booking->user_id);
     }
 }

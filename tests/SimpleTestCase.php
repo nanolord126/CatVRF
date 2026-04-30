@@ -1,10 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as LaravelTestCase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 /**
  * Simple base test case that doesn't require tenancy.
@@ -20,8 +23,8 @@ abstract class SimpleTestCase extends LaravelTestCase
     {
         parent::setUp();
 
-        $this->correlationId = \Illuminate\Support\Str::uuid()->toString();
-        
+        $this->correlationId = Str::uuid()->toString();
+
         // Ensure migrations are run
         $this->ensureMigrationsRun();
     }
@@ -29,7 +32,7 @@ abstract class SimpleTestCase extends LaravelTestCase
     protected function ensureMigrationsRun(): void
     {
         // Check if migration table exists using the default connection
-        if (!Schema::hasTable('migrations')) {
+        if (! Schema::hasTable('migrations')) {
             $this->artisan('migrate', ['--force' => true]);
         }
     }

@@ -1,0 +1,286 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "ClickHouse Version",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "clickhouse_info_version",
+          "legendFormat": "Version"
+        }
+      ]
+    },
+    {
+      "title": "Active Parts",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 4, "x": 4, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "sum(catvrf_bigdata_clickhouse_table_parts)",
+          "legendFormat": "Total Parts"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Merge Queue",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 4, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "catvrf_bigdata_clickhouse_merge_queue_size",
+          "legendFormat": "Merges"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Mutation Queue",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 4, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "catvrf_bigdata_clickhouse_mutation_queue_size",
+          "legendFormat": "Mutations"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 50 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Disk Usage",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 4, "x": 16, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "catvrf_bigdata_clickhouse_disk_usage_bytes",
+          "legendFormat": "Disk"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" }
+      }
+    },
+    {
+      "title": "Uptime",
+      "type": "stat",
+      "gridPos": { "h": 3, "w": 4, "x": 20, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "clickhouse_uptime_seconds",
+          "legendFormat": "Uptime"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "Query Duration Percentiles",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 3 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "catvrf_bigdata_clickhouse_query_duration_p95_ms",
+          "legendFormat": "P95"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "clickhouse_query_duration_seconds{quantile=\"0.5\"} * 1000",
+          "legendFormat": "P50"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "clickhouse_query_duration_seconds{quantile=\"0.99\"} * 1000",
+          "legendFormat": "P99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 20 },
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 2000 },
+              { "color": "red", "value": 5000 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Parts per Table",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 3 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "catvrf_bigdata_clickhouse_table_parts",
+          "legendFormat": "{{table}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 300 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Select Query Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 11 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "rate(clickhouse_queries_total{type=\"select\"}[5m])",
+          "legendFormat": "SELECT/s"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "rate(clickhouse_queries_total{type=\"insert\"}[5m])",
+          "legendFormat": "INSERT/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ops" }
+      }
+    },
+    {
+      "title": "Data Freshness per Table",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 11 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "catvrf_bigdata_freshness_seconds / 3600",
+          "legendFormat": "{{table}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 4 },
+              { "color": "red", "value": 12 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Merge Queue Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "catvrf_bigdata_clickhouse_merge_queue_size",
+          "legendFormat": "Active Merges"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 30 },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1000 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Disk Usage Growth",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "catvrf_bigdata_clickhouse_disk_usage_bytes",
+          "legendFormat": "Total"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "expr": "deriv(catvrf_bigdata_clickhouse_disk_usage_bytes[1d])",
+          "legendFormat": "Growth Rate (bytes/day)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" }
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["bigdata", "clickhouse", "catvrf"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+        "hide": 0,
+        "includeAll": false,
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "title": "ClickHouse Deep Dive",
+  "uid": "bigdata-clickhouse-deep",
+  "version": 1
+}

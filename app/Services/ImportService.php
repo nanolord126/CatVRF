@@ -1,17 +1,29 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Filesystem\FilesystemManager;
+use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\Product;
+use App\Models\Service;
+use App\Models\User;
 
 final readonly class ImportService
 {
+    use WithAuditLogging;
+
     public function __construct(
-        private FraudControlService $fraud,
-        private RateLimiterService $rateLimiterService,
+        private readonly FraudControlService $fraud,
+        private readonly RateLimiterService $rateLimiterService,
+        private readonly FilesystemManager $storage,
+        private readonly ValidatorFactory $validator,
+        private readonly AuditService $audit,
     ) {}
 
     public function importFromExcel(UploadedFile $file, int $tenantId, string $type = 'products', string $correlationId = ''): array
@@ -19,7 +31,7 @@ final readonly class ImportService
         $path = $file->store('imports');
 
         try {
-            $data = Excel::toArray(null, Storage::path($path));
+            $data = Excel::toArray(null, $this->storage->path($path));
             $records = $data[0] ?? [];
 
             $imported = [];
@@ -42,7 +54,7 @@ final readonly class ImportService
                 'errors' => $errors,
             ];
         } finally {
-            Storage::delete($path);
+            $this->storage->delete($path);
         }
     }
 
@@ -51,7 +63,7 @@ final readonly class ImportService
         $path = $file->store('imports');
 
         try {
-            $rows = array_map('str_getcsv', file(Storage::path($path)));
+            $rows = array_map('str_getcsv', file($this->storage->path($path)));
             $header = array_shift($rows);
 
             $imported = [];
@@ -75,13 +87,13 @@ final readonly class ImportService
                 'errors' => $errors,
             ];
         } finally {
-            Storage::delete($path);
+            $this->storage->delete($path);
         }
     }
 
     private function processRow(array $row, int $tenantId, string $type): array
     {
-        $validator = Validator::make($row, $this->getRules($type));
+        $validator = $this->validator->make($row, $this->getRules($type));
 
         if ($validator->fails()) {
             throw new \InvalidArgumentException($validator->errors()->first());
@@ -116,10 +128,10 @@ final readonly class ImportService
 
     private function importProduct(array $row, int $tenantId): array
     {
-        $product = \App\Models\Product::create([
+        $product = Product::create([
             'tenant_id' => $tenantId,
             'name' => $row['name'],
-            'price' => (int)($row['price'] * 100),
+            'price' => (int) ($row['price'] * 100),
             'sku' => $row['sku'],
             'description' => $row['description'] ?? '',
         ]);
@@ -129,10 +141,10 @@ final readonly class ImportService
 
     private function importService(array $row, int $tenantId): array
     {
-        $service = \App\Models\Service::create([
+        $service = Service::create([
             'tenant_id' => $tenantId,
             'name' => $row['name'],
-            'price' => (int)($row['price'] * 100),
+            'price' => (int) ($row['price'] * 100),
             'duration_minutes' => $row['duration_minutes'] ?? 60,
         ]);
 
@@ -141,7 +153,7 @@ final readonly class ImportService
 
     private function importUser(array $row, int $tenantId): array
     {
-        $user = \App\Models\User::create([
+        $user = User::create([
             'name' => $row['name'],
             'email' => $row['email'],
             'password' => bcrypt('random_password'),

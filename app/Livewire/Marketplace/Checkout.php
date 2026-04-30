@@ -1,17 +1,33 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\Marketplace;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Illuminate\Support\Collection;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\View\View;
 use Livewire\Component;
 
 final class Checkout extends Component
 {
-    private array $cart = [];
-    private int $totalPrice = 0;
-    private string $deliveryType = 'standard';
-    private int $deliveryPrice = 0;
-    private string $paymentMethod = 'card';
+    private readonly array $cart = [];
+
+    private readonly int $totalPrice = 0;
+
+    private readonly string $deliveryType = 'standard';
+
+    private readonly int $deliveryPrice = 0;
+
+    private readonly string $paymentMethod = 'card';
+
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
     public function mount(): void
     {
@@ -21,7 +37,7 @@ final class Checkout extends Component
 
     public function calculateTotals(): void
     {
-        $subtotal = collect($this->cart)->sum(fn ($item) => $item['price'] * $item['quantity']);
+        $subtotal = new Collection($this->cart)->sum(fn ($item) => $item['price'] * $item['quantity']);
         $this->deliveryPrice = match ($this->deliveryType) {
             'same_day' => 100000,
             default => 0,
@@ -51,7 +67,7 @@ final class Checkout extends Component
             'total_price' => $this->totalPrice,
             'delivery_type' => $this->deliveryType,
             'payment_method' => $this->paymentMethod,
-            'created_at' => now(),
+            'created_at' => CarbonImmutable::now(),
         ]);
 
         $this->dispatch('order-created');
@@ -60,6 +76,6 @@ final class Checkout extends Component
 
     public function render(): View
     {
-        return view('livewire.marketplace.checkout');
+        return $this->viewFactory->make('livewire.marketplace.checkout');
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Database\Seeders\Tickets;
 
 use App\Domains\Tickets\Models\Event;
-use Database\Factories\Tickets\EventFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -131,10 +130,10 @@ final class TicketSeeder extends Seeder
                     'description' => 'Мероприятие высокого качества с известными артистами и профессиональной организацией.',
                     'category' => $eventData['category'],
                     'location' => $eventData['location'],
-                    'address' => $eventData['location'] . ', Центральный район',
+                    'address' => $eventData['location'].', Центральный район',
                     'organizer_name' => $eventData['organizer_name'],
                     'organizer_phone' => '+7 (495) 123-45-67',
-                    'organizer_email' => 'info@' . Str::slug($eventData['organizer_name']) . '.ru',
+                    'organizer_email' => 'info@'.Str::slug($eventData['organizer_name']).'.ru',
                     'start_datetime' => now()->addDays(rand(7, 60)),
                     'end_datetime' => now()->addDays(rand(7, 60))->addHours(3),
                     'total_capacity' => $eventData['total_capacity'],

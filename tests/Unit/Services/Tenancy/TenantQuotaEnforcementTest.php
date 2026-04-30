@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\Tenancy;
 
@@ -6,6 +8,8 @@ use App\Exceptions\TenantQuotaExceededException;
 use App\Services\Tenancy\TenantResourceLimiterService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use App\Services\Tenancy\TenantQuotaPersistenceService;
+use App\Services\Tenancy\TenantQuotaPlanService;
 
 /**
  * Tenant Quota Enforcement Test
@@ -13,6 +17,7 @@ use Tests\TestCase;
  * Production 2026 CANON - Hard Quota Enforcement Tests
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final class TenantQuotaEnforcementTest extends TestCase
@@ -20,22 +25,6 @@ final class TenantQuotaEnforcementTest extends TestCase
     use RefreshDatabase;
 
     private TenantResourceLimiterService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = app(TenantResourceLimiterService::class);
-    }
-
-    protected function tearDown(): void
-    {
-        // Clean up test data
-        $tenantId = 1;
-        $this->service->resetUsage($tenantId);
-
-        parent::tearDown();
-    }
 
     public function test_ai_quota_throws_exception_when_exceeded(): void
     {
@@ -204,7 +193,7 @@ final class TenantQuotaEnforcementTest extends TestCase
         $this->assertEquals(500, $stats['ai_tokens']['used']);
 
         // Flush to database
-        $persistenceService = app(\App\Services\Tenancy\TenantQuotaPersistenceService::class);
+        $persistenceService = app(TenantQuotaPersistenceService::class);
         $persistenceService->ensureTableExists();
         $flushed = $persistenceService->flushToDatabase();
 
@@ -218,7 +207,7 @@ final class TenantQuotaEnforcementTest extends TestCase
     public function test_quota_plan_application(): void
     {
         $tenantId = 1;
-        $planService = app(\App\Services\Tenancy\TenantQuotaPlanService::class);
+        $planService = app(TenantQuotaPlanService::class);
 
         $planService->applyPlan($tenantId, 'starter');
 
@@ -231,7 +220,7 @@ final class TenantQuotaEnforcementTest extends TestCase
     public function test_quota_plan_upgrade(): void
     {
         $tenantId = 1;
-        $planService = app(\App\Services\Tenancy\TenantQuotaPlanService::class);
+        $planService = app(TenantQuotaPlanService::class);
 
         $planService->applyPlan($tenantId, 'free');
         $statsFree = $this->service->getQuotaStats($tenantId);
@@ -240,5 +229,21 @@ final class TenantQuotaEnforcementTest extends TestCase
         $planService->upgradePlan($tenantId, 'pro');
         $statsPro = $this->service->getQuotaStats($tenantId);
         $this->assertEquals(1000000, $statsPro['ai_tokens']['quota']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = app(TenantResourceLimiterService::class);
+    }
+
+    protected function tearDown(): void
+    {
+        // Clean up test data
+        $tenantId = 1;
+        $this->service->resetUsage($tenantId);
+
+        parent::tearDown();
     }
 }

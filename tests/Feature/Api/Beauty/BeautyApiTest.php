@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Api\Beauty;
 
@@ -15,45 +17,14 @@ final class BeautyApiTest extends TestCase
     use RefreshDatabase;
 
     protected User $customer;
+
     protected User $salonOwner;
+
     protected BeautySalon $salon;
+
     protected Master $master;
+
     protected Service $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->customer = User::factory()->create(['is_business' => false]);
-        $this->salonOwner = User::factory()->create(['is_business' => true]);
-
-        $this->salon = BeautySalon::factory()
-            ->for($this->salonOwner, 'owner')
-            ->create([
-                'name' => 'Beauty Salon Pro',
-                'rating' => 4.9,
-                'is_active' => true,
-                'is_b2c_available' => true,
-            ]);
-
-        $this->master = Master::factory()
-            ->for($this->salon)
-            ->create([
-                'full_name' => 'Anna Petrova',
-                'specialization' => ['haircut', 'styling', 'coloring'],
-                'rating' => 4.8,
-                'experience_years' => 10,
-            ]);
-
-        $this->service = Service::factory()
-            ->for($this->master)
-            ->create([
-                'name' => 'Professional Haircut',
-                'duration_minutes' => 45,
-                'price' => 30000,  // 300 руб
-                'consumables' => ['scissors', 'comb', 'hair_dye'],
-            ]);
-    }
 
     /**
      * Тест: Клиент может получить список салонов с фильтром
@@ -470,5 +441,40 @@ final class BeautyApiTest extends TestCase
         // Проверить, что слот в 14:00 занят
         $bookedSlot = collect($response->json('data'))->first(fn ($slot) => $slot['time'] === '14:00');
         $this->assertFalse($bookedSlot['is_available']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->customer = User::factory()->create(['is_business' => false]);
+        $this->salonOwner = User::factory()->create(['is_business' => true]);
+
+        $this->salon = BeautySalon::factory()
+            ->for($this->salonOwner, 'owner')
+            ->create([
+                'name' => 'Beauty Salon Pro',
+                'rating' => 4.9,
+                'is_active' => true,
+                'is_b2c_available' => true,
+            ]);
+
+        $this->master = Master::factory()
+            ->for($this->salon)
+            ->create([
+                'full_name' => 'Anna Petrova',
+                'specialization' => ['haircut', 'styling', 'coloring'],
+                'rating' => 4.8,
+                'experience_years' => 10,
+            ]);
+
+        $this->service = Service::factory()
+            ->for($this->master)
+            ->create([
+                'name' => 'Professional Haircut',
+                'duration_minutes' => 45,
+                'price' => 30000,  // 300 руб
+                'consumables' => ['scissors', 'comb', 'hair_dye'],
+            ]);
     }
 }

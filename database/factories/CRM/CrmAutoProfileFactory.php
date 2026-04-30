@@ -13,9 +13,9 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 final class CrmAutoProfileFactory extends Factory
 {
-    protected $model = CrmAutoProfile::class;
-
     private const BRANDS = ['BMW', 'Audi', 'Mercedes', 'Toyota', 'Hyundai', 'Kia', 'Lada', 'Volkswagen'];
+
+    protected $model = CrmAutoProfile::class;
 
     /**
      * @return array<string, mixed>

@@ -1,20 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
+
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Database\Eloquent\SoftDeletes;
-
-
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
-
 use Illuminate\Support\Str;
 use Modules\Finances\Models\Bonus;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 /**
  * Cleanup Expired Bonuses Job
@@ -26,43 +28,46 @@ use Illuminate\Database\DatabaseManager;
  */
 final class CleanupExpiredBonusesJob implements ShouldQueue
 {
-    use Dispatchable, Queueable, InteractsWithQueue, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $timeout = 1800; // 30 минут
+
     public int $tries = 2;
 
     private readonly string $correlationId;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
-    )
-    {
+        private readonly DatabaseManager $db,) {
         $this->correlationId = (string) Str::uuid()->toString();
     }
 
     public function handle(): void
     {
         try {
-            $this->logger->channel('audit')->info('Cleanup expired bonuses job started', [
+            $this->logger->channel('audit')->$this->logger->info('Cleanup expired bonuses job started', [
                 'correlation_id' => $this->correlationId,
-                'timestamp' => now()->toIso8601String(),
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ]);
 
             // 1. Найти все истёкшие бонусы
             $expiredBonuses = Bonus::query()
-                ->where('expires_at', '<', now())
+                ->where('expires_at', '<', CarbonImmutable::now())
                 ->where('spent_at', null) // не потрачены
                 ->where('withdrawn_at', null) // не выведены
                 ->lockForUpdate()
                 ->get();
 
             if ($expiredBonuses->isEmpty()) {
-                $this->logger->info('No expired bonuses found');
+                $this->logger->$this->logger->info('No expired bonuses found');
+
                 return;
             }
 
-            $this->logger->info('Expired bonuses found', [
+            $this->logger->$this->logger->info('Expired bonuses found', [
                 'correlation_id' => $this->correlationId,
                 'count' => $expiredBonuses->count(),
             ]);
@@ -77,7 +82,7 @@ final class CleanupExpiredBonusesJob implements ShouldQueue
             }
 
             // 4. Логировать результат
-            $this->logger->channel('audit')->info('Cleanup expired bonuses job completed', [
+            $this->logger->channel('audit')->$this->logger->info('Cleanup expired bonuses job completed', [
                 'correlation_id' => $this->correlationId,
                 'deleted_count' => $deletedCount,
             ]);
@@ -100,6 +105,14 @@ final class CleanupExpiredBonusesJob implements ShouldQueue
         }
     }
 
+    public function failed(\Exception $exception): void
+    {
+        $this->logger->channel('audit')->error('CleanupExpiredBonusesJob failed permanently', [
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     /**
      * Отправить уведомление пользователю перед удалением
      */
@@ -120,11 +133,11 @@ final class CleanupExpiredBonusesJob implements ShouldQueue
                     'amount' => $totalAmount,
                     'bonus_count' => $bonuses->count(),
                 ]),
-                'created_at' => now(),
+                'created_at' => CarbonImmutable::now(),
                 'read_at' => null,
             ]);
 
-            $this->logger->info('Expiration notification sent', [
+            $this->logger->$this->logger->info('Expiration notification sent', [
                 'user_id' => $userId,
                 'bonus_count' => $bonuses->count(),
                 'total_amount' => $totalAmount,
@@ -146,18 +159,18 @@ final class CleanupExpiredBonusesJob implements ShouldQueue
                     'type' => $bonus->type,
                     'amount' => $bonus->amount,
                     'expires_at' => $bonus->expires_at,
-                    'expired_at' => now(),
+                    'expired_at' => CarbonImmutable::now(),
                     'correlation_id' => $this->correlationId,
-                    'created_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
                 ]);
 
                 // Удалить бонус (soft delete если есть)
                 $bonus->update([
-                    'expired_at' => now(),
-                    'deleted_at' => now(), // если используется SoftDeletes
+                    'expired_at' => CarbonImmutable::now(),
+                    'deleted_at' => CarbonImmutable::now(), // если используется SoftDeletes
                 ]);
 
-                $this->logger->info('Bonus expired and archived', [
+                $this->logger->$this->logger->info('Bonus expired and archived', [
                     'bonus_id' => $bonus->id,
                     'user_id' => $bonus->user_id,
                     'amount' => $bonus->amount,
@@ -181,13 +194,5 @@ final class CleanupExpiredBonusesJob implements ShouldQueue
 
             return 0;
         }
-    }
-
-    public function failed(\Exception $exception): void
-    {
-        $this->logger->channel('audit')->error('CleanupExpiredBonusesJob failed permanently', [
-            'correlation_id' => $this->correlationId,
-            'error' => $exception->getMessage(),
-        ]);
     }
 }

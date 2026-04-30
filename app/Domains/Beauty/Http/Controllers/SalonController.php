@@ -1,11 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
 
 use App\Http\Controllers\Api\V1\Beauty\SalonController as BaseSalonController;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 /**
  * SalonController — Domain-level controller proxy (Beauty vertical).
@@ -14,7 +13,4 @@ use Illuminate\Http\Request;
  *
  * @see \App\Http\Controllers\Api\V1\Beauty\BaseSalonController
  */
-final class SalonController extends BaseSalonController
-{
-}
-
+final class SalonController extends BaseSalonController {}

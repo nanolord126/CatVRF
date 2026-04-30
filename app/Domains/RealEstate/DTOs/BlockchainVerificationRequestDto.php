@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\RealEstate\DTOs;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 final readonly class BlockchainVerificationRequestDto
 {
@@ -22,7 +23,7 @@ final readonly class BlockchainVerificationRequestDto
     public static function from(Request $request): self
     {
         $documentHashes = $request->input('document_hashes', []);
-        
+
         if (empty($documentHashes)) {
             throw new \InvalidArgumentException('Document hashes are required');
         }
@@ -31,7 +32,7 @@ final readonly class BlockchainVerificationRequestDto
             tenantId: (int) tenant()?->id ?? $request->input('tenant_id'),
             businessGroupId: $request->input('business_group_id') ? (int) $request->input('business_group_id') : null,
             userId: (int) $request->user()?->id ?? $request->input('user_id'),
-            correlationId: $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            correlationId: $request->header('X-Correlation-ID', Str::uuid()->toString()),
             propertyId: (int) $request->route('propertyId'),
             documentHashes: $documentHashes,
             blockchainNetwork: $request->input('blockchain_network', 'ethereum'),

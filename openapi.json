@@ -24,6 +24,304 @@
     }
   ],
   "paths": {
+    "/insider-protection/jit-access/{userId}": {
+      "post": {
+        "summary": "Request JIT access elevation for viewing full client data",
+        "operationId": "requestJitAccess",
+        "tags": ["Insider Protection"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "User ID for whom to request JIT access"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["passkey_challenge"],
+                "properties": {
+                  "passkey_challenge": {
+                    "type": "string",
+                    "description": "Passkey challenge response"
+                  },
+                  "totp_code": {
+                    "type": "string",
+                    "description": "2FA TOTP code (required if 2FA enabled)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JIT access granted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-04-23T15:00:00Z"
+                    },
+                    "duration_minutes": {
+                      "type": "integer",
+                      "example": 60
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Revoke JIT access for a user",
+        "operationId": "revokeJitAccess",
+        "tags": ["Insider Protection"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "User ID for whom to revoke JIT access"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JIT access revoked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "JIT access revoked"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/insider-protection/threat-stats": {
+      "get": {
+        "summary": "Get insider threat statistics for current user/tenant",
+        "operationId": "getThreatStats",
+        "tags": ["Insider Protection"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 7
+            },
+            "description": "Number of days to analyze"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Threat statistics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_access_events": {
+                      "type": "integer",
+                      "example": 150
+                    },
+                    "total_views": {
+                      "type": "integer",
+                      "example": 100
+                    },
+                    "total_searches": {
+                      "type": "integer",
+                      "example": 40
+                    },
+                    "total_exports": {
+                      "type": "integer",
+                      "example": 10
+                    },
+                    "total_records_accessed": {
+                      "type": "integer",
+                      "example": 5000
+                    },
+                    "avg_anomaly_score": {
+                      "type": "number",
+                      "format": "float",
+                      "example": 0.15
+                    },
+                    "blocked_actions": {
+                      "type": "integer",
+                      "example": 2
+                    },
+                    "high_risk_events": {
+                      "type": "integer",
+                      "example": 5
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/insider-protection/threat-logs": {
+      "get": {
+        "summary": "Get insider threat logs for tenant",
+        "operationId": "getThreatLogs",
+        "tags": ["Insider Protection"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 7
+            },
+            "description": "Number of days to retrieve logs"
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "critical"]
+            },
+            "description": "Filter by severity"
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by specific user ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Threat logs retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "user_id": {
+                            "type": "integer"
+                          },
+                          "action_type": {
+                            "type": "string"
+                          },
+                          "anomaly_score": {
+                            "type": "number",
+                            "format": "float"
+                          },
+                          "severity": {
+                            "type": "string"
+                          },
+                          "was_blocked": {
+                            "type": "boolean"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "per_page": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
     "/farm-orders": {
       "get": {
         "summary": "Список фермерских заказов",
@@ -720,6 +1018,10 @@
     {
       "name": "Pharmacy",
       "description": "API для аптечных заказов и верификации рецептов"
+    },
+    {
+      "name": "Insider Protection",
+      "description": "API для защиты от внутренних угроз и управления доступом к данным клиентов"
     }
   ]
 }

@@ -1,45 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Entertainment\VenueResource\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+
+use Carbon\CarbonImmutable;
+
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Log\LogManager;
 
 final class CreateVenue extends CreateRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
-
     protected static string $resource = VenueResource::class;
 
-        protected function mutateFormDataBeforeCreate(array $data): array
-        {
-            $data['tenant_id'] = filament()->getTenant()->id;
-            $data['uuid'] = (string) Str::uuid();
-            $data['correlation_id'] = (string) Str::uuid();
-
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Venue record mutation before creation', [
-                'tenant_id' => $data['tenant_id'],
-                'correlation_id' => $data['correlation_id'],
-                'user_id' => auth()->id(),
-            ]);
-
-            return $data;
-        }
-
-        protected function afterCreate(): void
-        {
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Venue record created successfully', [
-                'venue_id' => $this->record->id,
-                'correlation_id' => $this->record->correlation_id,
-                'user_id' => auth()->id(),
-            ]);
-        }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     /**
      * Get the string representation of this instance.
@@ -48,7 +25,7 @@ final class CreateVenue extends CreateRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -59,8 +36,32 @@ final class CreateVenue extends CreateRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['tenant_id'] = filament()->getTenant()->id;
+        $data['uuid'] = (string) Str::uuid();
+        $data['correlation_id'] = (string) Str::uuid();
+
+        $this->log->channel('audit')->$this->logger->info('Venue record mutation before creation', [
+            'tenant_id' => $data['tenant_id'],
+            'correlation_id' => $data['correlation_id'],
+            'user_id' => auth()->id(),
+        ]);
+
+        return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $this->log->channel('audit')->$this->logger->info('Venue record created successfully', [
+            'venue_id' => $this->record->id,
+            'correlation_id' => $this->record->correlation_id,
+            'user_id' => auth()->id(),
+        ]);
     }
 }

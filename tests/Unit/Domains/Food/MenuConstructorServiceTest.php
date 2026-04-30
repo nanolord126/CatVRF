@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Food;
 
@@ -20,42 +22,24 @@ final class MenuConstructorServiceTest extends TestCase
     use RefreshDatabase;
 
     private MenuConstructorService $service;
+
     private RecommendationService $recommendation;
+
     private InventoryService $inventory;
+
     private UserTasteAnalyzerService $tasteAnalyzer;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
+
     private CacheRepository $cache;
+
     private DatabaseManager $db;
+
     private Guard $guard;
+
     private LoggerInterface $logger;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->recommendation = $this->createMock(RecommendationService::class);
-        $this->inventory = $this->createMock(InventoryService::class);
-        $this->tasteAnalyzer = $this->createMock(UserTasteAnalyzerService::class);
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->audit = $this->createMock(AuditService::class);
-        $this->cache = $this->app->make(CacheRepository::class);
-        $this->db = $this->app->make(DatabaseManager::class);
-        $this->guard = $this->createMock(Guard::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
-
-        $this->service = new MenuConstructorService(
-            $this->recommendation,
-            $this->inventory,
-            $this->tasteAnalyzer,
-            $this->fraud,
-            $this->audit,
-            $this->cache,
-            $this->db,
-            $this->logger,
-            $this->guard
-        );
-    }
 
     public function test_generate_menu_returns_success(): void
     {
@@ -164,5 +148,32 @@ final class MenuConstructorServiceTest extends TestCase
 
         // Assert
         $this->assertTrue($result['success']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->recommendation = $this->createMock(RecommendationService::class);
+        $this->inventory = $this->createMock(InventoryService::class);
+        $this->tasteAnalyzer = $this->createMock(UserTasteAnalyzerService::class);
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->audit = $this->createMock(AuditService::class);
+        $this->cache = $this->app->make(CacheRepository::class);
+        $this->db = $this->app->make(DatabaseManager::class);
+        $this->guard = $this->createMock(Guard::class);
+        $this->logger = $this->createMock(LoggerInterface::class);
+
+        $this->service = new MenuConstructorService(
+            $this->recommendation,
+            $this->inventory,
+            $this->tasteAnalyzer,
+            $this->fraud,
+            $this->audit,
+            $this->cache,
+            $this->db,
+            $this->logger,
+            $this->guard
+        );
     }
 }

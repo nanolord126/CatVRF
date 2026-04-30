@@ -1,7 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Delivery;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Domains\Logistics\Models\Courier;
@@ -12,14 +17,16 @@ use App\Services\FraudControlService;
 use App\Services\ML\BigDataAggregatorService;
 use App\Services\Geo\GeoPrivacyService;
 use App\Services\Geo\GeoTrackingStreamService;
+use Carbon\CarbonImmutable;
 use App\Services\Geo\GeoTelemetryService;
 use Illuminate\Support\Collection;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Auth\Guard;
+use App\Jobs\GeotrackingJob;
+use App\Traits\WithAuditLogging;
+use App\Services\Audit\AuditService;
 
 /**
  * GeotrackingService — реал-тайм геотрекинг курьеров.
@@ -35,27 +42,32 @@ use Illuminate\Contracts\Auth\Guard;
  */
 final readonly class GeotrackingService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly BusDispatcher $bus,
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private FraudControlService    $fraud,
-        private BigDataAggregatorService $bigData,
-        private GeoPrivacyService $geoPrivacy,
-        private GeoTrackingStreamService $trackingStream,
-        private GeoTelemetryService $geoTelemetry,
-        private readonly LogManager $logger,
+        private readonly FraudControlService $fraud,
+        private readonly BigDataAggregatorService $bigData,
+        private readonly GeoPrivacyService $geoPrivacy,
+        private readonly GeoTrackingStreamService $trackingStream,
+        private readonly GeoTelemetryService $geoTelemetry,
+        private readonly LogManager $log,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
+        private readonly AuditService $audit,
     ) {}
 
     /**
      * Обновить текущую позицию курьера и разослать всем подписчикам.
      */
     public function updateCourierLocation(
-        int    $courierId,
-        float  $lat,
-        float  $lon,
-        float  $speed   = 0.0,
-        float  $bearing = 0.0,
+        int $courierId,
+        float $lat,
+        float $lon,
+        float $speed   = 0.0,
+        float $bearing = 0.0,
     ): DeliveryTrack {
         $correlationId = $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         $startTime = microtime(true);
@@ -77,7 +89,7 @@ final readonly class GeotrackingService
 
             // 2. Пишем трек в PostgreSQL с анонимизацией
             $anonymizedCoords = $this->geoPrivacy->anonymizeCoordinates($lat, $lon, 'courier_tracking');
-            
+
             $track = DeliveryTrack::create([
                 'delivery_order_id' => $activeOrder?->id,
                 'courier_id'        => $courierId,
@@ -91,7 +103,7 @@ final readonly class GeotrackingService
             // 3. Обновляем текущую позицию курьера
             Courier::where('id', $courierId)->update([
                 'current_location'      => json_encode($anonymizedCoords),
-                'last_location_update'  => now(),
+                'last_location_update'  => CarbonImmutable::now(),
             ]);
 
             // 4. Добавляем в Redis Stream для гарантированной доставки
@@ -113,7 +125,7 @@ final readonly class GeotrackingService
                 'speed'             => $speed,
                 'delivery_order_id' => $activeOrder?->id,
                 'correlation_id'    => $correlationId,
-                'tracked_at'        => now()->toDateTimeString(),
+                'tracked_at'        => CarbonImmutable::now()->toDateTimeString(),
             ]);
 
             // 6. Broadcast реал-тайм всем подписчикам
@@ -131,7 +143,7 @@ final readonly class GeotrackingService
             $latencyMs = (microtime(true) - $startTime) * 1000;
             $this->geoTelemetry->recordTrackingUpdate('courier');
 
-            $this->logger->channel('audit')->info('Courier location updated', [
+            $this->logger->channel('audit')->$this->logger->info('Courier location updated', [
                 'courier_id'        => $courierId,
                 'delivery_order_id' => $activeOrder?->id,
                 'correlation_id'    => $correlationId,
@@ -162,7 +174,7 @@ final readonly class GeotrackingService
      */
     public function startTracking(DeliveryOrder $order): void
     {
-        $this->logger->channel('audit')->info('GeoTracking started for delivery order', [
+        $this->logger->channel('audit')->$this->logger->info('GeoTracking started for delivery order', [
             'delivery_order_id' => $order->id,
             'courier_id'        => $order->courier_id,
             'correlation_id'    => $order->correlation_id ?? Str::uuid()->toString(),
@@ -174,7 +186,7 @@ final readonly class GeotrackingService
         // GeotrackingJob запускается с мобильного приложения курьера каждые 3 сек.
         // Серверная часть только хранит и ретранслирует.
         // Принудительный запрос первой позиции через push-уведомление:
-        \App\Jobs\GeotrackingJob::dispatch($order->id)
+        GeotrackingJob::$this->bus->dispatch($order->id)
             ->onQueue('geo');
     }
 
@@ -208,7 +220,7 @@ final readonly class GeotrackingService
     {
         Courier::where('id', $courierId)->update(['is_online' => $isOnline]);
 
-        $this->logger->channel('audit')->info('Courier online status changed', [
+        $this->logger->channel('audit')->$this->logger->info('Courier online status changed', [
             'courier_id' => $courierId,
             'is_online'  => $isOnline,
             'correlation_id' => Str::uuid()->toString(),

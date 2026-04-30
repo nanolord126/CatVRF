@@ -136,7 +136,7 @@ function buildHeaders(correlationId?: string): Record<string, string> {
     return {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'X-Correlation-ID': correlationId || generateCorrelationId(),
+        'X-Correlation-ID': correlationId !== undefined ? correlationId : generateCorrelationId(),
         'X-Requested-With': 'XMLHttpRequest',
     };
 }
@@ -156,14 +156,14 @@ export function useBeautyApi() {
     function handleError(err: AxiosError<ApiError>): void {
         if (err.response?.data) {
             error.value = {
-                message: err.response.data.message || 'Ошибка сервера',
+                message: err.response.data.message !== undefined ? err.response.data.message : 'Ошибка сервера',
                 errors: err.response.data.errors,
                 correlation_id: err.response.data.correlation_id,
             };
         } else if (err.request) {
             error.value = { message: 'Сервер не отвечает. Проверьте соединение.' };
         } else {
-            error.value = { message: err.message || 'Неизвестная ошибка' };
+            error.value = { message: err.message !== undefined ? err.message : 'Неизвестная ошибка' };
         }
     }
 
@@ -237,22 +237,22 @@ export function useBeautyApi() {
      * ═══════════════════════════════════════════════════ */
     async function fetchSalons(params?: Record<string, unknown>): Promise<BeautySalon[]> {
         const result = await apiGet<{ data: BeautySalon[] }>('/salons', params);
-        return result?.data ?? [];
+        return result !== null && result.data !== undefined ? result.data : [];
     }
 
     async function fetchSalon(id: number): Promise<BeautySalon | null> {
         const result = await apiGet<{ data: BeautySalon }>(`/salons/${id}`);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function createSalon(data: Partial<BeautySalon>): Promise<BeautySalon | null> {
         const result = await apiPost<{ data: BeautySalon }>('/salons', data as Record<string, unknown>);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function updateSalon(id: number, data: Partial<BeautySalon>): Promise<BeautySalon | null> {
         const result = await apiPut<{ data: BeautySalon }>(`/salons/${id}`, data as Record<string, unknown>);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function deleteSalon(id: number): Promise<boolean> {
@@ -269,22 +269,22 @@ export function useBeautyApi() {
      * ═══════════════════════════════════════════════════ */
     async function fetchMasters(params?: Record<string, unknown>): Promise<BeautyMaster[]> {
         const result = await apiGet<{ data: BeautyMaster[] }>('/masters', params);
-        return result?.data ?? [];
+        return result !== null && result.data !== undefined ? result.data : [];
     }
 
     async function fetchMaster(id: number): Promise<BeautyMaster | null> {
         const result = await apiGet<{ data: BeautyMaster }>(`/masters/${id}`);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function createMaster(data: Partial<BeautyMaster>): Promise<BeautyMaster | null> {
         const result = await apiPost<{ data: BeautyMaster }>('/masters', data as Record<string, unknown>);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function updateMaster(id: number, data: Partial<BeautyMaster>): Promise<BeautyMaster | null> {
         const result = await apiPut<{ data: BeautyMaster }>(`/masters/${id}`, data as Record<string, unknown>);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function deleteMaster(id: number): Promise<boolean> {
@@ -305,17 +305,17 @@ export function useBeautyApi() {
      * ═══════════════════════════════════════════════════ */
     async function fetchServices(params?: Record<string, unknown>): Promise<BeautyService[]> {
         const result = await apiGet<{ data: BeautyService[] }>('/services', params);
-        return result?.data ?? [];
+        return result !== null && result.data !== undefined ? result.data : [];
     }
 
     async function createService(data: Partial<BeautyService>): Promise<BeautyService | null> {
         const result = await apiPost<{ data: BeautyService }>('/services', data as Record<string, unknown>);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function updateService(id: number, data: Partial<BeautyService>): Promise<BeautyService | null> {
         const result = await apiPut<{ data: BeautyService }>(`/services/${id}`, data as Record<string, unknown>);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function deleteService(id: number): Promise<boolean> {
@@ -328,12 +328,12 @@ export function useBeautyApi() {
      * ═══════════════════════════════════════════════════ */
     async function fetchAppointments(params?: Record<string, unknown>): Promise<BeautyAppointment[]> {
         const result = await apiGet<{ data: BeautyAppointment[] }>('/appointments', params);
-        return result?.data ?? [];
+        return result !== null && result.data !== undefined ? result.data : [];
     }
 
     async function createAppointment(data: Record<string, unknown>): Promise<BeautyAppointment | null> {
         const result = await apiPost<{ data: BeautyAppointment }>('/appointments', data);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function cancelAppointment(id: number): Promise<boolean> {
@@ -351,17 +351,17 @@ export function useBeautyApi() {
      * ═══════════════════════════════════════════════════ */
     async function fetchReviews(params?: Record<string, unknown>): Promise<BeautyReview[]> {
         const result = await apiGet<{ data: BeautyReview[] }>('/reviews', params);
-        return result?.data ?? [];
+        return result !== null && result.data !== undefined ? result.data : [];
     }
 
     async function createReview(data: Record<string, unknown>): Promise<BeautyReview | null> {
         const result = await apiPost<{ data: BeautyReview }>('/reviews', data);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function updateReview(id: number, data: Record<string, unknown>): Promise<BeautyReview | null> {
         const result = await apiPut<{ data: BeautyReview }>(`/reviews/${id}`, data);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function deleteReview(id: number): Promise<boolean> {
@@ -384,17 +384,17 @@ export function useBeautyApi() {
      * ═══════════════════════════════════════════════════ */
     async function fetchProducts(params?: Record<string, unknown>): Promise<BeautyProduct[]> {
         const result = await apiGet<{ data: BeautyProduct[] }>('/products', params);
-        return result?.data ?? [];
+        return result !== null && result.data !== undefined ? result.data : [];
     }
 
     async function createProduct(data: Record<string, unknown>): Promise<BeautyProduct | null> {
         const result = await apiPost<{ data: BeautyProduct }>('/products', data);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function updateProduct(id: number, data: Record<string, unknown>): Promise<BeautyProduct | null> {
         const result = await apiPut<{ data: BeautyProduct }>(`/products/${id}`, data);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function deleteProduct(id: number): Promise<boolean> {
@@ -407,17 +407,17 @@ export function useBeautyApi() {
      * ═══════════════════════════════════════════════════ */
     async function fetchConsumables(params?: Record<string, unknown>): Promise<BeautyConsumable[]> {
         const result = await apiGet<{ data: BeautyConsumable[] }>('/consumables', params);
-        return result?.data ?? [];
+        return result !== null && result.data !== undefined ? result.data : [];
     }
 
     async function createConsumable(data: Record<string, unknown>): Promise<BeautyConsumable | null> {
         const result = await apiPost<{ data: BeautyConsumable }>('/consumables', data);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function updateConsumable(id: number, data: Record<string, unknown>): Promise<BeautyConsumable | null> {
         const result = await apiPut<{ data: BeautyConsumable }>(`/consumables/${id}`, data);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function fetchConsumableLogs(): Promise<unknown> {
@@ -429,12 +429,12 @@ export function useBeautyApi() {
      * ═══════════════════════════════════════════════════ */
     async function fetchDashboard(): Promise<DashboardStats | null> {
         const result = await apiGet<{ data: DashboardStats }>('/dashboard');
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function fetchFinanceStats(params?: Record<string, unknown>): Promise<FinanceStats | null> {
         const result = await apiGet<{ data: FinanceStats }>('/analytics/finances', params);
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function fetchAnalytics(params?: Record<string, unknown>): Promise<unknown> {
@@ -450,7 +450,7 @@ export function useBeautyApi() {
      * ═══════════════════════════════════════════════════ */
     async function fetchLoyaltyConfig(): Promise<LoyaltyConfig | null> {
         const result = await apiGet<{ data: LoyaltyConfig }>('/loyalty');
-        return result?.data ?? null;
+        return result !== null && result.data !== undefined ? result.data : null;
     }
 
     async function updateLoyaltyConfig(data: Record<string, unknown>): Promise<boolean> {

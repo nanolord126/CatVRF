@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Вертикаль Legal (юридические услуги, агрегатор)
- *
- * @package App\Models
  */
 final class Legal extends Model
 {
-
     protected $table = 'legal';
 
     protected $fillable = [

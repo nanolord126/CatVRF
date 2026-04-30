@@ -8,8 +8,6 @@ use App\Domains\Payment\Controllers\PaymentRecordController;
 use App\Domains\Payment\Services\PaymentService;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Database\DatabaseManager;
-use Illuminate\Routing\ResponseFactory;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
@@ -32,7 +30,7 @@ final class PaymentControllerTest extends TestCase
         $params = $ctor->getParameters();
         $this->assertGreaterThanOrEqual(5, count($params));
 
-        $names = array_map(fn(\ReflectionParameter $p) => $p->getName(), $params);
+        $names = array_map(fn (\ReflectionParameter $p) => $p->getName(), $params);
         $this->assertContains('paymentService', $names);
         $this->assertContains('fraud', $names);
         $this->assertContains('audit', $names);
@@ -82,7 +80,7 @@ final class PaymentControllerTest extends TestCase
 
     public function test_controller_no_facade_imports(): void
     {
-        $src = file_get_contents(__DIR__ . '/../../../../../app/Domains/Payment/Controllers/PaymentRecordController.php');
+        $src = file_get_contents(__DIR__.'/../../../../../app/Domains/Payment/Controllers/PaymentRecordController.php');
         $this->assertIsString($src);
         $this->assertStringNotContainsString('use Illuminate\\Support\\Facades\\', $src);
         $this->assertStringNotContainsString('response()', $src);
@@ -92,7 +90,7 @@ final class PaymentControllerTest extends TestCase
 
     public function test_controller_has_strict_types(): void
     {
-        $src = file_get_contents(__DIR__ . '/../../../../../app/Domains/Payment/Controllers/PaymentRecordController.php');
+        $src = file_get_contents(__DIR__.'/../../../../../app/Domains/Payment/Controllers/PaymentRecordController.php');
         $this->assertStringContainsString('declare(strict_types=1);', $src);
     }
 }

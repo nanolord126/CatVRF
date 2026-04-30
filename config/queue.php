@@ -1,5 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Services\Infrastructure\DopplerService;
+
 return [
 
     /*
@@ -13,7 +17,7 @@ return [
     |
     */
 
-    'default' => App\Services\Infrastructure\DopplerService::get('QUEUE_CONNECTION', 'database'),
+    'default' => DopplerService::get('QUEUE_CONNECTION', 'database'),
 
     /*
     |--------------------------------------------------------------------------
@@ -37,47 +41,168 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'connection' => App\Services\Infrastructure\DopplerService::get('DB_QUEUE_CONNECTION'),
-            'table' => App\Services\Infrastructure\DopplerService::get('DB_QUEUE_TABLE', 'jobs'),
-            'queue' => App\Services\Infrastructure\DopplerService::get('DB_QUEUE', 'default'),
-            'retry_after' => (int) App\Services\Infrastructure\DopplerService::get('DB_QUEUE_RETRY_AFTER', 90),
+            'connection' => DopplerService::get('DB_QUEUE_CONNECTION'),
+            'table' => DopplerService::get('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => DopplerService::get('DB_QUEUE', 'default'),
+            'retry_after' => (int) DopplerService::get('DB_QUEUE_RETRY_AFTER', 90),
             'after_commit' => false,
         ],
 
         'beanstalkd' => [
             'driver' => 'beanstalkd',
-            'host' => App\Services\Infrastructure\DopplerService::get('BEANSTALKD_QUEUE_HOST', 'localhost'),
-            'queue' => App\Services\Infrastructure\DopplerService::get('BEANSTALKD_QUEUE', 'default'),
-            'retry_after' => (int) App\Services\Infrastructure\DopplerService::get('BEANSTALKD_QUEUE_RETRY_AFTER', 90),
+            'host' => DopplerService::get('BEANSTALKD_QUEUE_HOST', 'localhost'),
+            'queue' => DopplerService::get('BEANSTALKD_QUEUE', 'default'),
+            'retry_after' => (int) DopplerService::get('BEANSTALKD_QUEUE_RETRY_AFTER', 90),
             'block_for' => 0,
             'after_commit' => false,
         ],
 
         'sqs' => [
             'driver' => 'sqs',
-            'key' => App\Services\Infrastructure\DopplerService::get('AWS_ACCESS_KEY_ID'),
-            'secret' => App\Services\Infrastructure\DopplerService::get('AWS_SECRET_ACCESS_KEY'),
-            'prefix' => App\Services\Infrastructure\DopplerService::get('SQS_PREFIX', 'https://sqs.us-east-1.amazonaws.com/your-account-id'),
-            'queue' => App\Services\Infrastructure\DopplerService::get('SQS_QUEUE', 'default'),
-            'suffix' => App\Services\Infrastructure\DopplerService::get('SQS_SUFFIX'),
-            'region' => App\Services\Infrastructure\DopplerService::get('AWS_DEFAULT_REGION', 'us-east-1'),
+            'key' => DopplerService::get('AWS_ACCESS_KEY_ID'),
+            'secret' => DopplerService::get('AWS_SECRET_ACCESS_KEY'),
+            'prefix' => DopplerService::get('SQS_PREFIX', 'https://sqs.us-east-1.amazonaws.com/your-account-id'),
+            'queue' => DopplerService::get('SQS_QUEUE', 'default'),
+            'suffix' => DopplerService::get('SQS_SUFFIX'),
+            'region' => DopplerService::get('AWS_DEFAULT_REGION', 'us-east-1'),
             'after_commit' => false,
         ],
 
         'redis' => [
             'driver' => 'redis',
-            'connection' => App\Services\Infrastructure\DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
-            'queue' => App\Services\Infrastructure\DopplerService::get('REDIS_QUEUE', 'default'),
-            'retry_after' => (int) App\Services\Infrastructure\DopplerService::get('REDIS_QUEUE_RETRY_AFTER', 90),
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => DopplerService::get('REDIS_QUEUE', 'default'),
+            'retry_after' => (int) DopplerService::get('REDIS_QUEUE_RETRY_AFTER', 90),
             'block_for' => null,
             'after_commit' => false,
         ],
 
-        'payment-fraud-high-priority' => [
+        /*
+         * EMERGENCY QUEUE - Highest Priority
+         * For critical operations: emergency medical alerts, critical payment failures
+         */
+        'emergency' => [
             'driver' => 'redis',
-            'connection' => App\Services\Infrastructure\DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
-            'queue' => App\Services\Infrastructure\DopplerService::get('REDIS_QUEUE', 'default') . ':payment-fraud-high',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'emergency',
+            'retry_after' => 30,
+            'block_for' => null,
+            'after_commit' => true,
+        ],
+
+        /*
+         * PAYMENT WEBHOOK QUEUE - High Priority
+         * For payment webhooks from payment providers
+         */
+        'payment-webhook' => [
+            'driver' => 'redis',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'payment-webhook',
+            'retry_after' => 60,
+            'block_for' => null,
+            'after_commit' => true,
+        ],
+
+        /*
+         * PAYMENT QUEUE - High Priority
+         * For payment processing, confirmations
+         */
+        'payment' => [
+            'driver' => 'redis',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'payment',
             'retry_after' => 90,
+            'block_for' => null,
+            'after_commit' => true,
+        ],
+
+        /*
+         * FRAUD CHECK PAYMENT QUEUE - High Priority
+         * For fraud detection on payments
+         */
+        'fraud-check-payment' => [
+            'driver' => 'redis',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'fraud-check-payment',
+            'retry_after' => 90,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
+        /*
+         * NOTIFICATION QUEUE - Medium Priority
+         * For all notifications (email, SMS, push)
+         */
+        'notification' => [
+            'driver' => 'redis',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'notification',
+            'retry_after' => 120,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
+        /*
+         * AUDIT QUEUE - Medium Priority
+         * For audit logging, compliance tracking
+         */
+        'audit' => [
+            'driver' => 'redis',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'audit',
+            'retry_after' => 120,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
+        /*
+         * ML RECALCULATE QUEUE - Low Priority, High Memory
+         * For ML model training, recalculation, inference
+         */
+        'ml-recalculate' => [
+            'driver' => 'redis',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'ml-recalculate',
+            'retry_after' => 600,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
+        /*
+         * DELIVERY QUEUE - Medium Priority
+         * For delivery assignment, route optimization
+         */
+        'delivery' => [
+            'driver' => 'redis',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'delivery',
+            'retry_after' => 180,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
+        /*
+         * SUPERMARKET-HIGH QUEUE - High Priority
+         * For supermarket checkout, inventory reservation, cold chain monitoring
+         */
+        'supermarket-high' => [
+            'driver' => 'redis',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'supermarket-high',
+            'retry_after' => 90,
+            'block_for' => null,
+            'after_commit' => true,
+        ],
+
+        /*
+         * BULK QUEUE - Low Priority
+         * For bulk imports, reports, exports
+         */
+        'bulk' => [
+            'driver' => 'redis',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'bulk',
+            'retry_after' => 300,
             'block_for' => null,
             'after_commit' => false,
         ],
@@ -112,7 +237,7 @@ return [
     */
 
     'batching' => [
-        'database' => App\Services\Infrastructure\DopplerService::get('DB_CONNECTION', 'sqlite'),
+        'database' => DopplerService::get('DB_CONNECTION', 'sqlite'),
         'table' => 'job_batches',
     ],
 
@@ -130,9 +255,35 @@ return [
     */
 
     'failed' => [
-        'driver' => App\Services\Infrastructure\DopplerService::get('QUEUE_FAILED_DRIVER', 'database-uuids'),
-        'database' => App\Services\Infrastructure\DopplerService::get('DB_CONNECTION', 'sqlite'),
+        'driver' => DopplerService::get('QUEUE_FAILED_DRIVER', 'database-uuids'),
+        'database' => DopplerService::get('DB_CONNECTION', 'sqlite'),
         'table' => 'failed_jobs',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Filament Queue Configuration
+    |--------------------------------------------------------------------------
+    | Dedicated queues for Filament heavy actions to prevent blocking
+    */
+
+    'filament' => [
+        'heavy' => [
+            'driver' => 'redis',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'filament-heavy',
+            'retry_after' => 300,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+        'light' => [
+            'driver' => 'redis',
+            'connection' => DopplerService::get('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'filament-light',
+            'retry_after' => 60,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
     ],
 
 ];

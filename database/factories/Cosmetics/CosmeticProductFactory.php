@@ -6,6 +6,7 @@ namespace Database\Factories\Cosmetics;
 
 use App\Domains\Beauty\Cosmetics\Models\CosmeticProduct;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class CosmeticProductFactory extends Factory
 {
@@ -28,7 +29,7 @@ final class CosmeticProductFactory extends Factory
             'rating' => $this->faker->randomFloat(1, 3, 5),
             'review_count' => $this->faker->numberBetween(10, 500),
             'status' => 'active',
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'tags' => ['cosmetics', $this->faker->word()],
             'meta' => [],
         ];

@@ -1,16 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Filament\Resources;
-
 
 use App\Domains\Electronics\Models\ElectronicProduct;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\Electronics\Filament\Resources\ElectronicProductResource\Pages\CreateElectronicProduct;
+use App\Domains\Electronics\Filament\Resources\ElectronicProductResource\Pages\EditElectronicProduct;
+use App\Domains\Electronics\Filament\Resources\ElectronicProductResource\Pages\ListElectronicProducts;
+use Illuminate\Support\Str;
 
-final class ElectronicProductResource extends Resource
+final class ElectronicProductResource extends BaseOptimizedResource
 {
     protected static ?string $model = ElectronicProduct::class;
 
@@ -37,7 +42,7 @@ final class ElectronicProductResource extends Resource
                 ->default(fn (): ?int => function_exists('tenant') && tenant() ? tenant()->id : null),
 
             Forms\Components\Hidden::make('correlation_id')
-                ->default(fn (): string => \Illuminate\Support\Str::uuid()->toString()),
+                ->default(fn (): string => Str::uuid()->toString()),
         ]);
     }
 
@@ -90,9 +95,17 @@ final class ElectronicProductResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Electronics\Filament\Resources\ElectronicProductResource\Pages\ListElectronicProducts::route('/'),
-            'create' => \App\Domains\Electronics\Filament\Resources\ElectronicProductResource\Pages\CreateElectronicProduct::route('/create'),
-            'edit' => \App\Domains\Electronics\Filament\Resources\ElectronicProductResource\Pages\EditElectronicProduct::route('/{record}/edit'),
+            'index' => ListElectronicProducts::route('/'),
+            'create' => CreateElectronicProduct::route('/create'),
+            'edit' => EditElectronicProduct::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Electronics
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

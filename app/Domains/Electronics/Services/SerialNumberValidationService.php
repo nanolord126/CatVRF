@@ -1,29 +1,30 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Services;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Electronics\DTOs\SerialNumberValidationDto;
 use App\Domains\Electronics\DTOs\FraudDetectionResultDto;
 use App\Domains\Electronics\Models\ElectronicsProduct;
 use App\Services\FraudControlService;
 use App\Services\FraudMLService;
-use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Cache\CacheManager;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Psr\Log\LoggerInterface;
+use Illuminate\Log\LogManager;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
 final readonly class SerialNumberValidationService
 {
-    public function __construct(
-        private FraudControlService $fraud,
-        private FraudMLService $fraudML,
-        private Cache $cache,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-    ) {
-    }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly FraudMLService $fraudML,
+        private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     public function validateSerialNumber(SerialNumberValidationDto $dto): FraudDetectionResultDto
     {
@@ -44,7 +45,7 @@ final readonly class SerialNumberValidationService
 
         $cachedResult = $this->cache->get($cacheKey);
         if ($cachedResult !== null) {
-            $this->logger->info('Serial number validation cache hit', [
+            $this->log->$this->logger->info('Serial number validation cache hit', [
                 'serial_number' => $dto->serialNumber,
                 'correlation_id' => $correlationId,
             ]);
@@ -82,7 +83,7 @@ final readonly class SerialNumberValidationService
             $this->logValidationResult($dto, $result);
             $this->saveValidationRecord($dto, $result);
 
-            $this->cache->put($cacheKey, $result->toArray(), now()->addHours(24));
+            $this->cache->put($cacheKey, $result->toArray(), CarbonImmutable::now()->addHours(24));
 
             return $result;
         });
@@ -97,7 +98,7 @@ final readonly class SerialNumberValidationService
         $serialUsageCount = $this->getSerialUsageCount($dto->serialNumber);
 
         $timeSincePurchase = $dto->purchaseDate
-            ? now()->diffInDays(\Carbon\Carbon::parse($dto->purchaseDate))
+            ? CarbonImmutable::now()->diffInDays(Carbon::parse($dto->purchaseDate))
             : null;
 
         return [
@@ -188,15 +189,15 @@ final readonly class SerialNumberValidationService
     {
         $cacheKey = "user_order_history:{$userId}";
 
-        return $this->cache->remember($cacheKey, now()->addHours(6), function () use ($userId) {
-            $user = DB::table('users')->where('id', $userId)->first();
-            $accountAgeDays = $user ? now()->diffInDays($user->created_at) : 0;
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHours(6), function () use ($userId) {
+            $user = $this->db->table('users')->where('id', $userId)->first();
+            $accountAgeDays = $user ? CarbonImmutable::now()->diffInDays($user->created_at) : 0;
 
-            $totalOrders = (int) DB::table('orders')
+            $totalOrders = (int) $this->db->table('orders')
                 ->where('user_id', $userId)
                 ->count();
 
-            $totalReturns = (int) DB::table('electronics_returns')
+            $totalReturns = (int) $this->db->table('electronics_returns')
                 ->where('user_id', $userId)
                 ->count();
 
@@ -213,14 +214,14 @@ final readonly class SerialNumberValidationService
 
     private function getSerialUsageCount(string $serialNumber): int
     {
-        return (int) DB::table('electronics_serial_validations')
+        return (int) $this->db->table('electronics_serial_validations')
             ->where('serial_number', $serialNumber)
             ->count();
     }
 
     private function isBusinessUser(int $userId): bool
     {
-        return DB::table('business_groups')
+        return $this->db->table('business_groups')
             ->where('owner_id', $userId)
             ->exists();
     }
@@ -243,7 +244,7 @@ final readonly class SerialNumberValidationService
                 'factor' => 'high_return_rate',
                 'severity' => 'medium',
                 'description' => 'User has high return rate',
-                'value' => round($mlFeatures['user_return_rate'] * 100, 2) . '%',
+                'value' => round($mlFeatures['user_return_rate'] * 100, 2).'%',
             ];
         }
 
@@ -279,7 +280,7 @@ final readonly class SerialNumberValidationService
                 'factor' => 'expired_warranty',
                 'severity' => 'low',
                 'description' => 'Purchase date exceeds warranty period',
-                'value' => $mlFeatures['time_since_purchase_days'] . ' days',
+                'value' => $mlFeatures['time_since_purchase_days'].' days',
             ];
         }
 
@@ -315,7 +316,7 @@ final readonly class SerialNumberValidationService
 
     private function logValidationResult(SerialNumberValidationDto $dto, FraudDetectionResultDto $result): void
     {
-        Log::channel('audit')->info('Serial number validation completed', [
+        $this->log->channel('audit')->$this->logger->info('Serial number validation completed', [
             'serial_number' => $dto->serialNumber,
             'product_id' => $dto->productId,
             'user_id' => $dto->userId,
@@ -329,7 +330,7 @@ final readonly class SerialNumberValidationService
 
     private function saveValidationRecord(SerialNumberValidationDto $dto, FraudDetectionResultDto $result): void
     {
-        DB::table('electronics_serial_validations')->insert([
+        $this->db->table('electronics_serial_validations')->insert([
             'product_id' => $dto->productId,
             'serial_number' => $dto->serialNumber,
             'user_id' => $dto->userId,
@@ -341,8 +342,8 @@ final readonly class SerialNumberValidationService
             'risk_factors' => json_encode($result->riskFactors),
             'ml_features' => json_encode($result->mlFeatures),
             'recommended_action' => $result->recommendedAction,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 }

@@ -1,13 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class FashionProductCategory extends Model
 {
+    use TenantScoped;
+
     protected $table = 'fashion_product_categories';
+
     protected $fillable = [
         'product_id',
         'tenant_id',
@@ -22,6 +28,7 @@ final class FashionProductCategory extends Model
         'material_type',
         'correlation_id',
     ];
+
     protected $casts = [
         'secondary_categories' => 'array',
         'tags' => 'array',

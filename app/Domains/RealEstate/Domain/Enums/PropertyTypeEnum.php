@@ -9,24 +9,19 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/component
  */
-
 
 namespace App\Domains\RealEstate\Domain\Enums;
 
 enum PropertyTypeEnum: string
 {
-    case Apartment  = 'apartment';
-    case House      = 'house';
-    case Land       = 'land';
-    case Commercial = 'commercial';
-
     public function label(): string
     {
         return match ($this) {
@@ -54,4 +49,8 @@ enum PropertyTypeEnum: string
             array_map(static fn (self $e) => $e->label(), self::cases()),
         );
     }
+    case Apartment  = 'apartment';
+    case House      = 'house';
+    case Land       = 'land';
+    case Commercial = 'commercial';
 }

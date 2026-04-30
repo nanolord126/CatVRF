@@ -1,20 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Http\Controllers;
 
 use App\Domains\Electronics\DTOs\SearchRequestDto;
-use App\Domains\Electronics\DTOs\SearchResponseDto;
 use App\Domains\Electronics\Services\ElectronicsSearchService;
+use Illuminate\Cache\CacheManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
 final readonly class SearchController
 {
     public function __construct(
-        private ElectronicsSearchService $searchService,
-    ) {
-    }
+        private readonly ElectronicsSearchService $searchService,
+        private readonly CacheManager $cache,
+    ) {}
 
     public function search(Request $request): JsonResponse
     {
@@ -44,7 +47,7 @@ final readonly class SearchController
 
         $result = $this->searchService->search($dto);
 
-        return response()->json($result->toArray());
+        return new JsonResponse($result->toArray());
     }
 
     public function getFilters(Request $request): JsonResponse
@@ -57,7 +60,7 @@ final readonly class SearchController
 
         $filters = $this->searchService->getAvailableFilters($category);
 
-        return response()->json($filters->toArray());
+        return new JsonResponse($filters->toArray());
     }
 
     public function getSuggestions(Request $request): JsonResponse
@@ -72,7 +75,7 @@ final readonly class SearchController
 
         $suggestions = $this->searchService->getSuggestions($query, $limit);
 
-        return response()->json([
+        return new JsonResponse([
             'suggestions' => $suggestions,
             'query' => $query,
         ]);
@@ -82,7 +85,7 @@ final readonly class SearchController
     {
         $cacheKey = 'electronics_popular_searches';
 
-        $popularSearches = \Illuminate\Support\Facades\Cache::remember($cacheKey, now()->addHours(6), function () {
+        $popularSearches = $this->cache->remember($cacheKey, CarbonImmutable::now()->addHours(6), function () {
             return [
                 'iPhone 15',
                 'Samsung Galaxy S24',
@@ -97,7 +100,7 @@ final readonly class SearchController
             ];
         });
 
-        return response()->json([
+        return new JsonResponse([
             'popular_searches' => $popularSearches,
         ]);
     }

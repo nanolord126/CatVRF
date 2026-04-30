@@ -4,21 +4,26 @@ declare(strict_types=1);
 
 namespace App\Domains\Payment\Filament\Resources;
 
+use Illuminate\Support\Collection;
+
 use App\Domains\Payment\Enums\PaymentProvider;
 use App\Domains\Payment\Enums\PaymentStatus;
 use App\Domains\Payment\Models\PaymentRecord;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\Payment\Filament\Resources\PaymentRecordResource\Pages\CreatePaymentRecord;
+use App\Domains\Payment\Filament\Resources\PaymentRecordResource\Pages\EditPaymentRecord;
+use App\Domains\Payment\Filament\Resources\PaymentRecordResource\Pages\ListPaymentRecords;
 
 /**
  * Filament-ресурс для управления платёжными записями.
  *
  * Доступен в Admin Panel и Tenant Panel.
  */
-final class PaymentRecordResource extends Resource
+final class PaymentRecordResource extends BaseOptimizedResource
 {
     protected static ?string $model = PaymentRecord::class;
 
@@ -46,7 +51,7 @@ final class PaymentRecordResource extends Resource
                 Forms\Components\Select::make('provider_code')
                     ->label('Провайдер')
                     ->options(
-                        collect(PaymentProvider::cases())
+                        new Collection(PaymentProvider::cases())
                             ->mapWithKeys(fn (PaymentProvider $p) => [$p->value => $p->label()])
                             ->toArray()
                     )
@@ -61,7 +66,7 @@ final class PaymentRecordResource extends Resource
                 Forms\Components\Select::make('status')
                     ->label('Статус')
                     ->options(
-                        collect(PaymentStatus::cases())
+                        new Collection(PaymentStatus::cases())
                             ->mapWithKeys(fn (PaymentStatus $s) => [$s->value => $s->label()])
                             ->toArray()
                     )
@@ -118,13 +123,13 @@ final class PaymentRecordResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options(
-                        collect(PaymentStatus::cases())
+                        new Collection(PaymentStatus::cases())
                             ->mapWithKeys(fn (PaymentStatus $s) => [$s->value => $s->label()])
                             ->toArray()
                     ),
                 Tables\Filters\SelectFilter::make('provider_code')
                     ->options(
-                        collect(PaymentProvider::cases())
+                        new Collection(PaymentProvider::cases())
                             ->mapWithKeys(fn (PaymentProvider $p) => [$p->value => $p->label()])
                             ->toArray()
                     ),
@@ -140,9 +145,17 @@ final class PaymentRecordResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Payment\Filament\Resources\PaymentRecordResource\Pages\ListPaymentRecords::route('/'),
-            'create' => \App\Domains\Payment\Filament\Resources\PaymentRecordResource\Pages\CreatePaymentRecord::route('/create'),
-            'edit' => \App\Domains\Payment\Filament\Resources\PaymentRecordResource\Pages\EditPaymentRecord::route('/{record}/edit'),
+            'index' => ListPaymentRecords::route('/'),
+            'create' => CreatePaymentRecord::route('/create'),
+            'edit' => EditPaymentRecord::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Payment
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

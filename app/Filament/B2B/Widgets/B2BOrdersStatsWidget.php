@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\B2B\Widgets;
 
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 /**
  * B2BOrdersStatsWidget — статистика заказов B2B-клиента.
@@ -17,24 +19,24 @@ use Illuminate\Support\Facades\DB;
  */
 final class B2BOrdersStatsWidget extends StatsOverviewWidget
 {
+    protected static ?int $sort = 2;
+
     public function __construct(
         private readonly DatabaseManager $db,
     ) {}
-
-    protected static ?int $sort = 2;
 
     protected function getStats(): array
     {
         $businessGroupId = session('active_business_group_id');
 
-        if (!$businessGroupId) {
+        if (! $businessGroupId) {
             return [
                 Stat::make('Заказы', '–')->color('gray'),
             ];
         }
 
-        $since30d = now()->subDays(30);
-        $today    = now()->startOfDay();
+        $since30d = CarbonImmutable::now()->subDays(30);
+        $today    = CarbonImmutable::now()->startOfDay();
 
         $activeOrders = $this->db->table('orders')
             ->where('business_group_id', $businessGroupId)
@@ -60,7 +62,7 @@ final class B2BOrdersStatsWidget extends StatsOverviewWidget
         // Тренд — заказы по дням
         $trend = [];
         for ($i = 6; $i >= 0; $i--) {
-            $day    = now()->subDays($i)->startOfDay();
+            $day    = CarbonImmutable::now()->subDays($i)->startOfDay();
             $trend[] = $this->db->table('orders')
                 ->where('business_group_id', $businessGroupId)
                 ->whereBetween('created_at', [$day, $day->copy()->endOfDay()])
@@ -70,7 +72,7 @@ final class B2BOrdersStatsWidget extends StatsOverviewWidget
         // Тренд GMV
         $gmvTrend = [];
         for ($i = 6; $i >= 0; $i--) {
-            $day       = now()->subDays($i)->startOfDay();
+            $day       = CarbonImmutable::now()->subDays($i)->startOfDay();
             $gmvTrend[] = (float) $this->db->table('orders')
                 ->where('business_group_id', $businessGroupId)
                 ->whereIn('status', ['completed', 'processing', 'shipped'])
@@ -85,13 +87,13 @@ final class B2BOrdersStatsWidget extends StatsOverviewWidget
                 ->color($activeOrders > 0 ? 'info' : 'gray')
                 ->chart($trend),
 
-            Stat::make('Оборот (30 дней)', number_format($gmv30d, 0, '.', ' ') . ' ₽')
+            Stat::make('Оборот (30 дней)', number_format($gmv30d, 0, '.', ' ').' ₽')
                 ->description("{$completedOrders} выполненных заказов")
                 ->descriptionIcon('heroicon-o-banknotes')
                 ->color('success')
                 ->chart($gmvTrend),
 
-            Stat::make('Средний чек', number_format($avgCheck, 0, '.', ' ') . ' ₽')
+            Stat::make('Средний чек', number_format($avgCheck, 0, '.', ' ').' ₽')
                 ->description('За последние 30 дней')
                 ->descriptionIcon('heroicon-o-receipt-percent')
                 ->color('primary'),

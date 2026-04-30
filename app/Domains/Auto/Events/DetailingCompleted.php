@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
-
 use Psr\Log\LoggerInterface;
 use App\Domains\Auto\Models\CarDetailing;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -12,6 +11,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+
 /**
  * Class DetailingCompleted
  *
@@ -22,18 +22,20 @@ use Illuminate\Queue\SerializesModels;
  * Events carry correlation_id for full traceability.
  * Listeners handle side effects asynchronously.
  *
- * @see \Illuminate\Foundation\Events\Dispatchable
- * @package App\Domains\Auto\Events
+ * @see Dispatchable
  */
 final class DetailingCompleted implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-    
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
+
     public function __construct(
         public readonly CarDetailing $detailing,
-        public readonly string $correlationId, public readonly LoggerInterface $logger
+        public readonly string $correlationId,
+        public readonly LoggerInterface $logger
     ) {
-        $this->logger->info('DetailingCompleted event dispatched', [
+        $this->logger->$this->logger->info('DetailingCompleted event dispatched', [
             'correlation_id' => $this->correlationId,
             'detailing_id' => $this->detailing->id,
         ]);
@@ -42,8 +44,8 @@ final class DetailingCompleted implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('tenant.' . $this->detailing->tenant_id),
-            new PrivateChannel('user.' . $this->detailing->client_id),
+            new PrivateChannel('tenant.'.$this->detailing->tenant_id),
+            new PrivateChannel('user.'.$this->detailing->client_id),
         ];
     }
 

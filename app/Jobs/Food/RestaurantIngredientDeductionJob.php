@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs\Food;
 
+use Psr\Log\LoggerInterface;
 
 use App\Services\InventoryManagementService;
 use Illuminate\Bus\Queueable;
@@ -9,23 +12,24 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 final class RestaurantIngredientDeductionJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly int $orderId,
         private readonly int $tenantId,
         private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
-    ) {
-        $this->onQueue('inventory');
+        private readonly DatabaseManager $db,) {
+        $this->onQueue('default');
     }
 
     public function tags(): array
@@ -35,7 +39,7 @@ final class RestaurantIngredientDeductionJob implements ShouldQueue
 
     public function retryUntil(): \DateTime
     {
-        return now()->addMinutes(20);
+        return CarbonImmutable::now()->addMinutes(20);
     }
 
     public function handle(InventoryManagementService $inventoryService): void
@@ -47,7 +51,7 @@ final class RestaurantIngredientDeductionJob implements ShouldQueue
                 $order = $inventoryService->getRestaurantOrderWithDishes($this->orderId);
 
                 if (! $order || $order->status !== 'completed') {
-                    $this->logger->channel('audit')->info('Order not ready for ingredient deduction', [
+                    $this->logger->channel('audit')->$this->logger->info('Order not ready for ingredient deduction', [
                         'correlation_id' => $correlationId,
                         'order_id' => $this->orderId,
                         'status' => $order?->status,
@@ -66,7 +70,7 @@ final class RestaurantIngredientDeductionJob implements ShouldQueue
                             sourceId: $this->orderId
                         );
 
-                        $this->logger->channel('audit')->info('Ingredient deducted', [
+                        $this->logger->channel('audit')->$this->logger->info('Ingredient deducted', [
                             'correlation_id' => $correlationId,
                             'ingredient_id' => $consumable->id,
                             'quantity' => $consumable->quantity,
@@ -96,4 +100,3 @@ final class RestaurantIngredientDeductionJob implements ShouldQueue
         }
     }
 }
-

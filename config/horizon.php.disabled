@@ -1,0 +1,268 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * CatVRF 2026 — Laravel Horizon Configuration.
+ *
+ * Queue management and monitoring for all async jobs.
+ */
+return [
+    /*
+    |--------------------------------------------------------------------------
+    | Horizon Domain
+    |--------------------------------------------------------------------------
+    */
+    'domain' => env('HORIZON_DOMAIN'),
+
+    'path' => 'horizon',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Horizon Redis Connection
+    |--------------------------------------------------------------------------
+    */
+    'use' => 'default',
+
+    'prefix' => env('HORIZON_PREFIX', 'catvrf_horizon:'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Horizon Route Middleware
+    |--------------------------------------------------------------------------
+    */
+    'middleware' => ['web', 'auth', 'can:access-horizon'],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Queue Wait Time Thresholds
+    |--------------------------------------------------------------------------
+    | Alert if jobs wait longer than these times (seconds).
+    | CRITICAL: Emergency queue must have lowest threshold (5s)
+    */
+    'waits' => [
+        'redis:emergency' => 5,
+        'redis:payment-webhook' => 10,
+        'redis:payment' => 15,
+        'redis:fraud-check-payment' => 10,
+        'redis:notification' => 30,
+        'redis:audit' => 60,
+        'redis:ml-recalculate' => 300,
+        'redis:ml-retrain-high-priority' => 300,
+        'redis:delivery' => 20,
+        'redis:default' => 60,
+        'redis:marketing' => 60,
+        'redis:bulk' => 120,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Job Trimming Times (minutes)
+    |--------------------------------------------------------------------------
+    */
+    'trim' => [
+        'recent' => 60,
+        'pending' => 60,
+        'completed' => 60,
+        'recent_failed' => 10080, // 7 days
+        'failed' => 10080,
+        'monitored' => 10080,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Silenced Jobs
+    |--------------------------------------------------------------------------
+    | Jobs that should not appear in the recent jobs list.
+    */
+    'silenced' => [],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Metrics
+    |--------------------------------------------------------------------------
+    */
+    'metrics' => [
+        'trim_snapshots' => [
+            'job' => 24,
+            'queue' => 24,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fast Termination
+    |--------------------------------------------------------------------------
+    */
+    'fast_termination' => false,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Memory Limit (MB)
+    |--------------------------------------------------------------------------
+    */
+    'memory_limit' => 256,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Queue Worker Configuration
+    |--------------------------------------------------------------------------
+    */
+    'defaults' => [
+        'supervisor-default' => [
+            'connection' => 'redis',
+            'queue' => ['default'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 10,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 3,
+            'timeout' => 120,
+            'nice' => 0,
+        ],
+    ],
+
+    'environments' => [
+        'production' => [
+            /*
+             * EMERGENCY QUEUE - Highest Priority
+             * For critical operations: emergency medical alerts, critical payment failures, system alerts
+             * Single worker to ensure immediate processing
+             */
+            'supervisor-emergency' => [
+                'connection' => 'redis',
+                'queue' => ['emergency'],
+                'balance' => 'simple',
+                'maxProcesses' => 1,
+                'memory' => 128,
+                'tries' => 5,
+                'timeout' => 30,
+                'nice' => -10,
+            ],
+
+            /*
+             * PAYMENT QUEUE - High Priority
+             * For payment webhooks, fraud checks, payment confirmations
+             * Multiple workers for high throughput
+             */
+            'supervisor-payment' => [
+                'connection' => 'redis',
+                'queue' => ['payment-webhook', 'payment', 'fraud-check-payment'],
+                'balance' => 'auto',
+                'maxProcesses' => 10,
+                'memory' => 256,
+                'tries' => 5,
+                'timeout' => 60,
+                'nice' => -5,
+            ],
+
+            /*
+             * NOTIFICATION QUEUE - Medium Priority
+             * For all notifications (email, SMS, push)
+             * Rate limited to prevent spam
+             */
+            'supervisor-notification' => [
+                'connection' => 'redis',
+                'queue' => ['notification'],
+                'balance' => 'auto',
+                'maxProcesses' => 20,
+                'memory' => 128,
+                'tries' => 3,
+                'timeout' => 30,
+                'nice' => 0,
+            ],
+
+            /*
+             * AUDIT QUEUE - Medium Priority
+             * For audit logging, compliance tracking
+             * Must not block but must complete reliably
+             */
+            'supervisor-audit' => [
+                'connection' => 'redis',
+                'queue' => ['audit'],
+                'balance' => 'auto',
+                'maxProcesses' => 5,
+                'memory' => 128,
+                'tries' => 3,
+                'timeout' => 60,
+                'nice' => 0,
+            ],
+
+            /*
+             * ML RECALCULATE QUEUE - Low Priority, High Memory
+             * For ML model training, recalculation, inference
+             * Limited concurrency to prevent resource exhaustion
+             */
+            'supervisor-ml-recalculate' => [
+                'connection' => 'redis',
+                'queue' => ['ml-recalculate', 'ml-retrain-high-priority'],
+                'balance' => 'auto',
+                'maxProcesses' => 3,
+                'memory' => 1024,
+                'tries' => 2,
+                'timeout' => 3600,
+                'nice' => 5,
+            ],
+
+            /*
+             * DELIVERY QUEUE - Medium Priority
+             * For delivery assignment, route optimization
+             */
+            'supervisor-delivery' => [
+                'connection' => 'redis',
+                'queue' => ['delivery'],
+                'balance' => 'auto',
+                'maxProcesses' => 8,
+                'memory' => 256,
+                'tries' => 3,
+                'timeout' => 120,
+                'nice' => 0,
+            ],
+
+            /*
+             * DEFAULT QUEUE - Standard Priority
+             * For general background jobs
+             */
+            'supervisor-default' => [
+                'connection' => 'redis',
+                'queue' => ['default', 'marketing'],
+                'balance' => 'auto',
+                'maxProcesses' => 15,
+                'memory' => 128,
+                'tries' => 3,
+                'timeout' => 120,
+                'nice' => 0,
+            ],
+
+            /*
+             * BULK QUEUE - Low Priority
+             * For bulk imports, reports, exports
+             */
+            'supervisor-bulk' => [
+                'connection' => 'redis',
+                'queue' => ['bulk'],
+                'balance' => 'simple',
+                'maxProcesses' => 2,
+                'memory' => 512,
+                'tries' => 1,
+                'timeout' => 600,
+                'nice' => 10,
+            ],
+        ],
+
+        'local' => [
+            'supervisor-all' => [
+                'connection' => 'redis',
+                'queue' => ['emergency', 'payment-webhook', 'payment', 'fraud-check-payment', 'notification', 'audit', 'ml-recalculate', 'delivery', 'default', 'marketing', 'bulk'],
+                'balance' => 'auto',
+                'maxProcesses' => 3,
+                'memory' => 256,
+                'tries' => 3,
+                'timeout' => 120,
+                'nice' => 0,
+            ],
+        ],
+    ],
+];

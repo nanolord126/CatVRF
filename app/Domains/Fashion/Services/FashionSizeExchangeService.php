@@ -1,32 +1,40 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
  * Size Exchange / Rental Service для Fashion.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * Обмен размеров, аренда одежды, управление подписками,
         отслеживание возвратов, расчет стоимости аренды.
  */
 final readonly class FashionSizeExchangeService
 {
     private const EXCHANGE_PERIOD_DAYS = 14;
+
     private const RENTAL_PERIOD_DAYS = 30;
+
     private const MAX_RENTAL_ITEMS = 5;
 
-    public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Запросить обмен размера.
@@ -55,7 +63,7 @@ final readonly class FashionSizeExchangeService
             ->where('user_id', $userId)
             ->where('tenant_id', $tenantId)
             ->where('status', 'completed')
-            ->where('created_at', '>=', Carbon::now()->subDays(self::EXCHANGE_PERIOD_DAYS))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(self::EXCHANGE_PERIOD_DAYS))
             ->first();
 
         if ($order === null) {
@@ -71,10 +79,10 @@ final readonly class FashionSizeExchangeService
             'requested_size' => $requestedSize,
             'reason' => $reason,
             'status' => 'pending',
-            'requested_at' => Carbon::now(),
+            'requested_at' => CarbonImmutable::now(),
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         $this->audit->record(
@@ -91,7 +99,7 @@ final readonly class FashionSizeExchangeService
             correlationId: $correlationId
         );
 
-        Log::channel('audit')->info('Fashion size exchange requested', [
+        $this->log->channel('audit')->$this->logger->info('Fashion size exchange requested', [
             'exchange_id' => $exchangeId,
             'user_id' => $userId,
             'tenant_id' => $tenantId,
@@ -161,12 +169,12 @@ final readonly class FashionSizeExchangeService
             'rental_days' => $rentalDays,
             'rental_price' => $rentalPrice,
             'deposit' => $deposit,
-            'pickup_date' => $pickupDate ? Carbon::parse($pickupDate) : Carbon::now(),
-            'return_date' => $returnDate ? Carbon::parse($returnDate) : Carbon::now()->addDays($rentalDays),
+            'pickup_date' => $pickupDate ? Carbon::parse($pickupDate) : CarbonImmutable::now(),
+            'return_date' => $returnDate ? Carbon::parse($returnDate) : CarbonImmutable::now()->addDays($rentalDays),
             'status' => 'active',
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         $this->audit->record(
@@ -224,10 +232,10 @@ final readonly class FashionSizeExchangeService
             ->where('id', $rentalId)
             ->update([
                 'status' => 'returned',
-                'return_date' => Carbon::now(),
+                'return_date' => CarbonImmutable::now(),
                 'condition' => $condition,
                 'damage_photos' => json_encode($damagePhotos),
-                'updated_at' => Carbon::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
         $penalty = $this->calculateReturnPenalty($rental, $condition);
@@ -287,11 +295,11 @@ final readonly class FashionSizeExchangeService
             'monthly_price' => $monthlyPrice,
             'total_price' => $totalPrice,
             'status' => 'active',
-            'started_at' => Carbon::now(),
-            'expires_at' => Carbon::now()->addMonths($durationMonths),
+            'started_at' => CarbonImmutable::now(),
+            'expires_at' => CarbonImmutable::now()->addMonths($durationMonths),
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         return [
@@ -335,7 +343,7 @@ final readonly class FashionSizeExchangeService
             ->where('user_id', $userId)
             ->where('tenant_id', $tenantId)
             ->where('status', 'active')
-            ->where('return_date', '<', Carbon::now()->addDays(3))
+            ->where('return_date', '<', CarbonImmutable::now()->addDays(3))
             ->count();
 
         return [
@@ -351,6 +359,7 @@ final readonly class FashionSizeExchangeService
     private function calculateRentalPrice(float $productPrice, int $days): float
     {
         $dailyRate = $productPrice * 0.03;
+
         return round($dailyRate * $days, 2);
     }
 
@@ -365,8 +374,9 @@ final readonly class FashionSizeExchangeService
             return round($rental['deposit'] * 0.5, 2);
         }
 
-        if (Carbon::parse($rental['return_date'])->lt(Carbon::now())) {
-            $daysLate = Carbon::now()->diffInDays(Carbon::parse($rental['return_date']));
+        if (Carbon::parse($rental['return_date'])->lt(CarbonImmutable::now())) {
+            $daysLate = CarbonImmutable::now()->diffInDays(Carbon::parse($rental['return_date']));
+
             return round($daysLate * 10, 2);
         }
 

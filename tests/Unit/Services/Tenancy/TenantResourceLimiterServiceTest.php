@@ -1,11 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\Tenancy;
 
 use App\Services\Tenancy\TenantResourceLimiterService;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\LogManager;
 use Tests\TestCase;
 
@@ -15,38 +16,14 @@ use Tests\TestCase;
  * Production 2026 CANON - Multi-Tenant Security Tests
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final class TenantResourceLimiterServiceTest extends TestCase
 {
     private TenantResourceLimiterService $service;
+
     private RedisFactory $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->redis = app(RedisFactory::class);
-        $config = app(ConfigRepository::class);
-        $logger = app(LogManager::class);
-
-        $this->service = new TenantResourceLimiterService(
-            $this->redis,
-            $config,
-            $logger
-        );
-    }
-
-    protected function tearDown(): void
-    {
-        // Clean up test data
-        $this->redis->connection()->del('tenant:quota:ai_tokens:1');
-        $this->redis->connection()->del('tenant:quota:redis_ops:1');
-        $this->redis->connection()->del('tenant:quota:db_queries:1');
-        $this->redis->connection()->del('tenant:quota:storage_bytes:1');
-
-        parent::tearDown();
-    }
 
     public function test_check_ai_quota_allows_within_limit(): void
     {
@@ -198,5 +175,31 @@ final class TenantResourceLimiterServiceTest extends TestCase
         // 6th request should be rate limited
         $result2 = $this->service->isRateLimited($tenantId, $operation);
         $this->assertTrue($result2);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->redis = app(RedisFactory::class);
+        $config = app(ConfigRepository::class);
+        $logger = app(LogManager::class);
+
+        $this->service = new TenantResourceLimiterService(
+            $this->redis,
+            $config,
+            $logger
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        // Clean up test data
+        $this->redis->connection()->del('tenant:quota:ai_tokens:1');
+        $this->redis->connection()->del('tenant:quota:redis_ops:1');
+        $this->redis->connection()->del('tenant:quota:db_queries:1');
+        $this->redis->connection()->del('tenant:quota:storage_bytes:1');
+
+        parent::tearDown();
     }
 }

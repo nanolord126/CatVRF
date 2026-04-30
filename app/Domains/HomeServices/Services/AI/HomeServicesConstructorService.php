@@ -1,11 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Services\AI;
 
+use Carbon\CarbonImmutable;
+
 use Carbon\Carbon;
-
-
-
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use App\Services\FraudControlService;
@@ -17,10 +18,12 @@ use Illuminate\Support\Str;
 final readonly class HomeServicesConstructorService
 {
     public function __construct(
-        private FraudControlService   $fraud,
-        private RecommendationService  $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private Cache                  $cache, private readonly LoggerInterface $logger, private readonly Guard $guard
+        private readonly FraudControlService $fraud,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly Cache $cache,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
     ) {}
 
     /**
@@ -33,9 +36,9 @@ final readonly class HomeServicesConstructorService
 
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'homeservices_ai_constructor', amount: 0, correlationId: $correlationId ?? '');
 
-        $cacheKey = 'user_ai_designs:HomeServices:' . $userId . ':' . md5(serialize($payload));
+        $cacheKey = 'user_ai_designs:HomeServices:'.$userId.':'.md5(serialize($payload));
 
-        return $this->cache->remember($cacheKey, Carbon::now()->addHour(), function () use ($payload, $userId, $correlationId) {
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHour(), function () use ($payload, $userId, $correlationId) {
             // Получаем профиль вкусов пользователя
             $taste = $this->tasteAnalyzer->getProfile($userId);
 
@@ -45,7 +48,7 @@ final readonly class HomeServicesConstructorService
             // Получаем рекомендации
             $recommendations = $this->recommendation->getForVertical('HomeServices', $fullProfile, $userId);
 
-            $this->logger->info('HomeServices AI constructor used', [
+            $this->logger->$this->logger->info('HomeServices AI constructor used', [
                 'user_id'        => $userId,
                 'correlation_id' => $correlationId,
                 'vertical'       => 'HomeServices',

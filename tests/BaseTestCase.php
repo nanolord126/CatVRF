@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests;
 
@@ -7,39 +9,103 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Foundation\Testing\TestCase as LaravelTestCase;
 use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Testing\TestResponse;
+use Filament\Facades\Filament;
+use Illuminate\Support\Str;
 
 abstract class BaseTestCase extends LaravelTestCase
 {
-    use DatabaseTransactions, WithFaker;
+    use DatabaseTransactions;
+    use WithFaker;
 
     protected ?Tenant $tenant = null;
+
     protected ?User $user = null;
+
     protected string $correlationId;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $this->correlationId = Str::uuid()->toString();
+        $this->configureTestEnvironment();
+        // Skip clearCache in test environment to avoid Mockery issues
+        // Cache is already set to 'array' in configureTestEnvironment()
+        $this->clearRedis();
 
         $this->tenant = Tenant::factory()->create([
-            'name' => 'Test Tenant ' . $this->correlationId,
-            'slug' => 'test-' . $this->correlationId,
+            'name' => 'Test Tenant '.$this->correlationId,
+            'slug' => 'test-'.$this->correlationId,
         ]);
 
         $this->user = User::factory()->create([
             'tenant_id' => $this->tenant->id,
-            'email' => 'test-' . $this->correlationId . '@example.com',
+            'email' => 'test-'.$this->correlationId.'@example.com',
         ]);
 
         if (class_exists('\Filament\Facades\Filament')) {
             try {
-                \Filament\Facades\Filament::setTenant($this->tenant);
+                Filament::setTenant($this->tenant);
             } catch (\Throwable $e) {
                 // No Filament panel active in unit tests — ignore
             }
         }
+    }
+
+    protected function tearDown(): void
+    {
+        $this->clearRedis();
+        parent::tearDown();
+    }
+
+    protected function configureTestEnvironment(): void
+    {
+        Config::set('app.env', 'testing');
+        Config::set('cache.default', 'array');
+        Config::set('queue.default', 'sync');
+        Config::set('session.driver', 'array');
+    }
+
+    protected function clearCache(): void
+    {
+        try {
+            Artisan::call('cache:clear');
+        } catch (\Throwable $e) {
+            // Ignore console errors in test environment
+        }
+        try {
+            Artisan::call('config:clear');
+        } catch (\Throwable $e) {
+            // Ignore console errors in test environment
+        }
+        try {
+            Artisan::call('route:clear');
+        } catch (\Throwable $e) {
+            // Ignore console errors in test environment
+        }
+        try {
+            Artisan::call('view:clear');
+        } catch (\Throwable $e) {
+            // Ignore console errors in test environment
+        }
+    }
+
+    
+    protected function clearRedis(): void
+    {
+        if (Config::get('cache.default') === 'redis') {
+            Redis::flushdb();
+        }
+    }
+
+    protected function actingAsTenant(int $tenantId): self
+    {
+        tenant()->initialize($tenantId);
+        return $this;
     }
 
     protected function authenticatedGet(
@@ -163,7 +229,7 @@ abstract class BaseTestCase extends LaravelTestCase
     protected function createSecondTenant(): Tenant
     {
         return Tenant::factory()->create([
-            'name' => 'Second Tenant ' . $this->correlationId,
+            'name' => 'Second Tenant '.$this->correlationId,
         ]);
     }
 }

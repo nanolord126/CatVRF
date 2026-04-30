@@ -1,31 +1,35 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Services;
 
-
+use Carbon\CarbonImmutable;
 
 use Carbon\Carbon;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Config\Repository as ConfigRepository;
-
 use App\Services\FraudControlService;
 use App\Services\RecommendationService;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Cache\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
 
 final readonly class AIArtConstructor
 {
-    public function __construct(private readonly FraudControlService $fraud,
+    public function __construct(
+        private readonly FraudControlService $fraud,
         private readonly CacheRepository $cache,
         private readonly RecommendationService $recommendation,
-        private readonly \Illuminate\Database\DatabaseManager $db,
-        private readonly ConfigRepository $config, private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {
-    }
+        private readonly DatabaseManager $db,
+        private readonly ConfigRepository $config,
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     public function analyzePhotoAndRecommend(UploadedFile $photo, array $context): array
     {
@@ -38,7 +42,7 @@ final readonly class AIArtConstructor
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ai_art_constructor', amount: 0, correlationId: $correlationId ?? '');
         $this->enforceRateLimit($tenantId, $audience, $correlationId);
 
-        $cacheKey = "ai:art:{$tenantId}:{$audience}:" . sha1_file($photo->getRealPath());
+        $cacheKey = "ai:art:{$tenantId}:{$audience}:".sha1_file($photo->getRealPath());
         $payload = $this->cache->remember($cacheKey, 3600, function () use ($photo, $context, $correlationId, $audience, $tenantId, $userId): array {
             $fingerprint = substr(hash_file('sha256', $photo->getRealPath()), 0, 16);
             $palette = $this->buildPaletteFromContext($context);
@@ -59,7 +63,7 @@ final readonly class AIArtConstructor
                 ],
             ];
 
-            $this->logger->info('AI Art Constructor generated suggestions', [
+            $this->logger->$this->logger->info('AI Art Constructor generated suggestions', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'audience' => $audience,
@@ -90,7 +94,7 @@ final readonly class AIArtConstructor
 
     private function determineAudience(array $context): string
     {
-        if (!empty($context['inn']) || !empty($context['business_card_id'])) {
+        if (! empty($context['inn']) || ! empty($context['business_card_id'])) {
             return 'b2b';
         }
 
@@ -112,9 +116,11 @@ final readonly class AIArtConstructor
     private function enforceRateLimit(int $tenantId, string $audience, string $correlationId): void
     {
         $key = "ai-art:{$audience}:{$tenantId}";
-        $allowed = $this->rateLimiter->attempt($key, 5, static function (): bool { return true; }, 120);
+        $allowed = $this->rateLimiter->attempt($key, 5, static function (): bool {
+            return true;
+        }, 120);
 
-        if (!$allowed) {
+        if (! $allowed) {
             $this->logger->warning('AI Art constructor rate limit exceeded', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
@@ -164,7 +170,7 @@ final readonly class AIArtConstructor
 
     private function persistPayload(array $payload): void
     {
-        if (!$this->schema->hasTable('ai_art_constructor_logs')) {
+        if (! $this->schema->hasTable('ai_art_constructor_logs')) {
             return;
         }
 
@@ -176,7 +182,7 @@ final readonly class AIArtConstructor
                 'audience' => $payload['audience'],
                 'recommendations' => json_encode($payload['recommendations'], JSON_THROW_ON_ERROR),
                 'correlation_id' => $payload['correlation_id'],
-                'created_at' => Carbon::now(),
+                'created_at' => CarbonImmutable::now(),
             ]);
         });
     }

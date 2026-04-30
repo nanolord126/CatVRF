@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Travel;
 
@@ -22,7 +24,7 @@ use Tests\TestCase;
 
 /**
  * Tourism Booking Orchestrator Service Test
- * 
+ *
  * Unit tests for TourismBookingOrchestratorService covering:
  * - Booking creation with hold
  * - Booking confirmation with biometric verification
@@ -38,59 +40,22 @@ final class TourismBookingOrchestratorServiceTest extends TestCase
     use RefreshDatabase;
 
     private TourismBookingOrchestratorService $orchestrator;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
+
     private WalletService $wallet;
+
     private PaymentService $payment;
+
     private FraudMLService $fraudML;
+
     private UserTasteAnalyzerService $tasteAnalyzer;
+
     private CRMIntegrationService $crm;
+
     private TravelConstructorService $aiConstructor;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->fraud->method('check');
-
-        $this->audit = $this->createMock(AuditService::class);
-        $this->audit->method('record');
-
-        $this->wallet = $this->createMock(WalletService::class);
-        $this->wallet->method('debit');
-        $this->wallet->method('credit');
-        $this->wallet->method('getOrCreateWallet')->willReturn(1);
-
-        $this->payment = $this->createMock(PaymentService::class);
-        $this->payment->method('initPayment');
-
-        $this->fraudML = new FraudMLService(app('log'));
-
-        $this->tasteAnalyzer = $this->createMock(UserTasteAnalyzerService::class);
-        $this->tasteAnalyzer->method('getProfile')->willReturn((object) ['travel_preferences' => []]);
-        $this->tasteAnalyzer->method('getLoyaltyDiscount')->willReturn(0);
-        $this->tasteAnalyzer->method('getCashbackRate')->willReturn(0.05);
-
-        $this->crm = $this->createMock(CRMIntegrationService::class);
-        $this->crm->method('updateOrCreateContact')->willReturn('crm_123');
-
-        $this->aiConstructor = $this->createMock(TravelConstructorService::class);
-        $this->aiConstructor->method('analyzeAndRecommend')->willReturn([]);
-
-        $this->orchestrator = new TourismBookingOrchestratorService(
-            fraud: $this->fraud,
-            audit: $this->audit,
-            wallet: $this->wallet,
-            payment: $this->payment,
-            fraudML: $this->fraudML,
-            tasteAnalyzer: $this->tasteAnalyzer,
-            crm: $this->crm,
-            aiConstructor: $this->aiConstructor,
-            logger: app('log'),
-            db: DB::connection(),
-        );
-    }
 
     public function test_create_booking_with_hold(): void
     {
@@ -312,6 +277,51 @@ final class TourismBookingOrchestratorServiceTest extends TestCase
 
         $this->assertEquals(0.10, $booking->commission_rate); // B2B gets 10% commission
         $this->assertEquals(2000.00, $booking->commission_amount); // 10% of 20000
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->fraud->method('check');
+
+        $this->audit = $this->createMock(AuditService::class);
+        $this->audit->method('record');
+
+        $this->wallet = $this->createMock(WalletService::class);
+        $this->wallet->method('debit');
+        $this->wallet->method('credit');
+        $this->wallet->method('getOrCreateWallet')->willReturn(1);
+
+        $this->payment = $this->createMock(PaymentService::class);
+        $this->payment->method('initPayment');
+
+        $this->fraudML = new FraudMLService(app('log'));
+
+        $this->tasteAnalyzer = $this->createMock(UserTasteAnalyzerService::class);
+        $this->tasteAnalyzer->method('getProfile')->willReturn((object) ['travel_preferences' => []]);
+        $this->tasteAnalyzer->method('getLoyaltyDiscount')->willReturn(0);
+        $this->tasteAnalyzer->method('getCashbackRate')->willReturn(0.05);
+
+        $this->crm = $this->createMock(CRMIntegrationService::class);
+        $this->crm->method('updateOrCreateContact')->willReturn('crm_123');
+
+        $this->aiConstructor = $this->createMock(TravelConstructorService::class);
+        $this->aiConstructor->method('analyzeAndRecommend')->willReturn([]);
+
+        $this->orchestrator = new TourismBookingOrchestratorService(
+            fraud: $this->fraud,
+            audit: $this->audit,
+            wallet: $this->wallet,
+            payment: $this->payment,
+            fraudML: $this->fraudML,
+            tasteAnalyzer: $this->tasteAnalyzer,
+            crm: $this->crm,
+            aiConstructor: $this->aiConstructor,
+            logger: app('log'),
+            db: DB::connection(),
+        );
     }
 
     protected function tearDown(): void

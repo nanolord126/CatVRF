@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\FraudML;
 
@@ -8,7 +10,7 @@ use Tests\TestCase;
 
 /**
  * FeatureDriftDetectorServiceTest — comprehensive unit tests for feature drift detection
- * 
+ *
  * Tests cover:
  * - PSI calculation with various distributions
  * - KS-test calculation with edge cases
@@ -16,21 +18,14 @@ use Tests\TestCase;
  * - Combined drift score calculation
  * - Redis cache operations for reference distributions
  * - Edge cases (empty arrays, single value, identical distributions)
- * 
+ *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final class FeatureDriftDetectorServiceTest extends TestCase
 {
     private FeatureDriftDetectorService $driftDetector;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->driftDetector = app(FeatureDriftDetectorService::class);
-        Cache::flush();
-    }
 
     public function test_calculate_psi_with_similar_distributions(): void
     {
@@ -222,8 +217,8 @@ final class FeatureDriftDetectorServiceTest extends TestCase
 
         $this->assertIsArray($result);
         $this->assertTrue(
-            $result['psi']['drift_detected'] || 
-            $result['ks']['drift_detected'] || 
+            $result['psi']['drift_detected'] ||
+            $result['ks']['drift_detected'] ||
             $result['js_divergence']['drift_detected']
         );
     }
@@ -474,5 +469,13 @@ final class FeatureDriftDetectorServiceTest extends TestCase
         $this->assertIsArray($result);
         $this->assertEquals(10000, $result['sample_size_expected']);
         $this->assertEquals(10000, $result['sample_size_actual']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->driftDetector = app(FeatureDriftDetectorService::class);
+        Cache::flush();
     }
 }

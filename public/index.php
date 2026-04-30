@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 set_time_limit(300);
 
 use Illuminate\Foundation\Application;

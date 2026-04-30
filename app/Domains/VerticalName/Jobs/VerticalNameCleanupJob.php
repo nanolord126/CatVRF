@@ -4,15 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\VerticalName\Jobs;
 
+use Carbon\CarbonImmutable;
 
 use App\Domains\VerticalName\Models\VerticalItem;
 use App\Services\AuditService;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -23,12 +19,9 @@ use Psr\Log\LoggerInterface;
  * - Удаление soft-deleted записей старше 90 дней
  * - Очистка истёкших резервов
  * - Архивация старых AI-дизайнов
- *
- * @package App\Domains\VerticalName\Jobs
  */
 final class VerticalNameCleanupJob implements ShouldQueue
 {
-
     public int $tries = 2;
 
     public int $timeout = 300;
@@ -66,11 +59,19 @@ final class VerticalNameCleanupJob implements ShouldQueue
             correlationId: $this->correlationId,
         );
 
-        $logger->info('VerticalName cleanup job completed', [
+        $logger->$this->logger->info('VerticalName cleanup job completed', [
             'permanently_deleted' => $deletedCount,
             'ai_designs_archived' => $archivedCount,
             'correlation_id' => $this->correlationId,
         ]);
+    }
+
+    /**
+     * Уникальный ID job'а.
+     */
+    public function uniqueId(): string
+    {
+        return 'vertical_name_cleanup:'.CarbonImmutable::now()->toDateString();
     }
 
     /**
@@ -80,7 +81,7 @@ final class VerticalNameCleanupJob implements ShouldQueue
      */
     private function permanentlyDeleteOldItems(LoggerInterface $logger): int
     {
-        $cutoffDate = now()->subDays(90);
+        $cutoffDate = CarbonImmutable::now()->subDays(90);
 
         $count = VerticalItem::onlyTrashed()
             ->where('deleted_at', '<', $cutoffDate)
@@ -91,7 +92,7 @@ final class VerticalNameCleanupJob implements ShouldQueue
                 ->where('deleted_at', '<', $cutoffDate)
                 ->forceDelete();
 
-            $logger->info('VerticalName permanently deleted old items', [
+            $logger->$this->logger->info('VerticalName permanently deleted old items', [
                 'count' => $count,
                 'cutoff_date' => $cutoffDate->toDateString(),
                 'correlation_id' => $this->correlationId,
@@ -108,21 +109,13 @@ final class VerticalNameCleanupJob implements ShouldQueue
      */
     private function archiveOldAiDesigns(LoggerInterface $logger): int
     {
-        $cutoffDate = now()->subDays(365);
+        $cutoffDate = CarbonImmutable::now()->subDays(365);
 
-        $logger->info('VerticalName archiving old AI designs', [
+        $logger->$this->logger->info('VerticalName archiving old AI designs', [
             'cutoff_date' => $cutoffDate->toDateString(),
             'correlation_id' => $this->correlationId,
         ]);
 
         return 0;
-    }
-
-    /**
-     * Уникальный ID job'а.
-     */
-    public function uniqueId(): string
-    {
-        return 'vertical_name_cleanup:' . now()->toDateString();
     }
 }

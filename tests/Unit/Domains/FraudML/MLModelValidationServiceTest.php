@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\FraudML;
 
@@ -9,7 +11,7 @@ use Tests\TestCase;
 
 /**
  * MLModelValidationServiceTest — unit tests for ML model validation service
- * 
+ *
  * @covers \App\Domains\FraudML\Services\MLModelValidationService
  */
 final class MLModelValidationServiceTest extends TestCase
@@ -17,12 +19,6 @@ final class MLModelValidationServiceTest extends TestCase
     use RefreshDatabase;
 
     private MLModelValidationService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(MLModelValidationService::class);
-    }
 
     public function test_validate_shadow_period_requires_minimum_24_hours(): void
     {
@@ -135,5 +131,11 @@ final class MLModelValidationServiceTest extends TestCase
 
         // Should be very close to zero (floating point precision may cause small values)
         $this->assertLessThan(0.001, $psi);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(MLModelValidationService::class);
     }
 }

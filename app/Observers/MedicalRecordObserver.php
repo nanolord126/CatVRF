@@ -1,10 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Observers;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Medical\Models\MedicalRecord;
 use App\Services\Cache\CacheService;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 /**
  * Medical Record Observer
@@ -15,13 +19,14 @@ use Illuminate\Support\Facades\Log;
  * This ensures that diagnosis and health score predictions are always based on fresh data.
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.18
  */
 final readonly class MedicalRecordObserver
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly CacheService $cache,
-    ) {}
+        private readonly LogManager $log,) {}
 
     /**
      * Handle the MedicalRecord "created" event.
@@ -70,14 +75,14 @@ final readonly class MedicalRecordObserver
                 $this->cache->invalidateDoctor($tenantId, $record->doctor_id);
             }
 
-            Log::info('Medical record cache invalidated', [
+            $this->log->$this->logger->info('Medical record cache invalidated', [
                 'tenant_id' => $tenantId,
                 'patient_id' => $patientId,
                 'record_id' => $record->id,
                 'doctor_id' => $record->doctor_id,
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to invalidate medical record cache', [
+            $this->log->error('Failed to invalidate medical record cache', [
                 'tenant_id' => $tenantId,
                 'patient_id' => $patientId,
                 'record_id' => $record->id,

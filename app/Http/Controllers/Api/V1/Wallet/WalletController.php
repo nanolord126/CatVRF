@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Wallet;
 
@@ -110,7 +112,7 @@ final class WalletController extends Controller
             }
 
             if ($request->filled('date_to')) {
-                $query->where('created_at', '<=', $request->input('date_to') . ' 23:59:59');
+                $query->where('created_at', '<=', $request->input('date_to').' 23:59:59');
             }
 
             $transactions = $query->orderBy('created_at', 'desc')

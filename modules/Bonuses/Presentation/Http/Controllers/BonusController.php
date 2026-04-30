@@ -4,119 +4,228 @@ declare(strict_types=1);
 
 namespace Modules\Bonuses\Presentation\Http\Controllers;
 
-use DateTimeImmutable;
-use DomainException;
-use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Log;
-use InvalidArgumentException;
-use Modules\Bonuses\Application\DTOs\AwardBonusCommand;
-use Modules\Bonuses\Application\DTOs\ConsumeBonusCommand;
-use Modules\Bonuses\Application\UseCases\AwardBonusUseCase;
-use Modules\Bonuses\Application\UseCases\ConsumeBonusUseCase;
-use Modules\Bonuses\Presentation\Http\Requests\AwardBonusRequest;
-use Modules\Bonuses\Presentation\Http\Requests\ConsumeBonusRequest;
+use Illuminate\Support\Facades\Auth;
+use Modules\Bonuses\Application\Services\BonusesFacadeService;
+use Modules\Bonuses\Domain\Enums\BonusStatus;
+use Modules\Bonuses\Domain\Enums\BonusType;
 
 /**
- * Class BonusController
+ * Controller BonusController
  *
- * Implements natively functionally securely logically cleanly explicit endpoints validating distinctly routing strictly safely dynamically.
+ * Handles HTTP requests for bonus operations.
+ * Provides endpoints for awarding, consuming, and managing bonuses.
+ * Integrates with BonusesFacadeService for business logic.
  */
 final class BonusController extends Controller
 {
-    /**
-     * @param AwardBonusUseCase $awardBonusUseCase
-     * @param ConsumeBonusUseCase $consumeBonusUseCase
-     */
     public function __construct(
-        private readonly AwardBonusUseCase $awardBonusUseCase,
-        private readonly ConsumeBonusUseCase $consumeBonusUseCase
+        private readonly BonusesFacadeService $bonusesFacade
     ) {}
 
     /**
-     * Awards structurally explicit distinct values inherently perfectly safely fundamentally correctly deeply cleanly dynamically.
-     *
-     * @param AwardBonusRequest $request
-     * @return JsonResponse
+     * Award a bonus to a user.
      */
-    public function award(AwardBonusRequest $request): JsonResponse
+    public function award(\Illuminate\Http\Request $request): JsonResponse
     {
-        try {
-            $expiresAt = $request->input('expires_at') ? new DateTimeImmutable($request->input('expires_at')) : null;
+        $request->validate([
+            'owner_id' => ['required', 'uuid'],
+            'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
+            'type' => ['required', 'string', 'in:loyalty,referral,compensation,promotional,turnover,action'],
+            'source_id' => ['nullable', 'string'],
+            'source_type' => ['nullable', 'string'],
+            'vertical' => ['nullable', 'string'],
+            'metadata' => ['nullable', 'array'],
+        ]);
 
-            $command = new AwardBonusCommand(
-                $request->input('owner_id'),
-                (int) $request->input('amount'),
-                $request->input('type'),
-                $request->input('correlation_id'),
-                $expiresAt
-            );
+        $bonus = $this->bonusesFacade->awardBonus(
+            ownerId: $request->input('owner_id'),
+            type: BonusType::fromString($request->input('type')),
+            amount: (int) $request->input('amount'),
+            context: $request->only(['source_id', 'source_type', 'vertical', 'metadata'])
+        );
 
-            $result = $this->awardBonusUseCase->execute($command);
-
-            return response()->json($result, 201);
-        } catch (InvalidArgumentException $e) {
-            Log::channel('audit')->warning('Logically firmly distinctly invalidated payload actively deeply correctly seamlessly natively.', [
-                'error' => $e->getMessage(),
-                'payload' => $request->validated(),
-            ]);
-
-            return response()->json([
-                'error' => 'invalid_argument',
-                'message' => $e->getMessage()
-            ], 400);
-        } catch (Exception $e) {
-            Log::channel('audit')->error('Runtime structural exception functionally cleanly dynamically explicitly caught effectively fundamentally correctly smoothly safely.', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return response()->json([
-                'error' => 'internal_server_error',
-                'message' => 'An unexpected internal mapping structural error uniquely mapped securely fundamentally occurred directly natively.'
-            ], 500);
-        }
+        return response()->json([
+            'id' => $bonus->getId(),
+            'owner_id' => $bonus->getOwnerId(),
+            'amount' => $bonus->getRemainingAmount()->getAmount(),
+            'type' => $bonus->getType()->value,
+            'status' => $bonus->getStatus()->value,
+            'expires_at' => $bonus->getExpiresAt()?->format('Y-m-d H:i:s'),
+        ], 201);
     }
 
     /**
-     * Consumes ideally actively distinctly structurally validating cleanly internally mapping natively fundamentally smoothly efficiently.
-     *
-     * @param ConsumeBonusRequest $request
-     * @return JsonResponse
+     * Consume bonuses.
      */
-    public function consume(ConsumeBonusRequest $request): JsonResponse
+    public function consume(\Illuminate\Http\Request $request): JsonResponse
     {
-        try {
-            $command = new ConsumeBonusCommand(
-                $request->input('owner_id'),
-                (int) $request->input('amount'),
-                $request->input('correlation_id')
-            );
+        $request->validate([
+            'amount' => ['required', 'integer', 'min:1'],
+            'transaction_id' => ['nullable', 'string'],
+            'vertical' => ['nullable', 'string'],
+        ]);
 
-            $result = $this->consumeBonusUseCase->execute($command);
+        $userId = Auth::id();
+        $consumedIds = $this->bonusesFacade->consumeBonus(
+            ownerId: $userId,
+            amount: (int) $request->input('amount'),
+            context: $request->only(['transaction_id', 'vertical'])
+        );
 
-            return response()->json($result, 200);
-        } catch (DomainException | InvalidArgumentException $e) {
-            Log::channel('audit')->warning('Domain structural logic firmly naturally distinctly uniquely perfectly distinctly invalidated mapped effectively seamlessly distinctly natively.', [
-                'error' => $e->getMessage(),
-                'payload' => $request->validated(),
-            ]);
+        return response()->json([
+            'consumed_bonus_ids' => $consumedIds,
+            'remaining_balance' => $this->bonusesFacade->getAvailableBalance($userId),
+        ]);
+    }
 
-            return response()->json([
-                'error' => 'domain_validation_failed',
-                'message' => $e->getMessage()
-            ], 409); // Conflict or 400 purely dynamically strictly based correctly smoothly functionally logically physically uniquely appropriately inherently structurally cleanly firmly securely inherently seamlessly.
-        } catch (Exception $e) {
-            Log::channel('audit')->error('Unforeseen logically distinctly naturally physical structural cleanly natively flawlessly strictly uniquely safely functionally correctly explicitly fundamentally explicitly caught effectively fundamentally correctly smoothly safely.', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+    /**
+     * Get user's available balance.
+     */
+    public function getBalance(): JsonResponse
+    {
+        $userId = Auth::id();
+        $balance = $this->bonusesFacade->getAvailableBalance($userId);
 
-            return response()->json([
-                'error' => 'internal_server_error',
-                'message' => 'An unexpected mapped bounded securely natively internal uniquely firmly successfully flawlessly fully uniquely thoroughly mapped seamlessly uniquely effectively naturally deeply cleanly reliably correctly smoothly safely.'
-            ], 500);
-        }
+        return response()->json([
+            'balance' => $balance,
+            'user_id' => $userId,
+        ]);
+    }
+
+    /**
+     * Get balance breakdown by type.
+     */
+    public function getBalanceByType(): JsonResponse
+    {
+        $userId = Auth::id();
+        $balanceByType = $this->bonusesFacade->getBalanceByType($userId);
+
+        return response()->json([
+            'balance_by_type' => $balanceByType,
+            'user_id' => $userId,
+        ]);
+    }
+
+    /**
+     * Get user's bonuses.
+     */
+    public function index(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $userId = Auth::id();
+        $status = $request->query('status') ? BonusStatus::fromString($request->query('status')) : null;
+
+        $bonuses = $this->bonusesFacade->getBonusesForOwner($userId, $status);
+
+        return response()->json([
+            'data' => array_map(fn ($bonus) => $bonus->toArray(), $bonuses),
+        ]);
+    }
+
+    /**
+     * Get specific bonus details.
+     */
+    public function show(string $id): JsonResponse
+    {
+        // TODO: Implement through facade - need add findById method
+        return response()->json(['message' => 'Not yet implemented'], 501);
+    }
+
+    /**
+     * Freeze a bonus.
+     */
+    public function freeze(string $id, \Illuminate\Http\Request $request): JsonResponse
+    {
+        $request->validate(['reason' => ['required', 'string']]);
+
+        $this->bonusesFacade->freezeBonus(
+            bonusId: $id,
+            reason: $request->input('reason'),
+            frozenBy: Auth::id()
+        );
+
+        return response()->json(['message' => 'Bonus frozen successfully']);
+    }
+
+    /**
+     * Unfreeze a bonus.
+     */
+    public function unfreeze(string $id): JsonResponse
+    {
+        $this->bonusesFacade->unfreezeBonus($id);
+
+        return response()->json(['message' => 'Bonus unfrozen successfully']);
+    }
+
+    /**
+     * Cancel a bonus.
+     */
+    public function cancel(string $id): JsonResponse
+    {
+        $this->bonusesFacade->cancelBonus($id);
+
+        return response()->json(['message' => 'Bonus cancelled successfully']);
+    }
+
+    /**
+     * Get expiring bonuses (admin).
+     */
+    public function getExpiring(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $days = (int) $request->query('days', 7);
+        $bonuses = $this->bonusesFacade->getExpiringBonuses($days);
+
+        return response()->json([
+            'data' => array_map(fn ($bonus) => $bonus->toArray(), $bonuses),
+        ]);
+    }
+
+    /**
+     * Get frozen bonuses (admin).
+     */
+    public function getFrozen(): JsonResponse
+    {
+        // TODO: Implement through facade
+        return response()->json(['message' => 'Not yet implemented'], 501);
+    }
+
+    /**
+     * Search bonuses (admin).
+     */
+    public function search(\Illuminate\Http\Request $request): JsonResponse
+    {
+        // TODO: Implement through facade
+        return response()->json(['message' => 'Not yet implemented'], 501);
+    }
+
+    /**
+     * Get analytics (admin).
+     */
+    public function getAnalytics(): JsonResponse
+    {
+        // TODO: Implement through facade
+        return response()->json(['message' => 'Not yet implemented'], 501);
+    }
+
+    /**
+     * Trigger bonus expiration (admin).
+     */
+    public function expireBonuses(): JsonResponse
+    {
+        $expiredCount = $this->bonusesFacade->expireBonuses();
+
+        return response()->json([
+            'expired_count' => $expiredCount,
+        ]);
+    }
+
+    /**
+     * Get bonuses by correlation ID (admin).
+     */
+    public function getByCorrelationId(string $correlationId): JsonResponse
+    {
+        // TODO: Implement through facade
+        return response()->json(['message' => 'Not yet implemented'], 501);
     }
 }

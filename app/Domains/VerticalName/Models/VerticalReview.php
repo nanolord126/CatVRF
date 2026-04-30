@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\VerticalName\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Models\Tenant;
+use App\Models\User;
 
 /**
  * VerticalReview — отзывы на товары вертикали VerticalName.
@@ -18,23 +17,22 @@ use Illuminate\Support\Str;
  *
  * CANON 2026 — Layer 1: Models.
  *
- * @property int         $id
- * @property string      $uuid
- * @property int         $tenant_id
- * @property int         $user_id
- * @property int         $vertical_item_id
- * @property int         $rating
+ * @property int $id
+ * @property string $uuid
+ * @property int $tenant_id
+ * @property int $user_id
+ * @property int $vertical_item_id
+ * @property int $rating
  * @property string|null $title
  * @property string|null $body
- * @property bool        $is_verified_purchase
- * @property bool        $is_published
- * @property array|null  $tags
- * @property array|null  $metadata
+ * @property bool $is_verified_purchase
+ * @property bool $is_published
+ * @property array|null $tags
+ * @property array|null $metadata
  * @property string|null $correlation_id
  */
 final class VerticalReview extends Model
 {
-
     protected $table = 'vertical_name_reviews';
 
     protected $fillable = [
@@ -62,28 +60,6 @@ final class VerticalReview extends Model
     ];
 
     /**
-     * Tenant scoping + автогенерация uuid/correlation_id.
-     */
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant_scoping', static function ($builder): void {
-            if (function_exists('tenant') && tenant() !== null) {
-                $builder->where('tenant_id', tenant()->id);
-            }
-        });
-
-        static::creating(static function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = Str::uuid()->toString();
-            }
-
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = Str::uuid()->toString();
-            }
-        });
-    }
-
-    /**
      * Товар, к которому относится отзыв.
      */
     public function verticalItem(): BelongsTo
@@ -100,7 +76,7 @@ final class VerticalReview extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(
-            \App\Models\User::class,
+            User::class,
             'user_id',
         );
     }
@@ -111,7 +87,7 @@ final class VerticalReview extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(
-            \App\Models\Tenant::class,
+            Tenant::class,
             'tenant_id',
         );
     }
@@ -138,5 +114,27 @@ final class VerticalReview extends Model
     public function isValidRating(): bool
     {
         return $this->rating >= 1 && $this->rating <= 5;
+    }
+
+    /**
+     * Tenant scoping + автогенерация uuid/correlation_id.
+     */
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant_scoping', static function ($builder): void {
+            if (function_exists('tenant') && tenant() !== null) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(static function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = Str::uuid()->toString();
+            }
+
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = Str::uuid()->toString();
+            }
+        });
     }
 }

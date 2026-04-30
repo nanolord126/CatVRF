@@ -31,26 +31,26 @@ interface PropertyRepositoryInterface
      */
     public function searchPublic(
         ?PropertyTypeEnum $type,
-        ?int              $minPriceKopecks,
-        ?int              $maxPriceKopecks,
-        ?float            $minArea,
-        ?int              $rooms,
-        ?float            $lat,
-        ?float            $lon,
-        ?int              $radiusMeters,
-        int               $perPage,
-        int               $page,
+        ?int $minPriceKopecks,
+        ?int $maxPriceKopecks,
+        ?float $minArea,
+        ?int $rooms,
+        ?float $lat,
+        ?float $lon,
+        ?int $radiusMeters,
+        int $perPage,
+        int $page,
     ): Collection;
 
     public function countSearchPublic(
         ?PropertyTypeEnum $type,
-        ?int              $minPriceKopecks,
-        ?int              $maxPriceKopecks,
-        ?float            $minArea,
-        ?int              $rooms,
-        ?float            $lat,
-        ?float            $lon,
-        ?int              $radiusMeters,
+        ?int $minPriceKopecks,
+        ?int $maxPriceKopecks,
+        ?float $minArea,
+        ?int $rooms,
+        ?float $lat,
+        ?float $lon,
+        ?int $radiusMeters,
     ): int;
 
     public function save(Property $property): void;

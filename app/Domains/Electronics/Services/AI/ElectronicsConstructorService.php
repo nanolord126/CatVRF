@@ -1,11 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Services\AI;
 
+use Carbon\CarbonImmutable;
+
 use Carbon\Carbon;
-
-
-
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use App\Services\FraudControlService;
@@ -17,10 +18,12 @@ use Illuminate\Support\Str;
 final readonly class ElectronicsConstructorService
 {
     public function __construct(
-        private FraudControlService   $fraud,
-        private RecommendationService  $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private Cache                  $cache, private readonly LoggerInterface $logger, private readonly Guard $guard
+        private readonly FraudControlService $fraud,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly Cache $cache,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
     ) {}
 
     /**
@@ -33,9 +36,9 @@ final readonly class ElectronicsConstructorService
 
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'electronics_ai_constructor', amount: 0, correlationId: $correlationId ?? '');
 
-        $cacheKey = 'user_ai_designs:Electronics:' . $userId . ':' . md5(serialize($payload));
+        $cacheKey = 'user_ai_designs:Electronics:'.$userId.':'.md5(serialize($payload));
 
-        return $this->cache->remember($cacheKey, Carbon::now()->addHour(), function () use ($payload, $userId, $correlationId) {
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHour(), function () use ($payload, $userId, $correlationId) {
             // Получаем профиль вкусов пользователя
             $taste = $this->tasteAnalyzer->getProfile($userId);
 
@@ -45,7 +48,7 @@ final readonly class ElectronicsConstructorService
             // Получаем рекомендации
             $recommendations = $this->recommendation->getForVertical('Electronics', $fullProfile, $userId);
 
-            $this->logger->info('Electronics AI constructor used', [
+            $this->logger->$this->logger->info('Electronics AI constructor used', [
                 'user_id'        => $userId,
                 'correlation_id' => $correlationId,
                 'vertical'       => 'Electronics',

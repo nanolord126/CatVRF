@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +13,7 @@ use Illuminate\Support\Str;
 final class TaxiDriverAnalytics extends Model
 {
     use HasFactory;
+    use TenantScoped;
 
     protected $table = 'taxi_driver_analytics';
 
@@ -39,7 +43,7 @@ final class TaxiDriverAnalytics extends Model
         'average_response_time_seconds',
         'average_pickup_time_minutes',
         'correlation_id',
-        'metadata'
+        'metadata',
     ];
 
     protected $casts = [
@@ -68,21 +72,6 @@ final class TaxiDriverAnalytics extends Model
     ];
 
     protected $hidden = ['metadata'];
-
-    protected static function booted(): void
-    {
-        static::creating(function (TaxiDriverAnalytics $analytics) {
-            $analytics->uuid = $analytics->uuid ?? (string) Str::uuid();
-            $analytics->tenant_id = $analytics->tenant_id ?? (tenant()->id ?? 1);
-            $analytics->correlation_id = $analytics->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            if (tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
 
     /**
      * Отношения.
@@ -175,5 +164,20 @@ final class TaxiDriverAnalytics extends Model
         }
 
         return ($this->online_minutes / $totalMinutesInDay) * 100;
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (TaxiDriverAnalytics $analytics) {
+            $analytics->uuid = $analytics->uuid ?? (string) Str::uuid();
+            $analytics->tenant_id = $analytics->tenant_id ?? (tenant()->id ?? 1);
+            $analytics->correlation_id = $analytics->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            if (tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

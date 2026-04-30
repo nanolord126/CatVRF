@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Analytics\Infrastructure\Providers;
 
-use Illuminate\Config\Repository as ConfigRepository;
-
 use App\Domains\Analytics\Domain\Interfaces\AnalyticsEventRepositoryInterface;
 use App\Domains\Analytics\Domain\Interfaces\FraudScoringInterface;
 use App\Domains\Analytics\Domain\Interfaces\VectorSearchInterface;
@@ -14,6 +12,8 @@ use App\Domains\Analytics\Infrastructure\Search\TypesenseVectorSearch;
 use App\Domains\Analytics\Infrastructure\Services\MlFraudScoringService;
 use Illuminate\Support\ServiceProvider;
 use Typesense\Client;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
 
 /**
  * Class AnalyticsServiceProvider
@@ -28,9 +28,8 @@ use Typesense\Client;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\Analytics\Infrastructure\Providers
+ * @see FraudControlService
+ * @see AuditService
  */
 final class AnalyticsServiceProvider extends ServiceProvider
 {

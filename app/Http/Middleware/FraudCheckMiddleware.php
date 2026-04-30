@@ -2,18 +2,21 @@
 
 namespace App\Http\Middleware;
 
+use Closure;
+use Illuminate\Http\Request;
 use Illuminate\Log\LogManager;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 final class FraudCheckMiddleware
 {
-
     public function __construct(
-            private readonly FraudControlService $fraud,
-            private readonly LogManager $logger,
-            private readonly Guard $guard,
-            private readonly ResponseFactory $response,
+        private readonly FraudControlService $fraud,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
     )
     {
         // Implementation required by canon

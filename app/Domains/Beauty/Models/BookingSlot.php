@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Models;
 
@@ -6,11 +8,15 @@ use App\Domains\Common\Models\BaseDomainModel;
 use App\Domains\Common\Traits\TenantAware;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Domains\Order\Models\Order;
+use App\Models\User;
+use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
 final class BookingSlot extends BaseDomainModel
 {
-    use HasFactory, TenantAware;
+    use HasFactory;
+    use TenantAware;
 
     protected $table = 'beauty_booking_slots';
 
@@ -48,22 +54,6 @@ final class BookingSlot extends BaseDomainModel
         'is_active' => 'boolean',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            $query->where('tenant_id', tenant()->id);
-        });
-
-        static::creating(function ($model) {
-            if (!$model->uuid) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
-            }
-            if (!$model->correlation_id) {
-                $model->correlation_id = \Illuminate\Support\Str::uuid()->toString();
-            }
-        });
-    }
-
     public function salon(): BelongsTo
     {
         return $this->belongsTo(Salon::class, 'salon_id');
@@ -81,12 +71,12 @@ final class BookingSlot extends BaseDomainModel
 
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'customer_id');
+        return $this->belongsTo(User::class, 'customer_id');
     }
 
     public function order(): BelongsTo
     {
-        return $this->belongsTo(\App\Domains\Order\Models\Order::class, 'order_id');
+        return $this->belongsTo(Order::class, 'order_id');
     }
 
     public function scopeAvailable($query)
@@ -117,7 +107,7 @@ final class BookingSlot extends BaseDomainModel
     public function scopeExpired($query)
     {
         return $query->where('status', 'held')
-            ->where('expires_at', '<', now());
+            ->where('expires_at', '<', CarbonImmutable::now());
     }
 
     public function isAvailable(): bool
@@ -142,10 +132,26 @@ final class BookingSlot extends BaseDomainModel
 
     public function getHoldDurationMinutes(): int
     {
-        if (!$this->held_at || !$this->expires_at) {
+        if (! $this->held_at || ! $this->expires_at) {
             return 0;
         }
 
         return $this->held_at->diffInMinutes($this->expires_at);
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            $query->where('tenant_id', tenant()->id);
+        });
+
+        self::creating(function ($model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
+            }
+            if (! $model->correlation_id) {
+                $model->correlation_id = Str::uuid()->toString();
+            }
+        });
     }
 }

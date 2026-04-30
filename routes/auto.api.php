@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Auto\RideController;
 use App\Domains\Auto\Http\Controllers\AIDiagnosticsController;
@@ -15,10 +17,10 @@ Route::middleware(['api', 'throttle:60,1'])->prefix('api/v1/auto')->group(functi
     // Driver search/listings
     Route::get('/drivers', [RideController::class, 'listDrivers'])
         ->name('api.auto.drivers.list');
-    
+
     Route::get('/drivers/{driver}', [RideController::class, 'showDriver'])
         ->name('api.auto.drivers.show');
-    
+
     // Pricing estimation
     Route::post('/rides/estimate', [RideController::class, 'estimatePrice'])
         ->name('api.auto.rides.estimate');
@@ -30,18 +32,18 @@ Route::middleware(['api', 'auth:sanctum', 'tenant', 'throttle:60,1'])->prefix('a
     Route::post('/rides', [RideController::class, 'store'])
         ->name('api.auto.rides.store')
         ->middleware('throttle:50,1');
-    
+
     Route::get('/rides/{ride}', [RideController::class, 'show'])
         ->name('api.auto.rides.show');
-    
+
     Route::post('/rides/{ride}/complete', [RideController::class, 'complete'])
         ->name('api.auto.rides.complete')
         ->middleware('throttle:30,1');
-    
+
     Route::post('/rides/{ride}/cancel', [RideController::class, 'cancel'])
         ->name('api.auto.rides.cancel')
         ->middleware('throttle:30,1');
-    
+
     Route::get('/rides', [RideController::class, 'listUserRides'])
         ->name('api.auto.rides.list');
 

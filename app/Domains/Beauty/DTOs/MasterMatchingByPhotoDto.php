@@ -6,6 +6,7 @@ namespace App\Domains\Beauty\DTOs;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 
 final readonly class MasterMatchingByPhotoDto
 {
@@ -14,12 +15,12 @@ final readonly class MasterMatchingByPhotoDto
         public ?int $businessGroupId,
         public int $userId,
         public UploadedFile $photo,
-        public ?string $serviceType = null,
-        public ?string $preferredGender = null,
-        public ?float $maxDistance = null,
-        public ?float $minRating = null,
-        public ?int $priceMin = null,
-        public ?int $priceMax = null,
+        public ?string $serviceType,
+        public ?string $preferredGender,
+        public ?float $maxDistance,
+        public ?float $minRating,
+        public ?int $priceMin,
+        public ?int $priceMax,
         public string $correlationId,
         public ?string $idempotencyKey = null,
         public ?bool $isB2B = null,
@@ -40,7 +41,7 @@ final readonly class MasterMatchingByPhotoDto
             minRating: $request->input('min_rating') ? (float) $request->input('min_rating') : null,
             priceMin: $request->input('price_min') ? (int) $request->input('price_min') : null,
             priceMax: $request->input('price_max') ? (int) $request->input('price_max') : null,
-            correlationId: $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid(),
+            correlationId: $request->header('X-Correlation-ID') ?? (string) Str::uuid(),
             idempotencyKey: $request->header('X-Idempotency-Key'),
             isB2B: $request->has('inn') && $request->has('business_card_id'),
         );

@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Advertising\Domain\Events\AdImpressionRegistered;
 use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Log\LogManager;
-
 
 /**
  * Class DebitAdCampaignBudget
@@ -16,15 +17,13 @@ use Illuminate\Log\LogManager;
  * Event listener handling domain event side effects.
  * Runs asynchronously via queue when ShouldQueue is implemented.
  * All listeners maintain correlation_id chain.
- *
- * @package App\Listeners
  */
 final class DebitAdCampaignBudget implements ShouldQueue
 {
-    public function __construct(private readonly WalletService $walletService,
-        private readonly LogManager $logger,
-    )
-    {
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly WalletService $walletService,
+    ) {
         // Implementation required by canon
     }
 
@@ -45,7 +44,7 @@ final class DebitAdCampaignBudget implements ShouldQueue
                 correlationId: $event->correlationId
             );
 
-            $this->logger->channel('audit')->info('Ad campaign budget debited', [
+            $this->logger->channel('audit')->$this->logger->info('Ad campaign budget debited', [
                 'campaign_id' => $event->campaignId,
                 'amount' => $event->cost,
                 'correlation_id' => $event->correlationId,

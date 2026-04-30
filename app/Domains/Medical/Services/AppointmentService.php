@@ -2,6 +2,8 @@
 
 namespace App\Domains\Medical\Services;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
 
 
 use Illuminate\Contracts\Auth\Guard;
@@ -12,18 +14,17 @@ use Psr\Log\LoggerInterface;
 final readonly class AppointmentService
 {
 
-    public function __construct(
-        private WalletService $wallet,
-        private FraudControlService $fraud,
-        private RateLimiterService $rateLimiter,
-        private MedicalInventoryService $inventory,
-        private PaymentFraudMLHelper $paymentFraudML,
-        private PaymentEngine $paymentEngine,
-        private AtomicWalletService $atomicWallet,
+    public function __construct(private readonly BusDispatcher $bus,
+        private readonly WalletService $wallet,
+        private readonly FraudControlService $fraud,
+        private readonly RateLimiterService $rateLimiter,
+        private readonly MedicalInventoryService $inventory,
+        private readonly PaymentFraudMLHelper $paymentFraudML,
+        private readonly PaymentEngine $paymentEngine,
+        private readonly AtomicWalletService $atomicWallet,
         private readonly \Illuminate\Database\DatabaseManager $db,
         private readonly LoggerInterface $logger,
-        private readonly Guard $guard
-    ) {}
+        private readonly Guard $guard) {}
 
         /**
          * Создание новой записи на прием.
@@ -111,14 +112,14 @@ final readonly class AppointmentService
                         // $    this->wallet->holdForAppointment($appointment, $prepaymentNeeded);
                             $th
                             throw $e;
-                        }is->logger->info('Prepayment requested for appointment', [
+                        }is->logger->$this->logger->info('Prepayment requested for appointment', [
                             'appointment_id' => $appointment->id,
                             'amount' => $prepaymentNeeded,
                             'correlation_id' => $correlationId
                         ]);
                     }
 
-                    $this->logger->info('Medical appointment created successfully', [
+                    $this->logger->$this->logger->info('Medical appointment created successfully', [
                         'appointment_id' => $appointment->id,
                         'doctor_id' => $doctor->id,
                         'service_id' => $service->id,
@@ -161,9 +162,9 @@ final readonly class AppointmentService
                     );
 
                     // 3. Отправка ивента через транзакцию
-                    // \App\Domains\Medical\Events\AppointmentCompleted::dispatch($appointment, $correlationId);
+                    // \App\Domains\Medical\Events\AppointmentCompleted::$this->bus->dispatch($appointment, $correlationId);
 
-                    $this->logger->info('Medical appointment completed and stock deducted', [
+                    $this->logger->$this->logger->info('Medical appointment completed and stock deducted', [
                         'appointment_id' => $appointment->id,
                         'correlation_id' => $correlationId
                     ]);
@@ -197,7 +198,7 @@ final readonly class AppointmentService
                     // Возврат расходников в общий сток
                     $this->inventory->releaseForService((int)$appointment->service_id, 1, $correlationId);
 
-                    $this->logger->info('Medical appointment cancelled', [
+                    $this->logger->$this->logger->info('Medical appointment cancelled', [
                         'appointment_id' => $appointment->id,
                         'reason' => $reason,
                         'correlation_id' => $correlationId

@@ -1,12 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\B2B;
+
+use Illuminate\Support\Collection;
 
 use App\Http\Controllers\Controller;
 use App\Services\InventoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-
 use Illuminate\Support\Str;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Routing\ResponseFactory;
@@ -17,7 +20,7 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 final class B2BStockController extends Controller
 {
     public function __construct(
-        private InventoryService $inventory,
+        private readonly InventoryService $inventory,
         private readonly DatabaseManager $db,
         private readonly ResponseFactory $response,
     ) {}
@@ -56,7 +59,7 @@ final class B2BStockController extends Controller
 
         $rows = $query->orderBy('w.id')->orderBy('p.name')->paginate(100);
 
-        $items = collect($rows->items())->map(fn(object $r): array => [
+        $items = new Collection($rows->items())->map(fn (object $r): array => [
             'warehouse_id'            => $r->warehouse_id,
             'warehouse_name'          => $r->warehouse_name,
             'product_id'              => $r->product_id,
@@ -111,14 +114,14 @@ final class B2BStockController extends Controller
 
         return $this->response->json([
             'success'        => true,
-            'data'           => $rows->map(fn(object $r): array => [
+            'data'           => $rows->map(fn (object $r): array => [
                 'warehouse_id'   => $r->warehouse_id,
                 'warehouse_name' => $r->warehouse_name,
                 'quantity'       => $r->quantity,
                 'reserved'       => $r->reserved,
                 'available'      => max(0, $r->available),
             ]),
-            'total_available'=> (int) $rows->sum(fn(object $r) => max(0, $r->available)),
+            'total_available' => (int) $rows->sum(fn (object $r) => max(0, $r->available)),
             'correlation_id' => $correlationId,
         ]);
     }

@@ -1,7 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\PromoCampaigns\Filament\Resources;
-
 
 use App\Domains\PromoCampaigns\Models\PromoCampaign;
 use Filament\Forms;
@@ -9,6 +10,10 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\PromoCampaigns\Filament\Resources\PromoCampaignResource\Pages\CreatePromoCampaign;
+use App\Domains\PromoCampaigns\Filament\Resources\PromoCampaignResource\Pages\EditPromoCampaign;
+use App\Domains\PromoCampaigns\Filament\Resources\PromoCampaignResource\Pages\ListPromoCampaigns;
+use Illuminate\Support\Str;
 
 final class PromoCampaignResource extends Resource
 {
@@ -37,7 +42,7 @@ final class PromoCampaignResource extends Resource
                 ->default(fn (): ?int => function_exists('tenant') && tenant() ? tenant()->id : null),
 
             Forms\Components\Hidden::make('correlation_id')
-                ->default(fn (): string => \Illuminate\Support\Str::uuid()->toString()),
+                ->default(fn (): string => Str::uuid()->toString()),
         ]);
     }
 
@@ -90,9 +95,9 @@ final class PromoCampaignResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\PromoCampaigns\Filament\Resources\PromoCampaignResource\Pages\ListPromoCampaigns::route('/'),
-            'create' => \App\Domains\PromoCampaigns\Filament\Resources\PromoCampaignResource\Pages\CreatePromoCampaign::route('/create'),
-            'edit' => \App\Domains\PromoCampaigns\Filament\Resources\PromoCampaignResource\Pages\EditPromoCampaign::route('/{record}/edit'),
+            'index' => ListPromoCampaigns::route('/'),
+            'create' => CreatePromoCampaign::route('/create'),
+            'edit' => EditPromoCampaign::route('/{record}/edit'),
         ];
     }
 }

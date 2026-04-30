@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Beauty;
 
@@ -21,42 +23,24 @@ final class BeautyImageConstructorServiceTest extends TestCase
     use RefreshDatabase;
 
     private BeautyImageConstructorService $service;
+
     private RecommendationService $recommendation;
+
     private InventoryService $inventory;
+
     private UserTasteAnalyzerService $tasteAnalyzer;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
+
     private LogManager $logger;
+
     private DatabaseManager $db;
+
     private StorageFactory $storage;
+
     private CacheRepository $cache;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->recommendation = $this->createMock(RecommendationService::class);
-        $this->inventory = $this->createMock(InventoryService::class);
-        $this->tasteAnalyzer = $this->createMock(UserTasteAnalyzerService::class);
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->audit = $this->createMock(AuditService::class);
-        $this->logger = $this->createMock(LogManager::class);
-        $this->db = $this->app->make(DatabaseManager::class);
-        $this->storage = $this->createMock(StorageFactory::class);
-        $this->cache = $this->app->make(CacheRepository::class);
-
-        $this->service = new BeautyImageConstructorService(
-            $this->recommendation,
-            $this->inventory,
-            $this->tasteAnalyzer,
-            $this->fraud,
-            $this->audit,
-            $this->logger,
-            $this->db,
-            $this->storage,
-            $this->cache
-        );
-    }
 
     public function test_analyze_photo_and_recommend_returns_success(): void
     {
@@ -143,5 +127,32 @@ final class BeautyImageConstructorServiceTest extends TestCase
         $this->expectExceptionMessage('Invalid file type for Beauty Scan.');
 
         $this->service->analyzePhotoAndRecommend($photo, 1, 'test-correlation-id');
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->recommendation = $this->createMock(RecommendationService::class);
+        $this->inventory = $this->createMock(InventoryService::class);
+        $this->tasteAnalyzer = $this->createMock(UserTasteAnalyzerService::class);
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->audit = $this->createMock(AuditService::class);
+        $this->logger = $this->createMock(LogManager::class);
+        $this->db = $this->app->make(DatabaseManager::class);
+        $this->storage = $this->createMock(StorageFactory::class);
+        $this->cache = $this->app->make(CacheRepository::class);
+
+        $this->service = new BeautyImageConstructorService(
+            $this->recommendation,
+            $this->inventory,
+            $this->tasteAnalyzer,
+            $this->fraud,
+            $this->audit,
+            $this->logger,
+            $this->db,
+            $this->storage,
+            $this->cache
+        );
     }
 }

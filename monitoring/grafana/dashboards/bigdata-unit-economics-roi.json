@@ -1,0 +1,132 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Unit Economics — Cost per 1M Events",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "catvrf_bigdata_cost_unit_cost_per_1m_events",
+          "legendFormat": "{{context}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } }
+    },
+    {
+      "title": "Unit Economics — Cost per Query",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "catvrf_bigdata_cost_unit_cost_per_query",
+          "legendFormat": "{{context}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } }
+    },
+    {
+      "title": "Cost-to-GMV Ratio (Target ≤ 5%)",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "avg(catvrf_bigdata_cost_unit_cost_to_gmv_ratio) * 100",
+          "legendFormat": "Avg Cost/GMV %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 3 },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 8 }
+            ]
+          },
+          "max": 15
+        }
+      }
+    },
+    {
+      "title": "ROI Multiplier by Context",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "targets": [
+        {
+          "expr": "catvrf_bigdata_cost_unit_cost_to_gmv_ratio",
+          "legendFormat": "{{context}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.03 },
+              { "color": "green", "value": 0.05 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "CLV Training ROI (Cost vs GMV Uplift)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        {
+          "expr": "catvrf_bigdata_cost_clickhouse_total_cost_usd{context=\"clv_training\"}",
+          "legendFormat": "CLV Training Cost",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } }
+    },
+    {
+      "title": "Unit Cost Summary Table",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "catvrf_bigdata_cost_unit_cost_per_1m_events",
+          "legendFormat": "{{context}}",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "expr": "catvrf_bigdata_cost_unit_cost_per_query",
+          "legendFormat": "{{context}}",
+          "refId": "B",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["bigdata", "finops", "unit-economics", "roi"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30d", "to": "now" },
+  "title": "Unit Economics & ROI Analytics",
+  "uid": "bigdata-unit-economics-roi",
+  "version": 1
+}

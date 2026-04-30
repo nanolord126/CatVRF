@@ -7,14 +7,19 @@ namespace App\Domains\Analytics\Filament\Resources;
 use App\Domains\Analytics\Models\AnalyticsEvent;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\Analytics\Filament\Resources\AnalyticsEventResource\Pages\CreateAnalyticsEvent;
+use App\Domains\Analytics\Filament\Resources\AnalyticsEventResource\Pages\EditAnalyticsEvent;
+use App\Domains\Analytics\Filament\Resources\AnalyticsEventResource\Pages\ListAnalyticsEvents;
 
-final class AnalyticsEventResource extends Resource
+final class AnalyticsEventResource extends BaseOptimizedResource
 {
     protected static ?string $model = AnalyticsEvent::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+
     protected static ?string $navigationGroup = 'Analytics';
 
     public static function form(Form $form): Form
@@ -45,9 +50,17 @@ final class AnalyticsEventResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Analytics\Filament\Resources\AnalyticsEventResource\Pages\ListAnalyticsEvents::route('/'),
-            'create' => \App\Domains\Analytics\Filament\Resources\AnalyticsEventResource\Pages\CreateAnalyticsEvent::route('/create'),
-            'edit' => \App\Domains\Analytics\Filament\Resources\AnalyticsEventResource\Pages\EditAnalyticsEvent::route('/{record}/edit'),
+            'index' => ListAnalyticsEvents::route('/'),
+            'create' => CreateAnalyticsEvent::route('/create'),
+            'edit' => EditAnalyticsEvent::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Analytics
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

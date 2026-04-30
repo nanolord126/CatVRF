@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Music\MusicReviewResource\Pages;
 
@@ -6,18 +8,6 @@ use Filament\Resources\Pages\ListRecords;
 
 final class ListMusicReviews extends ListRecords
 {
-
-    protected static string $resource = MusicReviewResource::class;
-
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\CreateAction::make()
-                    ->label('Add Review Manually')
-                    ->icon('heroicon-o-plus'),
-            ];
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -33,6 +23,18 @@ final class ListMusicReviews extends ListRecords
      */
     private const CACHE_TTL = 3600;
 
+
+    protected static string $resource = MusicReviewResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make()
+                ->label('Add Review Manually')
+                ->icon('heroicon-o-plus'),
+        ];
+    }
+
     /**
      * Get the component identifier for logging and audit purposes.
      *
@@ -40,15 +42,15 @@ final class ListMusicReviews extends ListRecords
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**
      * Handle graceful error recovery for the component.
      * Logs the error and determines if retry is possible.
      *
-     * @param \Throwable $exception The caught exception
-     * @param int $attempt Current attempt number
+     * @param  \Throwable  $exception  The caught exception
+     * @param  int  $attempt  Current attempt number
      * @return bool Whether the operation should be retried
      */
     private function handleError(\Throwable $exception, int $attempt = 1): bool
@@ -59,5 +61,4 @@ final class ListMusicReviews extends ListRecords
 
         return true;
     }
-
 }

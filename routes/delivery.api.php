@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use App\Domains\Delivery\Http\Controllers\DeliveryController;
 use Illuminate\Support\Facades\Route;
@@ -13,7 +15,7 @@ Route::middleware(['api', 'throttle:60,1'])->prefix('api/v1/delivery')->group(fu
     // List deliveries (with filters)
     Route::get('deliveries', [DeliveryController::class, 'index'])
         ->name('delivery.deliveries.index');
-    
+
     // Get delivery details
     Route::get('deliveries/{delivery}', [DeliveryController::class, 'show'])
         ->name('delivery.deliveries.show');
@@ -25,12 +27,12 @@ Route::middleware(['api', 'auth:sanctum', 'tenant', 'throttle:60,1'])->prefix('a
     Route::post('deliveries', [DeliveryController::class, 'store'])
         ->name('delivery.deliveries.store')
         ->middleware('throttle:30,1');
-    
+
     // Update delivery status
     Route::put('deliveries/{delivery}', [DeliveryController::class, 'update'])
         ->name('delivery.deliveries.update')
         ->middleware('throttle:30,1');
-    
+
     // Cancel delivery
     Route::delete('deliveries/{delivery}', [DeliveryController::class, 'destroy'])
         ->name('delivery.deliveries.destroy')

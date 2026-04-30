@@ -66,7 +66,7 @@ final class AppointmentResource extends Resource
                     Forms\Components\TextInput::make('price_kopecks')
                         ->label('Цена (коп)')
                         ->disabled()
-                        ->formatStateUsing(fn ($state) => number_format((int) $state / 100, 2) . ' ₽'),
+                        ->formatStateUsing(fn ($state) => number_format((int) $state / 100, 2).' ₽'),
 
                     Forms\Components\Textarea::make('client_comment')
                         ->label('Комментарий клиента')
@@ -111,18 +111,41 @@ final class AppointmentResource extends Resource
 
                 Tables\Columns\TextColumn::make('price_kopecks')
                     ->label('Цена')
-                    ->formatStateUsing(fn ($state) => number_format((int) $state / 100, 0, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state) => number_format((int) $state / 100, 0, '.', ' ').' ₽')
                     ->sortable(),
 
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\ViewColumn::make('status')
                     ->label('Статус')
-                    ->colors([
-                        'warning'  => Appointment::STATUS_PENDING,
-                        'info'     => Appointment::STATUS_CONFIRMED,
-                        'primary'  => Appointment::STATUS_IN_PROGRESS,
-                        'success'  => Appointment::STATUS_COMPLETED,
-                        'danger'   => Appointment::STATUS_CANCELLED,
-                        'gray'     => Appointment::STATUS_NO_SHOW,
+                    ->view('components.status-badge')
+                    ->viewData(fn ($record): array => [
+                        'status' => $record->status,
+                        'label' => match ($record->status) {
+                            Appointment::STATUS_PENDING => 'Ожидает',
+                            Appointment::STATUS_CONFIRMED => 'Подтверждена',
+                            Appointment::STATUS_IN_PROGRESS => 'В процессе',
+                            Appointment::STATUS_COMPLETED => 'Завершена',
+                            Appointment::STATUS_CANCELLED => 'Отменена',
+                            Appointment::STATUS_NO_SHOW => 'Неявка',
+                            default => ucfirst($record->status),
+                        },
+                        'color' => match ($record->status) {
+                            Appointment::STATUS_PENDING => 'warning',
+                            Appointment::STATUS_CONFIRMED => 'info',
+                            Appointment::STATUS_IN_PROGRESS => 'primary',
+                            Appointment::STATUS_COMPLETED => 'success',
+                            Appointment::STATUS_CANCELLED => 'danger',
+                            Appointment::STATUS_NO_SHOW => 'secondary',
+                            default => 'secondary',
+                        },
+                        'icon' => match ($record->status) {
+                            Appointment::STATUS_PENDING => 'clock',
+                            Appointment::STATUS_CONFIRMED => 'calendar',
+                            Appointment::STATUS_IN_PROGRESS => 'fire',
+                            Appointment::STATUS_COMPLETED => 'check-badge',
+                            Appointment::STATUS_CANCELLED => 'x-circle',
+                            Appointment::STATUS_NO_SHOW => 'users',
+                            default => null,
+                        },
                     ]),
             ])
             ->defaultSort('starts_at', 'desc')
@@ -161,4 +184,3 @@ final class AppointmentResource extends Resource
         ];
     }
 }
-

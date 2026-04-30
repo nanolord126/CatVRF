@@ -11,24 +11,24 @@ use App\Domains\Wallet\Services\AtomicWalletService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use Carbon\CarbonImmutable;
 
 /**
  * PaymentEngine - Orchestrator for payment operations.
  *
  * Coordinates payment flow: idempotency check → fraud check → wallet hold → gateway call → capture.
  * Gateway calls are OUTSIDE DB transactions to prevent connection holding.
- *
- * @package App\Services\Payment
  */
 final readonly class PaymentEngine
 {
     public function __construct(
-        private IdempotencyService $idempotency,
-        private PaymentGatewayService $gateway,
-        private AtomicWalletService $wallet,
-        private FraudControlService $fraud,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
+        private readonly IdempotencyService $idempotency,
+        private readonly PaymentGatewayService $gateway,
+        private readonly AtomicWalletService $wallet,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -41,16 +41,10 @@ final readonly class PaymentEngine
      * 4. Gateway call (OUTSIDE transaction)
      * 5. Update payment record with gateway response
      *
-     * @param int $amount Amount in kopecks
-     * @param int $tenantId
-     * @param int $userId
-     * @param string $provider Gateway provider (tinkoff, yookassa, sber)
-     * @param string $paymentMethod Payment method (card, sbp)
-     * @param bool $hold Whether to hold amount in wallet
-     * @param string|null $idempotencyKey
-     * @param string|null $correlationId
-     * @param array $metadata
-     * @return PaymentTransaction
+     * @param  int  $amount  Amount in kopecks
+     * @param  string  $provider  Gateway provider (tinkoff, yookassa, sber)
+     * @param  string  $paymentMethod  Payment method (card, sbp)
+     * @param  bool  $hold  Whether to hold amount in wallet
      */
     public function initPayment(
         int $amount,
@@ -66,7 +60,7 @@ final readonly class PaymentEngine
         $correlationId = $correlationId ?? Str::uuid()->toString();
         $idempotencyKey = $idempotencyKey ?? Str::uuid()->toString();
 
-        $this->logger->info('PaymentEngine: initPayment started', [
+        $this->logger->$this->logger->info('PaymentEngine: initPayment started', [
             'correlation_id' => $correlationId,
             'idempotency_key' => $idempotencyKey,
             'amount' => $amount,
@@ -90,7 +84,7 @@ final readonly class PaymentEngine
         );
 
         if ($existingResponse !== null) {
-            $this->logger->info('PaymentEngine: idempotency hit', [
+            $this->logger->$this->logger->info('PaymentEngine: idempotency hit', [
                 'correlation_id' => $correlationId,
                 'idempotency_key' => $idempotencyKey,
             ]);
@@ -163,7 +157,7 @@ final readonly class PaymentEngine
                 );
 
                 $payment->status = 'authorized';
-                $payment->authorized_at = now();
+                $payment->authorized_at = CarbonImmutable::now();
                 $payment->save();
             }
 
@@ -195,7 +189,7 @@ final readonly class PaymentEngine
                 response: ['payment_uuid' => $payment->uuid],
             );
 
-            $this->logger->info('PaymentEngine: initPayment successful', [
+            $this->logger->$this->logger->info('PaymentEngine: initPayment successful', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $payment->id,
                 'provider_payment_id' => $payment->provider_payment_id,
@@ -209,7 +203,7 @@ final readonly class PaymentEngine
                     $this->wallet->credit(
                         walletId: $payment->wallet_id,
                         amount: $amount,
-                        type: \App\Domains\Wallet\Enums\BalanceTransactionType::RELEASE_HOLD,
+                        type: BalanceTransactionType::RELEASE_HOLD,
                         correlationId: $correlationId,
                         sourceType: 'payment',
                         sourceId: $payment->id,
@@ -241,11 +235,6 @@ final readonly class PaymentEngine
      * 1. Validate payment status
      * 2. Gateway call (OUTSIDE transaction)
      * 3. DB transaction: debit wallet + update payment status
-     *
-     * @param string $paymentUuid
-     * @param int|null $amount
-     * @param string|null $correlationId
-     * @return PaymentTransaction
      */
     public function capture(
         string $paymentUuid,
@@ -263,10 +252,10 @@ final readonly class PaymentEngine
         $captureAmount = $amount ?? $payment->hold_amount;
 
         if ($captureAmount > $payment->hold_amount) {
-            throw new \RuntimeException("Capture amount exceeds hold amount");
+            throw new \RuntimeException('Capture amount exceeds hold amount');
         }
 
-        $this->logger->info('PaymentEngine: capture started', [
+        $this->logger->$this->logger->info('PaymentEngine: capture started', [
             'correlation_id' => $correlationId,
             'payment_uuid' => $paymentUuid,
             'amount' => $captureAmount,
@@ -290,7 +279,7 @@ final readonly class PaymentEngine
             $this->wallet->credit(
                 walletId: $payment->wallet_id,
                 amount: $payment->hold_amount,
-                type: \App\Domains\Wallet\Enums\BalanceTransactionType::RELEASE_HOLD,
+                type: BalanceTransactionType::RELEASE_HOLD,
                 correlationId: $correlationId,
                 sourceType: 'payment',
                 sourceId: $payment->id,
@@ -299,7 +288,7 @@ final readonly class PaymentEngine
             $this->wallet->debit(
                 walletId: $payment->wallet_id,
                 amount: $captureAmount,
-                type: \App\Domains\Wallet\Enums\BalanceTransactionType::WITHDRAWAL,
+                type: BalanceTransactionType::WITHDRAWAL,
                 correlationId: $correlationId,
                 sourceType: 'payment',
                 sourceId: $payment->id,
@@ -307,12 +296,12 @@ final readonly class PaymentEngine
 
             $payment->update([
                 'status' => 'captured',
-                'captured_at' => now(),
+                'captured_at' => CarbonImmutable::now(),
                 'captured_amount' => $captureAmount,
                 'hold_amount' => 0,
             ]);
 
-            $this->logger->info('PaymentEngine: capture successful', [
+            $this->logger->$this->logger->info('PaymentEngine: capture successful', [
                 'correlation_id' => $correlationId,
                 'payment_uuid' => $payment->uuid,
             ]);
@@ -328,12 +317,6 @@ final readonly class PaymentEngine
      * 1. Validate payment status
      * 2. Gateway call (OUTSIDE transaction)
      * 3. DB transaction: credit wallet + update payment status
-     *
-     * @param string $paymentUuid
-     * @param int $amount
-     * @param string $reason
-     * @param string|null $correlationId
-     * @return PaymentTransaction
      */
     public function refund(
         string $paymentUuid,
@@ -350,10 +333,10 @@ final readonly class PaymentEngine
         }
 
         if ($amount > $payment->captured_amount) {
-            throw new \RuntimeException("Refund amount exceeds captured amount");
+            throw new \RuntimeException('Refund amount exceeds captured amount');
         }
 
-        $this->logger->info('PaymentEngine: refund started', [
+        $this->logger->$this->logger->info('PaymentEngine: refund started', [
             'correlation_id' => $correlationId,
             'payment_uuid' => $paymentUuid,
             'amount' => $amount,
@@ -376,7 +359,7 @@ final readonly class PaymentEngine
             $this->wallet->credit(
                 walletId: $payment->wallet_id,
                 amount: $amount,
-                type: \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,
+                type: BalanceTransactionType::REFUND,
                 correlationId: $correlationId,
                 sourceType: 'payment',
                 sourceId: $payment->id,
@@ -384,12 +367,12 @@ final readonly class PaymentEngine
 
             $payment->update([
                 'status' => 'refunded',
-                'refunded_at' => now(),
+                'refunded_at' => CarbonImmutable::now(),
                 'refunded_amount' => ($payment->refunded_amount ?? 0) + $amount,
                 'refund_reason' => $reason,
             ]);
 
-            $this->logger->info('PaymentEngine: refund successful', [
+            $this->logger->$this->logger->info('PaymentEngine: refund successful', [
                 'correlation_id' => $correlationId,
                 'payment_uuid' => $payment->uuid,
             ]);

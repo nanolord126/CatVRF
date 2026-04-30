@@ -1,23 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Insurance;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\Request;
-use Illuminate\Contracts\Auth\Guard;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 final class InsuranceContract extends Model
 {
-    public function __construct(
-        private readonly Request $request,
-    ) {}
-
-
     protected $table = 'insurance_contracts';
 
     protected $fillable = [
@@ -37,20 +32,9 @@ final class InsuranceContract extends Model
         'updated_at' => 'datetime',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(function (self $model) {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) Str::uuid();
-            }
-        });
-
-        static::addGlobalScope('tenant', function ($builder) {
-            if ($this->guard->check()) {
-                $builder->where('tenant_id', $this->guard->user()->tenant_id);
-            }
-        });
-    }
+    public function __construct(
+        private readonly Request $request,
+    ) {}
 
     /**
      * Relationship: The policy related to this legal contract.
@@ -71,11 +55,11 @@ final class InsuranceContract extends Model
         }
 
         $this->update([
-            'signed_at' => now(),
+            'signed_at' => CarbonImmutable::now(),
             'digital_signature' => array_merge($signature, [
                 'signed_from_ip' => $this->request->ip(),
                 'user_agent' => $this->request->userAgent(),
-                'timestamp' => now()->toIso8601String(),
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ]),
         ]);
 
@@ -87,6 +71,21 @@ final class InsuranceContract extends Model
      */
     public function isFinalized(): bool
     {
-        return $this->signed_at !== null && !empty($this->digital_signature);
+        return $this->signed_at !== null && ! empty($this->digital_signature);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (self $model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+        });
+
+        self::addGlobalScope('tenant', function ($builder) {
+            if ($this->guard->check()) {
+                $builder->where('tenant_id', $this->guard->user()->tenant_id);
+            }
+        });
     }
 }

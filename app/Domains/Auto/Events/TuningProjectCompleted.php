@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * TuningProjectCompleted — CatVRF 2026 Component.
@@ -7,50 +9,21 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/tuningprojectcompleted
  */
 
-
 namespace App\Domains\Auto\Events;
 
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Queue\SerializesModels;
-
-
 use Psr\Log\LoggerInterface;
+
 final class TuningProjectCompleted
 {
-
-    
-        public function __construct(
-            public readonly TuningProject $project,
-            public readonly string $correlationId, public readonly LoggerInterface $logger
-        ) {
-            $this->logger->info('TuningProjectCompleted event dispatched', [
-                'correlation_id' => $this->correlationId,
-                'project_id' => $this->project->id,
-            ]);
-        }
-
-        public function broadcastOn(): array
-        {
-            return [
-                new PrivateChannel('tenant.' . $this->project->tenant_id),
-                new PrivateChannel('user.' . $this->project->client_id),
-            ];
-        }
-
-        public function broadcastAs(): string
-        {
-            return 'tuning.project.completed';
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -66,4 +39,28 @@ final class TuningProjectCompleted
      */
     private const CACHE_TTL = 3600;
 
+
+    public function __construct(
+        public readonly TuningProject $project,
+        public readonly string $correlationId,
+        public readonly LoggerInterface $logger
+    ) {
+        $this->logger->$this->logger->info('TuningProjectCompleted event dispatched', [
+            'correlation_id' => $this->correlationId,
+            'project_id' => $this->project->id,
+        ]);
+    }
+
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('tenant.'.$this->project->tenant_id),
+            new PrivateChannel('user.'.$this->project->client_id),
+        ];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'tuning.project.completed';
+    }
 }

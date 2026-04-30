@@ -1,0 +1,12 @@
+# Kubernetes Namespace for CatVRF Redis Cluster
+# Production 2026 - 28 Verticals High-Throughput Scaling
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: catvrf-prod
+  labels:
+    name: catvrf-prod
+    environment: production
+    project: catvrf
+    component: redis-cluster

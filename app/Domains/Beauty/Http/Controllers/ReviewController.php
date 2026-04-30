@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
@@ -12,6 +13,4 @@ use App\Http\Controllers\Api\V1\Beauty\ReviewController as BaseReviewController;
  *
  * @see \App\Http\Controllers\Api\V1\Beauty\BaseReviewController
  */
-final class ReviewController extends BaseReviewController
-{
-}
+final class ReviewController extends BaseReviewController {}

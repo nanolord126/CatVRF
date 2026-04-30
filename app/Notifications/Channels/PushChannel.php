@@ -1,12 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Channels;
-
 
 use Psr\Log\LoggerInterface;
 use App\Services\PushNotificationService;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 /**
  * Push Notification Channel - отправляет push-уведомления на мобильные устройства
@@ -21,14 +22,15 @@ final class PushChannel
     /**
      * Инстанс PushNotificationService
      */
-    private PushNotificationService $pushService;
+    private readonly PushNotificationService $pushService;
 
     /**
      * Конструктор
      */
     public function __construct(
-        private readonly LoggerInterface $logger,PushNotificationService $pushService)
-    {
+        private readonly LoggerInterface $logger,
+        PushNotificationService $pushService
+    ) {
         $this->pushService = $pushService;
     }
 
@@ -38,11 +40,12 @@ final class PushChannel
     public function send(object $notifiable, Notification $notification): void
     {
         // Проверить, что объект имеет метод toFirebase
-        if (!method_exists($notification, 'toFirebase')) {
+        if (! method_exists($notification, 'toFirebase')) {
             $this->logger->warning('Notification does not have toFirebase method', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
             ]);
+
             return;
         }
 
@@ -53,6 +56,7 @@ final class PushChannel
                 $this->logger->debug('No device tokens found for user', [
                     'notifiable_id' => $notifiable->id,
                 ]);
+
                 return;
             }
 
@@ -70,13 +74,13 @@ final class PushChannel
                     );
                 } catch (\Exception $e) {
                     $this->logger->warning('Failed to send push to device', [
-                        'device_token' => substr($deviceToken, 0, 20) . '...',
+                        'device_token' => substr($deviceToken, 0, 20).'...',
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
-            $this->logger->info('Push notification sent', [
+            $this->logger->$this->logger->info('Push notification sent', [
                 'type' => $notification->getType(),
                 'user_id' => $notifiable->id,
                 'devices_count' => count($devices),
@@ -85,7 +89,7 @@ final class PushChannel
             ]);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error($e->getMessage(), [
+            $this->log->channel('audit')->error($e->getMessage(), [
                 'exception' => $e::class,
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),

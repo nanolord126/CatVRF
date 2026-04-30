@@ -13,8 +13,6 @@ use App\Services\FraudControlService;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 use Tests\BaseTestCase;
@@ -24,27 +22,14 @@ final class ElectronicsSearchServiceTest extends BaseTestCase
     use RefreshDatabase;
 
     private ElectronicsSearchService $service;
+
     private FraudControlService|MockObject $fraudService;
+
     private Cache|MockObject $cache;
+
     private DatabaseManager|MockObject $db;
+
     private LoggerInterface|MockObject $logger;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraudService = $this->createMock(FraudControlService::class);
-        $this->cache = $this->createMock(Cache::class);
-        $this->db = $this->createMock(DatabaseManager::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
-
-        $this->service = new ElectronicsSearchService(
-            $this->fraudService,
-            $this->cache,
-            $this->db,
-            $this->logger,
-        );
-    }
 
     public function test_search_with_basic_query(): void
     {
@@ -483,7 +468,7 @@ final class ElectronicsSearchServiceTest extends BaseTestCase
     {
         // Arrange
         $this->fraudService->method('check');
-        
+
         $cachedResponse = [
             'products' => [['id' => 1, 'name' => 'Test']],
             'total' => 1,
@@ -734,5 +719,22 @@ final class ElectronicsSearchServiceTest extends BaseTestCase
         $this->assertArrayHasKey('min_kopecks', $result->aggregations['price_range']);
         $this->assertArrayHasKey('max_kopecks', $result->aggregations['price_range']);
         $this->assertArrayHasKey('avg_kopecks', $result->aggregations['price_range']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraudService = $this->createMock(FraudControlService::class);
+        $this->cache = $this->createMock(Cache::class);
+        $this->db = $this->createMock(DatabaseManager::class);
+        $this->logger = $this->createMock(LoggerInterface::class);
+
+        $this->service = new ElectronicsSearchService(
+            $this->fraudService,
+            $this->cache,
+            $this->db,
+            $this->logger,
+        );
     }
 }

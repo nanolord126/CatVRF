@@ -1,58 +1,44 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Luxury\Models;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\CarbonImmutable;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 final class LuxuryService extends Model
 {
-
+    use TenantScoped;
 
-        protected $table = 'luxury_services';
+    protected $table = 'luxury_services';
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'brand_id',
-            'name',
-            'description',
-            'price_per_hour_kopecks',
-            'min_booking_duration',
-            'is_concierge_exclusive',
-            'service_level',
-            'tags',
-            'correlation_id',
-        ];
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'brand_id',
+        'name',
+        'description',
+        'price_per_hour_kopecks',
+        'min_booking_duration',
+        'is_concierge_exclusive',
+        'service_level',
+        'tags',
+        'correlation_id',
+    ];
 
-        protected $casts = [
-            'tags' => 'json',
-            'is_concierge_exclusive' => 'boolean',
-        ];
+    protected $casts = [
+        'tags' => 'json',
+        'is_concierge_exclusive' => 'boolean',
+    ];
 
-        protected static function booted_disabled(): void
-        {
-            static::creating(function (self $model) {
-                $model->uuid = (string) Str::uuid();
-                if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
-                    $model->tenant_id = tenant()->id;
-                }
-            });
-
-            static::addGlobalScope('tenant', function (Builder $builder) {
-                if (function_exists('tenant') && tenant()) {
-                    $builder->where('luxury_services.tenant_id', tenant()->id);
-                }
-            });
-        }
-
-        public function brand(): BelongsTo
-        {
-            return $this->belongsTo(LuxuryBrand::class, 'brand_id');
-        }
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(LuxuryBrand::class, 'brand_id');
+    }
 
     /**
      * Get the string representation of this instance.
@@ -61,7 +47,7 @@ final class LuxuryService extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -72,8 +58,24 @@ final class LuxuryService extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted_disabled(): void
+    {
+        self::creating(function (self $model) {
+            $model->uuid = (string) Str::uuid();
+            if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
+                $model->tenant_id = tenant()->id;
+            }
+        });
+
+        self::addGlobalScope('tenant', function (Builder $builder) {
+            if (function_exists('tenant') && tenant()) {
+                $builder->where('luxury_services.tenant_id', tenant()->id);
+            }
+        });
     }
 }

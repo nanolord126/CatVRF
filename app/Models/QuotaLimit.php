@@ -8,14 +8,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Quota Limit Model
- * 
+ *
  * Production 2026 CANON - Tenant Quota Configuration
- * 
+ *
  * Manages per-tenant quota limits for different resource types.
- * 
+ *
  * @property int $id
  * @property int|null $tenant_id
  * @property int|null $business_group_id
@@ -27,13 +28,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property bool $is_hard_limit
  * @property string|null $plan_type
  * @property array|null $metadata
- * @property \Illuminate\Support\Carbon $created_at
- * @property \Illuminate\Support\Carbon $updated_at
- * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property Carbon|null $deleted_at
  */
 final class QuotaLimit extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'tenant_id',

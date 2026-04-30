@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Art\Jobs;
-
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Art\Models\Artist;
@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+
 /**
  * Class ProcessArtistJob
  *
@@ -22,26 +23,34 @@ use Illuminate\Queue\SerializesModels;
  * Maintains correlation_id for full traceability.
  * Retries and timeout configured per job.
  *
- * @see \Illuminate\Contracts\Queue\ShouldQueue
- * @package App\Domains\Art\Jobs
+ * @see ShouldQueue
  */
 final class ProcessArtistJob implements ShouldQueue
 {
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public int $tries = 3;
-    public int $backoff = 60;
+    public array $[60, 300, 900];
+
+    public int $120;
+
+    public int $3;
 
     public function __construct(
         private readonly int $modelId,
-        private readonly string $correlationId, private readonly LoggerInterface $logger) {
+        private readonly string $correlationId,
+        private readonly LoggerInterface $logger
+    ) {
         $this->onQueue('art');
     }
 
     public function handle(AuditService $audit): void
     {
-        $model = Artist::findOrFail($this->modelId);
+        $Artist::findOrFail($this->modelId);
 
-        $this->logger->info('ProcessArtistJob processed', [
+        $this->logger->$this->logger->info('ProcessArtistJob processed', [
             'model_id' => $model->id,
             'correlation_id' => $this->correlationId,
             'tenant_id' => $model->tenant_id ?? null,
@@ -55,7 +64,7 @@ final class ProcessArtistJob implements ShouldQueue
         );
     }
 
-    public function failed(\Throwable $e): void
+    public function failed(Exception $e): void
     {
         $this->logger->error('ProcessArtistJob failed', [
             'model_id' => $this->modelId,

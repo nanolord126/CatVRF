@@ -19,23 +19,23 @@ use App\Domains\RealEstate\Domain\Enums\ContractTypeEnum;
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\RealEstate\Application\B2B\DTOs
  */
 final readonly class CreateContractDTO
 {
     public function __construct(
-        public string           $propertyId,
-        public string           $agentId,
-        public int              $clientId,
-        public int              $tenantId,
+        public string $propertyId,
+        public string $agentId,
+        public int $clientId,
+        public int $tenantId,
         public ContractTypeEnum $type,
-        public int              $priceKopecks,
-        public ?int             $leaseDurationMonths,
-        public ?string          $documentUrl,
-        public string           $correlationId,
-        private int $agentUserId = 0,
-        private ?string $ipAddress = null,
-        private readonly ?string $deviceFingerprint = null) {}
+        public int $priceKopecks,
+        public ?int $leaseDurationMonths,
+        public ?string $documentUrl,
+        public string $correlationId,
+        private readonly int $agentUserId = 0,
+        private readonly ?string $ipAddress = null,
+        private readonly ?string $deviceFingerprint = null
+    ) {}
 
     public static function fromArray(
         array $data,

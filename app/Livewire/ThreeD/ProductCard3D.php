@@ -1,19 +1,34 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\ThreeD;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Livewire\Component;
 
 final class ProductCard3D extends Component
 {
-    private int $productId;
-    private string $vertical;
-    private array $product = [];
-    private array $model3D = [];
-    private string $selectedColor = '#000000';
-    private float $rotationX = 0;
-    private float $rotationY = 0;
-    private float $zoom = 1.0;
+    private readonly int $productId;
+
+    private readonly string $vertical;
+
+    private readonly array $product = [];
+
+    private readonly array $model3D = [];
+
+    private readonly string $selectedColor = '#000000';
+
+    private readonly float $rotationX = 0;
+
+    private readonly float $rotationY = 0;
+
+    private readonly float $zoom = 1.0;
+
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
     public function mount(int $productId, string $vertical): void
     {
@@ -64,6 +79,6 @@ final class ProductCard3D extends Component
 
     public function render()
     {
-        return view('livewire.three-d.product-card-3d');
+        return $this->viewFactory->make('livewire.three-d.product-card-3d');
     }
 }

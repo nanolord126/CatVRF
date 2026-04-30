@@ -1,16 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders\Tenant;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\B2B\Supplier;
-use App\Models\B2B\PurchaseOrder;
 use App\Models\HR\HRExchangeTask;
 use App\Models\Tenants\RestaurantMenuItem;
 use App\Models\Tenants\RestaurantCategory;
 use App\Domains\Taxi\Models\TaxiDriver;
-use App\Domains\Taxi\Models\TaxiRide;
 
 class CoreVerticalSeeder extends Seeder
 {

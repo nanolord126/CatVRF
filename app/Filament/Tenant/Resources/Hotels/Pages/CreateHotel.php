@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Hotels\Pages;
+
+use LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Filament\Tenant\Resources\Hotels\HotelsResource;
 use Filament\Resources\Pages\CreateRecord;
@@ -12,8 +18,6 @@ use Psr\Log\LoggerInterface;
  *
  * Filament v3 Page: tenant-scoped, correlation_id tracing, audit logging.
  * Без constructor injection — используем app() для получения сервисов.
- *
- * @package App\Filament\Tenant\Resources\Hotels\Pages
  */
 final class CreateHotel extends CreateRecord
 {
@@ -25,7 +29,7 @@ final class CreateHotel extends CreateRecord
      * Добавляет correlation_id, tenant_id и uuid для обеспечения
      * полной трассировки и tenant-scoping в multi-tenant среде.
      *
-     * @param array<string, mixed> $data Данные формы
+     * @param  array<string, mixed>  $data  Данные формы
      * @return array<string, mixed> Обогащённые данные
      */
     protected function mutateFormDataBeforeCreate(array $data): array
@@ -47,13 +51,13 @@ final class CreateHotel extends CreateRecord
      */
     protected function afterCreate(): void
     {
-        app(LoggerInterface::class)->info('Hotel record created successfully', [
+        $this->loggerInterface /* TODO: inject via constructor DI */ /* TODO: inject via DI */->$this->logger->info('Hotel record created successfully', [
             'record_id' => $this->record->id,
             'uuid' => $this->record->uuid ?? null,
             'correlation_id' => $this->record->correlation_id ?? null,
             'user_id' => filament()->auth()->id(),
             'tenant_id' => filament()->getTenant()?->id,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ]);
     }
 

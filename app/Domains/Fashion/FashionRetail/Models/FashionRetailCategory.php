@@ -1,60 +1,50 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\FashionRetail\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
+
+use Carbon\CarbonImmutable;
 
 use Carbon\Carbon;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class FashionRetailCategory extends Model
 {
-
+    protected $table = 'fashion_retail_categories';
 
-        protected $table = 'fashion_retail_categories';
-
-        protected $fillable = [
+    protected $fillable = [
         'correlation_id',
-            'uuid',
-            'tenant_id',
-            'name',
-            'description',
-            'parent_id',
-            'icon_url',
-            'image_url',
-            'order',
-            'tags',
-        ];
+        'uuid',
+        'tenant_id',
+        'name',
+        'description',
+        'parent_id',
+        'icon_url',
+        'image_url',
+        'order',
+        'tags',
+    ];
 
-        protected $casts = [
-            'tags' => 'json',
-            'order' => 'integer',
-        ];
+    protected $casts = [
+        'tags' => 'json',
+        'order' => 'integer',
+    ];
 
-        protected static function booted(): void
-        {
-            static::addGlobalScope('tenant_id', function ($query) {
-                if (tenant()->id) {
-                    $query->where('tenant_id', tenant()->id);
-                }
-            });
-        }
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(FashionRetailCategory::class, 'parent_id');
+    }
 
-        public function parent(): BelongsTo
-        {
-            return $this->belongsTo(FashionRetailCategory::class, 'parent_id');
-        }
+    public function children()
+    {
+        return $this->hasMany(FashionRetailCategory::class, 'parent_id');
+    }
 
-        public function children()
-        {
-            return $this->hasMany(FashionRetailCategory::class, 'parent_id');
-        }
-
-        public function products()
-        {
-            return $this->hasMany(FashionRetailProduct::class, 'category_id');
-        }
+    public function products()
+    {
+        return $this->hasMany(FashionRetailProduct::class, 'category_id');
+    }
 
     /**
      * Get the string representation of this instance.
@@ -63,7 +53,7 @@ final class FashionRetailCategory extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -74,8 +64,17 @@ final class FashionRetailCategory extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (tenant()->id) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

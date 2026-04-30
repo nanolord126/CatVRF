@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Application\B2B\UseCases;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
 use App\Domains\RealEstate\Application\B2B\DTOs\ConfirmViewingDTO;
 use App\Domains\RealEstate\Domain\Repository\ViewingRepositoryInterface;
 use App\Domains\RealEstate\Domain\ValueObjects\ViewingId;
@@ -14,11 +16,11 @@ use RuntimeException;
 
 final class ConfirmViewingUseCase
 {
-    public function __construct(
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
         private readonly ViewingRepositoryInterface $viewingRepository,
-        private readonly FraudControlService        $fraud,
-        private readonly ConnectionInterface        $db,
-        private readonly LoggerInterface            $logger) {}
+        private readonly FraudControlService $fraud,
+        private readonly ConnectionInterface $db,
+        private readonly LoggerInterface $logger) {}
 
     /**
      * Agent confirms the viewing appointment, optionally rescheduling it.
@@ -36,7 +38,7 @@ final class ConfirmViewingUseCase
             correlationId: $dto->correlationId,
         );
 
-        $this->logger->info('RealEstate.ConfirmViewing started', [
+        $this->logger->$this->logger->info('RealEstate.ConfirmViewing started', [
             'correlation_id' => $dto->correlationId,
             'viewing_id'     => $dto->viewingId,
             'tenant_id'      => $dto->tenantId,
@@ -64,10 +66,10 @@ final class ConfirmViewingUseCase
         });
 
         foreach ($events as $event) {
-            event($event);
+            $this->eventDispatcher->dispatch($event);
         }
 
-        $this->logger->info('RealEstate.ConfirmViewing completed', [
+        $this->logger->$this->logger->info('RealEstate.ConfirmViewing completed', [
             'correlation_id' => $dto->correlationId,
             'viewing_id'     => $dto->viewingId,
         ]);

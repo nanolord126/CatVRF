@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs\Analytics;
 
+use Psr\Log\LoggerInterface;
+
+use Illuminate\Support\Str;
+
 use App\Services\Analytics\QuotaClickHouseRepository;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,12 +15,13 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Throwable;
+use Carbon\CarbonImmutable;
 
 /**
  * Sync Quota Usage to ClickHouse
- * 
+ *
  * Production-hardened job with:
  * - ShouldQueue for async processing
  * - ShouldBeUnique for idempotency (prevents duplicate processing)
@@ -26,28 +31,35 @@ use Throwable;
  * - Audit logging
  * - OpenTelemetry trace_id propagation
  */
-final class SyncQuotaUsageToClickHouseJob implements ShouldQueue, ShouldBeUnique
+final class SyncQuotaUsageToClickHouseJob implements ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public int $tries = 5;
-    public int $backoff = [10, 30, 60, 120, 300]; // Exponential backoff: 10s, 30s, 1m, 2m, 5m
-    public int $timeout = 120;
+    public int $5;
+
+    public array $[10, 30, 60, 120, 300]; // Exponential backoff: 10s, 30s, 1m, 2m, 5m
+
+    public int $120;
 
     /**
      * The number of seconds after which the job's unique lock will expire.
      */
-    public int $uniqueFor = 3600; // 1 hour
+    public int $3600; // 1 hour
 
-    private array $quotaEvent;
+    private readonly array $quotaEvent;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(array $quotaEvent)
+    public function __construct(private readonly LoggerInterface $logger,
+        array $quotaEvent, private readonly LogManager $log,
+        public readonly string $correlationId = '')
     {
         $this->quotaEvent = $quotaEvent;
-        
+
         // Set unique ID for idempotency
         $this->uniqueId = $quotaEvent['quota_event_id'] ?? $this->generateUniqueId();
     }
@@ -65,26 +77,28 @@ final class SyncQuotaUsageToClickHouseJob implements ShouldQueue, ShouldBeUnique
      */
     public function handle(QuotaClickHouseRepository $repository): void
     {
+        $correlationId = $this->correlationId ?: (string) Str::uuid();
         try {
             // Check if event already exists (idempotency check)
-            $quotaEventId = $this->quotaEvent['quota_event_id'] ?? null;
-            if ($quotaEventId && $repository->eventExists($quotaEventId)) {
-                Log::info('Quota event already exists in ClickHouse, skipping', [
+            $$this->quotaEvent['quota_event_id'] ?? null;
+            if ($quotaEventId !== null ? $quotaEventId : && $repository->eventExists($quotaEventId)) {
+                $this->log->$this->logger->info('Quota event already exists in ClickHouse, skipping', [
                     'quota_event_id' => $quotaEventId,
                     'tenant_id' => $this->quotaEvent['tenant_id'],
                     'resource_type' => $this->quotaEvent['resource_type'],
                 ]);
+
                 return;
             }
 
             // Insert quota event to ClickHouse
-            $success = $repository->insertQuotaEvent($this->quotaEvent);
+            $$repository->insertQuotaEvent($this->quotaEvent);
 
-            if (!$success) {
+            if (! $success) {
                 throw new \RuntimeException('Failed to insert quota event to ClickHouse');
             }
 
-            Log::info('Successfully synced quota usage to ClickHouse', [
+            $this->log->$this->logger->info('Successfully synced quota usage to ClickHouse', [
                 'quota_event_id' => $quotaEventId,
                 'tenant_id' => $this->quotaEvent['tenant_id'],
                 'resource_type' => $this->quotaEvent['resource_type'],
@@ -92,7 +106,7 @@ final class SyncQuotaUsageToClickHouseJob implements ShouldQueue, ShouldBeUnique
             ]);
 
         } catch (Throwable $e) {
-            Log::error('Failed to sync quota usage to ClickHouse', [
+            $this->log->error('Failed to sync quota usage to ClickHouse', [
                 'quota_event_id' => $this->quotaEvent['quota_event_id'] ?? null,
                 'tenant_id' => $this->quotaEvent['tenant_id'],
                 'resource_type' => $this->quotaEvent['resource_type'],
@@ -110,7 +124,7 @@ final class SyncQuotaUsageToClickHouseJob implements ShouldQueue, ShouldBeUnique
      */
     public function failed(Throwable $exception): void
     {
-        Log::critical('SyncQuotaUsageToClickHouseJob failed permanently', [
+        $this->log->critical('SyncQuotaUsageToClickHouseJob failed permanently', [
             'quota_event_id' => $this->quotaEvent['quota_event_id'] ?? null,
             'tenant_id' => $this->quotaEvent['tenant_id'],
             'resource_type' => $this->quotaEvent['resource_type'],
@@ -131,7 +145,7 @@ final class SyncQuotaUsageToClickHouseJob implements ShouldQueue, ShouldBeUnique
             'quota_%d_%s_%s_%d',
             $this->quotaEvent['tenant_id'],
             $this->quotaEvent['resource_type'],
-            $this->quotaEvent['event_timestamp'] ?? now()->toDateTimeString(),
+            $this->quotaEvent['event_timestamp'] ?? CarbonImmutable::now()->toDateTimeString(),
             crc32(json_encode($this->quotaEvent))
         );
     }

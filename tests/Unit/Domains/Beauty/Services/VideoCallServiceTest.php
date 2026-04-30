@@ -15,12 +15,6 @@ final class VideoCallServiceTest extends TestCase
 
     private VideoCallService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(VideoCallService::class);
-    }
-
     public function test_initiate_video_call(): void
     {
         $dto = new VideoCallDto(
@@ -80,5 +74,11 @@ final class VideoCallServiceTest extends TestCase
         $result = $this->service->initiate($dto);
 
         $this->assertLessThanOrEqual(1800, $result['duration_seconds']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(VideoCallService::class);
     }
 }

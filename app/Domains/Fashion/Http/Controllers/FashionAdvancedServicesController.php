@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Http\Controllers;
 
@@ -19,14 +21,14 @@ use Illuminate\Validation\ValidationException;
 final readonly class FashionAdvancedServicesController
 {
     public function __construct(
-        private FashionCollaborativeFilteringService $collaborative,
-        private FashionSocialMediaTrendService $trends,
-        private FashionReviewModerationService $moderation,
-        private FashionVisualSearchService $visualSearch,
-        private FashionSizeRecommendationService $sizeRec,
-        private FashionInventoryForecastingService $inventory,
-        private FashionABPriceTestingService $abPrice,
-        private FashionEmailCampaignService $emailCampaign,
+        private readonly FashionCollaborativeFilteringService $collaborative,
+        private readonly FashionSocialMediaTrendService $trends,
+        private readonly FashionReviewModerationService $moderation,
+        private readonly FashionVisualSearchService $visualSearch,
+        private readonly FashionSizeRecommendationService $sizeRec,
+        private readonly FashionInventoryForecastingService $inventory,
+        private readonly FashionABPriceTestingService $abPrice,
+        private readonly FashionEmailCampaignService $emailCampaign,
     ) {}
 
     // Collaborative Filtering
@@ -51,7 +53,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -64,7 +66,7 @@ final readonly class FashionAdvancedServicesController
         $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         $result = $this->trends->collectTrendData($correlationId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -84,7 +86,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -105,7 +107,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -125,7 +127,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -154,7 +156,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -174,7 +176,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -203,7 +205,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -229,7 +231,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -252,7 +254,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -264,7 +266,7 @@ final readonly class FashionAdvancedServicesController
         $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
         $result = $this->inventory->getReorderRecommendations($correlationId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -284,7 +286,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -311,7 +313,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -331,7 +333,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -351,7 +353,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -380,7 +382,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -400,7 +402,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -420,7 +422,7 @@ final readonly class FashionAdvancedServicesController
             correlationId: $correlationId
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,

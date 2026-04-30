@@ -6,6 +6,7 @@ namespace Database\Factories\Tickets;
 
 use App\Domains\Tickets\Models\Event;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class EventFactory extends Factory
 {
@@ -34,7 +35,7 @@ final class EventFactory extends Factory
             'require_age_check' => false,
             'min_age' => 0,
             'status' => 'published',
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'tags' => ['event', $this->faker->word()],
             'meta' => [],
         ];
@@ -45,7 +46,7 @@ final class EventFactory extends Factory
         return $this->state(function (array $attributes) {
             return [
                 'category' => 'music',
-                'name' => $this->faker->sentence(2) . ' Live',
+                'name' => $this->faker->sentence(2).' Live',
                 'total_capacity' => $this->faker->numberBetween(300, 3000),
                 'min_ticket_price' => $this->faker->numberBetween(100000, 800000),
             ];
@@ -57,7 +58,7 @@ final class EventFactory extends Factory
         return $this->state(function (array $attributes) {
             return [
                 'category' => 'sports',
-                'name' => $this->faker->sentence(3) . ' Championship',
+                'name' => $this->faker->sentence(3).' Championship',
                 'total_capacity' => $this->faker->numberBetween(1000, 5000),
                 'min_ticket_price' => $this->faker->numberBetween(50000, 300000),
             ];

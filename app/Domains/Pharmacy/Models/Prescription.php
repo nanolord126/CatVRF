@@ -1,10 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 
 /**
  * Class Prescription
@@ -24,12 +27,12 @@ use Illuminate\Database\Eloquent\Builder;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Pharmacy\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class Prescription extends Model
 {
+    use TenantScoped;
 
     protected $table = 'prescriptions';
 
@@ -44,28 +47,28 @@ final class Prescription extends Model
         'ocr_data',
         'scan_path',
         'tags',
-        'correlation_id'
+        'correlation_id',
     ];
 
     protected $casts = [
         'expires_at' => 'date',
-        'tags' => 'json'
+        'tags' => 'json',
     ];
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant_id', function (Builder $builder) {
-            $builder->where('tenant_id', tenant()->id ?? 0);
-        });
-
-        static::creating(function (Model $model) {
-            $model->uuid = $model->uuid ?? (string) Str::uuid();
-            $model->tenant_id = $model->tenant_id ?? (tenant()->id ?? 0);
-        });
-    }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant_id', function (Builder $builder) {
+            $builder->where('tenant_id', tenant()->id ?? 0);
+        });
+
+        self::creating(function (Model $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            $model->tenant_id = $model->tenant_id ?? (tenant()->id ?? 0);
+        });
     }
 }
