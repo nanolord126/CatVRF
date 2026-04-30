@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
 use App\Domains\Education\Models\Slot;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class SlotFactory extends Factory
 {
@@ -15,7 +18,7 @@ final class SlotFactory extends Factory
         $duration = rand(30, 120);
 
         return [
-            'uuid' => \Illuminate\Support\Str::uuid(),
+            'uuid' => Str::uuid(),
             'tenant_id' => function_exists('tenant') && tenant() ? tenant()->id : 1,
             'business_group_id' => null,
             'teacher_id' => null,
@@ -32,7 +35,7 @@ final class SlotFactory extends Factory
             'meeting_link' => $this->faker->url(),
             'meeting_password' => $this->faker->password(8, 12),
             'metadata' => null,
-            'correlation_id' => \Illuminate\Support\Str::uuid(),
+            'correlation_id' => Str::uuid(),
         ];
     }
 

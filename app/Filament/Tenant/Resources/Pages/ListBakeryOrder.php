@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -22,15 +24,6 @@ final class ListBakeryOrder extends ListRecords
         return 'Заказы пекарни';
     }
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Создать заказ')
-                ->icon('heroicon-m-plus'),
-        ];
-    }
-
     public function table(Table $table): Table
     {
         return $table
@@ -49,7 +42,7 @@ final class ListBakeryOrder extends ListRecords
                     ->sortable(),
                 TextColumn::make('total_amount')
                     ->label('Сумма')
-                    ->formatStateUsing(fn ($state): string => number_format((float) $state, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state): string => number_format((float) $state, 2, '.', ' ').' ₽')
                     ->sortable(),
                 BadgeColumn::make('status')
                     ->label('Статус')
@@ -87,5 +80,14 @@ final class ListBakeryOrder extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Создать заказ')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

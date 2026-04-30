@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Domains\GeoLogistics;
 
 use App\Domains\GeoLogistics\Application\DTOs\CreateShipmentDto;
@@ -20,27 +22,12 @@ final class CreateShipmentRouteUseCaseTest extends TestCase
     use RefreshDatabase;
 
     private GeoRoutingServiceInterface|Mockery\MockInterface $geoRoutingService;
+
     private ShipmentRepositoryInterface|Mockery\MockInterface $shipmentRepository;
+
     private FraudControlService|Mockery\MockInterface $fraudControlService;
+
     private CreateShipmentRouteUseCase $useCase;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->geoRoutingService = Mockery::mock(GeoRoutingServiceInterface::class);
-        $this->shipmentRepository = Mockery::mock(ShipmentRepositoryInterface::class);
-        $this->fraudControlService = Mockery::mock(FraudControlService::class);
-
-        Log::shouldReceive('channel')->with('audit')->andReturnSelf();
-        Log::shouldReceive('info');
-
-        $this->useCase = new CreateShipmentRouteUseCase(
-            $this->geoRoutingService,
-            $this->shipmentRepository,
-            $this->fraudControlService
-        );
-    }
 
     /**
      * Тест успешного создания маршрута.
@@ -98,5 +85,22 @@ final class CreateShipmentRouteUseCaseTest extends TestCase
         // Assert
         $this->assertInstanceOf(Shipment::class, $result);
     }
-}
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->geoRoutingService = Mockery::mock(GeoRoutingServiceInterface::class);
+        $this->shipmentRepository = Mockery::mock(ShipmentRepositoryInterface::class);
+        $this->fraudControlService = Mockery::mock(FraudControlService::class);
+
+        Log::shouldReceive('channel')->with('audit')->andReturnSelf();
+        Log::shouldReceive('info');
+
+        $this->useCase = new CreateShipmentRouteUseCase(
+            $this->geoRoutingService,
+            $this->shipmentRepository,
+            $this->fraudControlService
+        );
+    }
+}

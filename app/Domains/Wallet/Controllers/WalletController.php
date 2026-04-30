@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Wallet\Controllers;
 
-use App\Domains\Wallet\DTOs\CreateTopUpDto;
 use App\Domains\Wallet\Resources\WalletResource;
 use App\Domains\Wallet\Services\WalletService;
 use App\Services\AuditService;
@@ -14,6 +13,7 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Psr\Log\LoggerInterface;
+use Illuminate\Support\Str;
 
 /**
  * REST-контроллер кошелька.
@@ -39,7 +39,7 @@ final class WalletController
 
         $wallet = $this->walletService->findById($id);
 
-        $this->logger->info('Wallet shown', [
+        $this->logger->$this->logger->info('Wallet shown', [
             'wallet_id' => $id,
             'correlation_id' => $correlationId,
         ]);
@@ -68,7 +68,7 @@ final class WalletController
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Wallet stored via controller', [
+        $this->logger->$this->logger->info('Wallet stored via controller', [
             'wallet_id' => $wallet->id,
             'correlation_id' => $correlationId,
         ]);
@@ -106,7 +106,7 @@ final class WalletController
                 newValues: ['is_active' => false],
             );
 
-            $this->logger->info('Wallet deactivated', [
+            $this->logger->$this->logger->info('Wallet deactivated', [
                 'wallet_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -122,6 +122,6 @@ final class WalletController
     /** Извлечение correlation_id из заголовка. */
     private function extractCorrelationId(Request $request): string
     {
-        return $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
+        return $request->header('X-Correlation-ID', Str::uuid()->toString());
     }
 }

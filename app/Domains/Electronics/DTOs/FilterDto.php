@@ -1,14 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\DTOs;
 
 final readonly class FilterDto
 {
     /**
-     * @param array<string, int> $brands
-     * @param array<string, int> $categories
-     * @param array<string, int> $colors
-     * @param array<string, array<string, int>> $specs
+     * @param  array<string, int>  $brands
+     * @param  array<string, int>  $categories
+     * @param  array<string, int>  $colors
+     * @param  array<string, array<string, int>>  $specs
      */
     public function __construct(
         public array $brands,
@@ -16,8 +18,7 @@ final readonly class FilterDto
         public array $colors,
         public array $specs,
         public array $priceRanges,
-    ) {
-    }
+    ) {}
 
     public function toArray(): array
     {

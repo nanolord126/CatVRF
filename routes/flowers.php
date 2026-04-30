@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use App\Domains\Flowers\Http\Controllers\B2BFlowerController;
 use App\Domains\Flowers\Http\Controllers\FlowerDeliveryController;
@@ -14,7 +16,7 @@ Route::middleware(['web', 'auth'])->prefix('flowers')->name('flowers.')->group(f
     Route::get('/products/{id}', [FlowerProductController::class, 'show'])->name('products.show');
     Route::get('/shops/{shopId}/products', [FlowerProductController::class, 'shopProducts'])->name('products.byShop');
     Route::get('/search', [FlowerProductController::class, 'search'])->name('products.search');
-    
+
     Route::middleware('business')->group(function () {
         Route::post('/products', [FlowerProductController::class, 'store'])->name('products.store');
         Route::put('/products/{id}', [FlowerProductController::class, 'update'])->name('products.update');

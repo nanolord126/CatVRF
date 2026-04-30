@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Beauty\Events\MasterMatchedEvent;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
+use Carbon\CarbonImmutable;
 
 final class MasterMatchedListener
 {
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,) {}
     public function handle(MasterMatchedEvent $event): void
     {
-        Log::channel('audit')->info('Master matched event handled', [
+        $this->log->channel('audit')->$this->logger->info('Master matched event handled', [
             'correlation_id' => $event->correlationId,
             'user_id' => $event->userId,
             'matches_count' => count($event->matchedMasters),
@@ -26,19 +32,19 @@ final class MasterMatchedListener
     private function updateUserSearchHistory(int $userId, int $matchesCount): void
     {
         $key = "beauty:user_search_history:{$userId}";
-        Redis::lpush($key, json_encode([
-            'timestamp' => now()->toIso8601String(),
+        $this->redis->lpush($key, json_encode([
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
             'matches_count' => $matchesCount,
         ]));
-        Redis::expire($key, 86400 * 30);
+        $this->redis->expire($key, 86400 * 30);
     }
 
     private function trackMasterPopularity(array $matchedMasters): void
     {
         foreach ($matchedMasters as $master) {
             $key = "beauty:master_popularity:{$master['id']}";
-            Redis::incr($key);
-            Redis::expire($key, 86400 * 7);
+            $this->redis->incr($key);
+            $this->redis->expire($key, 86400 * 7);
         }
     }
 }

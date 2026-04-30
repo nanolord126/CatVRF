@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Вертикаль Sports (спорт, фитнес, секции)
- *
- * @package App\Models
  */
 final class Sports extends Model
 {
-
     protected $table = 'sports';
 
     protected $fillable = [

@@ -7,24 +7,17 @@ namespace Tests\Feature\Domains\Electronics;
 use App\Domains\Electronics\Http\Controllers\AnalyticsController;
 use App\Domains\Electronics\Models\ElectronicsProduct;
 use App\Domains\Electronics\Services\ElectronicsAnalyticsService;
-use Database\Factories\Electronics\ElectronicsProductFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\BaseTestCase;
+use Illuminate\Http\Request;
 
 final class AnalyticsControllerTest extends BaseTestCase
 {
     use RefreshDatabase;
 
     private AnalyticsController $controller;
+
     private ElectronicsAnalyticsService $analyticsService;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->analyticsService = app(ElectronicsAnalyticsService::class);
-        $this->controller = new AnalyticsController($this->analyticsService);
-    }
 
     public function test_get_analytics_returns_success_response(): void
     {
@@ -33,11 +26,11 @@ final class AnalyticsControllerTest extends BaseTestCase
             'is_active' => true,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d']);
+        $request = new Request(['period' => '7d']);
         $response = $this->controller->getAnalytics($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('sales_data', $data);
         $this->assertArrayHasKey('traffic_data', $data);
@@ -65,11 +58,11 @@ final class AnalyticsControllerTest extends BaseTestCase
             'type' => 'laptops',
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d', 'type' => 'smartphones']);
+        $request = new Request(['period' => '7d', 'type' => 'smartphones']);
         $response = $this->controller->getAnalytics($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertEquals('7d', $data['period']);
     }
@@ -81,7 +74,7 @@ final class AnalyticsControllerTest extends BaseTestCase
             'is_active' => true,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => 'invalid']);
+        $request = new Request(['period' => 'invalid']);
         $response = $this->controller->getAnalytics($request);
 
         $this->assertEquals(422, $response->getStatusCode());
@@ -95,11 +88,11 @@ final class AnalyticsControllerTest extends BaseTestCase
             'price_kopecks' => 500000,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d']);
+        $request = new Request(['period' => '7d']);
         $response = $this->controller->getSalesData($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('sales_data', $data);
         $this->assertArrayHasKey('total_revenue', $data['sales_data']);
@@ -117,11 +110,11 @@ final class AnalyticsControllerTest extends BaseTestCase
             'views_count' => 100,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d']);
+        $request = new Request(['period' => '7d']);
         $response = $this->controller->getTrafficData($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('traffic_data', $data);
         $this->assertArrayHasKey('total_views', $data['traffic_data']);
@@ -137,11 +130,11 @@ final class AnalyticsControllerTest extends BaseTestCase
             'is_active' => true,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d']);
+        $request = new Request(['period' => '7d']);
         $response = $this->controller->getConversionData($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('conversion_data', $data);
         $this->assertArrayHasKey('conversion_rate', $data['conversion_data']);
@@ -156,11 +149,11 @@ final class AnalyticsControllerTest extends BaseTestCase
             'is_active' => true,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d', 'limit' => 5]);
+        $request = new Request(['period' => '7d', 'limit' => 5]);
         $response = $this->controller->getTopProducts($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('top_products', $data);
         $this->assertCount(5, $data['top_products']);
@@ -178,14 +171,14 @@ final class AnalyticsControllerTest extends BaseTestCase
             'reviews_count' => 50,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d', 'limit' => 10]);
+        $request = new Request(['period' => '7d', 'limit' => 10]);
         $response = $this->controller->getTopProducts($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('top_products', $data);
-        
+
         $firstProduct = $data['top_products'][0];
         $this->assertArrayHasKey('id', $firstProduct);
         $this->assertArrayHasKey('name', $firstProduct);
@@ -205,14 +198,14 @@ final class AnalyticsControllerTest extends BaseTestCase
             'price_kopecks' => 1000000,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d']);
+        $request = new Request(['period' => '7d']);
         $response = $this->controller->getBrandStats($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('brand_stats', $data);
-        
+
         $firstBrand = $data['brand_stats'][0];
         $this->assertArrayHasKey('brand', $firstBrand);
         $this->assertArrayHasKey('product_count', $firstBrand);
@@ -229,14 +222,14 @@ final class AnalyticsControllerTest extends BaseTestCase
             'price_kopecks' => 500000,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d']);
+        $request = new Request(['period' => '7d']);
         $response = $this->controller->getCategoryStats($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('category_stats', $data);
-        
+
         $firstCategory = $data['category_stats'][0];
         $this->assertArrayHasKey('category', $firstCategory);
         $this->assertArrayHasKey('product_count', $firstCategory);
@@ -252,14 +245,14 @@ final class AnalyticsControllerTest extends BaseTestCase
             'price_kopecks' => 500000,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d']);
+        $request = new Request(['period' => '7d']);
         $response = $this->controller->getPriceDistribution($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('price_distribution', $data);
-        
+
         $priceDist = $data['price_distribution'];
         $this->assertArrayHasKey('distribution', $priceDist);
         $this->assertArrayHasKey('avg_price', $priceDist);
@@ -278,14 +271,14 @@ final class AnalyticsControllerTest extends BaseTestCase
             'price_kopecks' => 100000,
         ]);
 
-        $request = new \Illuminate\Http\Request();
+        $request = new Request();
         $response = $this->controller->getInventoryStats($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('inventory_stats', $data);
-        
+
         $inventory = $data['inventory_stats'];
         $this->assertArrayHasKey('total_products', $inventory);
         $this->assertArrayHasKey('in_stock', $inventory);
@@ -307,11 +300,11 @@ final class AnalyticsControllerTest extends BaseTestCase
             'brand' => 'TestBrand',
         ]);
 
-        $request = new \Illuminate\Http\Request();
+        $request = new Request();
         $response = $this->controller->getInventoryStats($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertNotEmpty($data['inventory_stats']['low_stock_products']);
     }
@@ -325,14 +318,14 @@ final class AnalyticsControllerTest extends BaseTestCase
             'reviews_count' => 50,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d']);
+        $request = new Request(['period' => '7d']);
         $response = $this->controller->getCustomerBehavior($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('customer_behavior', $data);
-        
+
         $behavior = $data['customer_behavior'];
         $this->assertArrayHasKey('avg_rating', $behavior);
         $this->assertArrayHasKey('total_reviews', $behavior);
@@ -344,11 +337,11 @@ final class AnalyticsControllerTest extends BaseTestCase
 
     public function test_clear_cache_returns_success_response(): void
     {
-        $request = new \Illuminate\Http\Request(['type' => 'smartphones']);
+        $request = new Request(['type' => 'smartphones']);
         $response = $this->controller->clearCache($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('message', $data);
         $this->assertArrayHasKey('type', $data);
@@ -357,11 +350,11 @@ final class AnalyticsControllerTest extends BaseTestCase
 
     public function test_clear_cache_without_type(): void
     {
-        $request = new \Illuminate\Http\Request();
+        $request = new Request();
         $response = $this->controller->clearCache($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertArrayHasKey('message', $data);
     }
@@ -376,11 +369,11 @@ final class AnalyticsControllerTest extends BaseTestCase
         $periods = ['1d', '7d', '30d', '90d', '1y'];
 
         foreach ($periods as $period) {
-            $request = new \Illuminate\Http\Request(['period' => $period]);
+            $request = new Request(['period' => $period]);
             $response = $this->controller->getAnalytics($request);
 
             $this->assertEquals(200, $response->getStatusCode());
-            
+
             $data = json_decode($response->getContent(), true);
             $this->assertEquals($period, $data['period']);
         }
@@ -393,7 +386,7 @@ final class AnalyticsControllerTest extends BaseTestCase
             'is_active' => true,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d', 'type' => 'invalid_type']);
+        $request = new Request(['period' => '7d', 'type' => 'invalid_type']);
         $response = $this->controller->getAnalytics($request);
 
         $this->assertEquals(422, $response->getStatusCode());
@@ -406,7 +399,7 @@ final class AnalyticsControllerTest extends BaseTestCase
             'is_active' => true,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d', 'limit' => 100]);
+        $request = new Request(['period' => '7d', 'limit' => 100]);
         $response = $this->controller->getTopProducts($request);
 
         $this->assertEquals(422, $response->getStatusCode());
@@ -415,7 +408,7 @@ final class AnalyticsControllerTest extends BaseTestCase
     public function test_controller_injects_service_correctly(): void
     {
         $controller = new AnalyticsController($this->analyticsService);
-        
+
         $this->assertInstanceOf(AnalyticsController::class, $controller);
     }
 
@@ -427,11 +420,11 @@ final class AnalyticsControllerTest extends BaseTestCase
         ]);
 
         $endpoints = [
-            fn () => $this->controller->getAnalytics(new \Illuminate\Http\Request(['period' => '7d'])),
-            fn () => $this->controller->getSalesData(new \Illuminate\Http\Request(['period' => '7d'])),
-            fn () => $this->controller->getTrafficData(new \Illuminate\Http\Request(['period' => '7d'])),
-            fn () => $this->controller->getConversionData(new \Illuminate\Http\Request(['period' => '7d'])),
-            fn () => $this->controller->getInventoryStats(new \Illuminate\Http\Request()),
+            fn () => $this->controller->getAnalytics(new Request(['period' => '7d'])),
+            fn () => $this->controller->getSalesData(new Request(['period' => '7d'])),
+            fn () => $this->controller->getTrafficData(new Request(['period' => '7d'])),
+            fn () => $this->controller->getConversionData(new Request(['period' => '7d'])),
+            fn () => $this->controller->getInventoryStats(new Request()),
         ];
 
         foreach ($endpoints as $endpoint) {
@@ -456,11 +449,11 @@ final class AnalyticsControllerTest extends BaseTestCase
             'price_kopecks' => 100000,
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d']);
+        $request = new Request(['period' => '7d']);
         $response = $this->controller->getSalesData($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
         $this->assertEquals(5, $data['sales_data']['total_orders']);
     }
@@ -478,16 +471,24 @@ final class AnalyticsControllerTest extends BaseTestCase
             'availability_status' => 'in_stock',
         ]);
 
-        $request = new \Illuminate\Http\Request(['period' => '7d']);
+        $request = new Request(['period' => '7d']);
         $response = $this->controller->getAnalytics($request);
 
         $this->assertEquals(200, $response->getStatusCode());
-        
+
         $data = json_decode($response->getContent(), true);
-        
+
         $this->assertEquals(100000, $data['sales_data']['total_revenue']); // 10 * 10000
         $this->assertEquals(10, $data['sales_data']['total_orders']);
         $this->assertEquals(10000, $data['sales_data']['avg_order_value']);
         $this->assertEquals(1000, $data['traffic_data']['total_views']); // 10 * 100
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->analyticsService = app(ElectronicsAnalyticsService::class);
+        $this->controller = new AnalyticsController($this->analyticsService);
     }
 }

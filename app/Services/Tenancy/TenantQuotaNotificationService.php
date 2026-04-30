@@ -1,12 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Tenancy;
+
+use Psr\Log\LoggerInterface;
 
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Queue\Factory as QueueFactory;
 use Illuminate\Log\LogManager;
+use App\Jobs\SendQuotaCriticalJob;
+use App\Jobs\SendQuotaExceededJob;
+use App\Jobs\SendQuotaWarningJob;
 
 /**
  * Tenant Quota Notification Service
@@ -19,19 +26,20 @@ use Illuminate\Log\LogManager;
  * - 100% usage: Block notification (handled by exception)
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final readonly class TenantQuotaNotificationService
 {
     private const THRESHOLD_WARNING = 75;
+
     private const THRESHOLD_CRITICAL = 90;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly TenantResourceLimiterService $quotaService,
         private readonly QueueFactory $queue,
         private readonly ConfigRepository $config,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     /**
      * Check and send quota threshold notifications
@@ -46,12 +54,44 @@ final readonly class TenantQuotaNotificationService
             $notificationsSent += $this->checkTenantThresholds($tenant);
         }
 
-        $this->logger->info('Quota threshold check completed', [
+        $this->logger->$this->logger->info('Quota threshold check completed', [
             'tenants_checked' => $tenants->count(),
             'notifications_sent' => $notificationsSent,
         ]);
 
         return $notificationsSent;
+    }
+
+    /**
+     * Send immediate notification for quota exceeded
+     */
+    public function notifyQuotaExceeded(int $tenantId, string $resourceType, array $quotaData): void
+    {
+        $tenant = Tenant::find($tenantId);
+
+        if (! $tenant) {
+            return;
+        }
+
+        // Notify tenant owners/managers
+        $recipients = $this->getTenantNotificationRecipients($tenantId);
+
+        foreach ($recipients as $recipient) {
+            $this->queue->connection()->push(
+                new SendQuotaExceededJob(
+                    $recipient->id,
+                    $tenantId,
+                    $resourceType,
+                    $quotaData
+                )
+            );
+        }
+
+        $this->logger->warning('Quota exceeded notifications sent', [
+            'tenant_id' => $tenantId,
+            'resource_type' => $resourceType,
+            'recipients_count' => count($recipients),
+        ]);
     }
 
     /**
@@ -81,14 +121,14 @@ final readonly class TenantQuotaNotificationService
     private function sendWarningNotification(Tenant $tenant, string $resource, array $data): void
     {
         $this->queue->connection()->push(
-            new \App\Jobs\SendQuotaWarningJob(
+            new SendQuotaWarningJob(
                 $tenant->id,
                 $resource,
                 $data
             )
         );
 
-        $this->logger->info('Quota warning notification queued', [
+        $this->logger->$this->logger->info('Quota warning notification queued', [
             'tenant_id' => $tenant->id,
             'resource' => $resource,
             'percentage' => $data['percentage'],
@@ -101,7 +141,7 @@ final readonly class TenantQuotaNotificationService
     private function sendCriticalNotification(Tenant $tenant, string $resource, array $data): void
     {
         $this->queue->connection()->push(
-            new \App\Jobs\SendQuotaCriticalJob(
+            new SendQuotaCriticalJob(
                 $tenant->id,
                 $resource,
                 $data
@@ -112,38 +152,6 @@ final readonly class TenantQuotaNotificationService
             'tenant_id' => $tenant->id,
             'resource' => $resource,
             'percentage' => $data['percentage'],
-        ]);
-    }
-
-    /**
-     * Send immediate notification for quota exceeded
-     */
-    public function notifyQuotaExceeded(int $tenantId, string $resourceType, array $quotaData): void
-    {
-        $tenant = Tenant::find($tenantId);
-        
-        if (!$tenant) {
-            return;
-        }
-
-        // Notify tenant owners/managers
-        $recipients = $this->getTenantNotificationRecipients($tenantId);
-
-        foreach ($recipients as $recipient) {
-            $this->queue->connection()->push(
-                new \App\Jobs\SendQuotaExceededJob(
-                    $recipient->id,
-                    $tenantId,
-                    $resourceType,
-                    $quotaData
-                )
-            );
-        }
-
-        $this->logger->warning('Quota exceeded notifications sent', [
-            'tenant_id' => $tenantId,
-            'resource_type' => $resourceType,
-            'recipients_count' => count($recipients),
         ]);
     }
 

@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\Resources\SecurityEventResource\Pages;
+
+use App\Filament\Resources\SecurityEventResource;
+use Filament\Pages\Actions;
+use Filament\Resources\Pages\ListRecords;
+
+class ListSecurityEvents extends ListRecords
+{
+    protected static string $resource = SecurityEventResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
+}

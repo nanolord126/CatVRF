@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Controllers\Api\V1;
 
@@ -16,15 +18,6 @@ final class AuthControllerTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->user = User::factory()->create([
-            'email'    => 'auth-test@example.com',
-            'password' => bcrypt('secret123'),
-        ]);
-    }
 
     public function test_store_returns_201_with_valid_credentials(): void
     {
@@ -169,5 +162,14 @@ final class AuthControllerTest extends TestCase
         $response = $this->deleteJson('/api/v1/auth/tokens/1');
 
         $response->assertStatus(401);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->user = User::factory()->create([
+            'email'    => 'auth-test@example.com',
+            'password' => bcrypt('secret123'),
+        ]);
     }
 }

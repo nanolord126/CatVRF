@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Electronics;
 
@@ -27,41 +29,20 @@ final class GadgetVisionRecommendationServiceTest extends TestCase
     use RefreshDatabase;
 
     private GadgetVisionRecommendationService $service;
+
     private FraudControlService $fraud;
+
     private RecommendationService $recommendation;
+
     private UserTasteAnalyzerService $tasteAnalyzer;
+
     private UserBehaviorAnalyzerService $behaviorAnalyzer;
+
     private Cache $cache;
+
     private DatabaseManager $db;
+
     private OpenAIClient $openai;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->fraud->method('check')->willReturn(null);
-
-        $this->recommendation = $this->createMock(RecommendationService::class);
-        $this->tasteAnalyzer = $this->createMock(UserTasteAnalyzerService::class);
-        $this->behaviorAnalyzer = $this->createMock(UserBehaviorAnalyzerService::class);
-        $this->cache = app(Cache::class);
-        $this->db = app(DatabaseManager::class);
-        $this->openai = $this->createMock(OpenAIClient::class);
-
-        $this->service = new GadgetVisionRecommendationService(
-            $this->fraud,
-            $this->recommendation,
-            $this->tasteAnalyzer,
-            $this->behaviorAnalyzer,
-            $this->cache,
-            $this->db,
-            $this->openai,
-            app('log'),
-        );
-
-        Storage::fake('public');
-    }
 
     #[Test]
     public function it_analyzes_photo_and_returns_recommendations(): void
@@ -354,5 +335,33 @@ final class GadgetVisionRecommendationServiceTest extends TestCase
             'vertical' => 'electronics',
             'correlation_id' => $correlationId,
         ]);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->fraud->method('check')->willReturn(null);
+
+        $this->recommendation = $this->createMock(RecommendationService::class);
+        $this->tasteAnalyzer = $this->createMock(UserTasteAnalyzerService::class);
+        $this->behaviorAnalyzer = $this->createMock(UserBehaviorAnalyzerService::class);
+        $this->cache = app(Cache::class);
+        $this->db = app(DatabaseManager::class);
+        $this->openai = $this->createMock(OpenAIClient::class);
+
+        $this->service = new GadgetVisionRecommendationService(
+            $this->fraud,
+            $this->recommendation,
+            $this->tasteAnalyzer,
+            $this->behaviorAnalyzer,
+            $this->cache,
+            $this->db,
+            $this->openai,
+            app('log'),
+        );
+
+        Storage::fake('public');
     }
 }

@@ -15,12 +15,6 @@ final class DynamicPricingServiceTest extends TestCase
 
     private DynamicPricingService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(DynamicPricingService::class);
-    }
-
     public function test_calculate_dynamic_pricing(): void
     {
         $dto = new DynamicPricingDto(
@@ -75,5 +69,11 @@ final class DynamicPricingServiceTest extends TestCase
         $result = $this->service->calculate($dto);
 
         $this->assertArrayHasKey('final_price', $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(DynamicPricingService::class);
     }
 }

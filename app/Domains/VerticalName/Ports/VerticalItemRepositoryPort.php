@@ -9,6 +9,7 @@ use App\Domains\VerticalName\DTOs\SearchVerticalItemDto;
 use App\Domains\VerticalName\DTOs\UpdateVerticalItemDto;
 use App\Domains\VerticalName\Models\VerticalItem;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * Port (интерфейс) репозитория VerticalItem.
@@ -19,22 +20,20 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  *
  * Все методы обязаны соблюдать tenant isolation.
  * correlation_id передаётся для traceability.
- *
- * @package App\Domains\VerticalName\Ports
  */
 interface VerticalItemRepositoryPort
 {
     /**
      * Найти item по ID (tenant-scoped).
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws ModelNotFoundException
      */
     public function findById(int $id, int $tenantId): VerticalItem;
 
     /**
      * Найти item по UUID (tenant-scoped).
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws ModelNotFoundException
      */
     public function findByUuid(string $uuid, int $tenantId): VerticalItem;
 

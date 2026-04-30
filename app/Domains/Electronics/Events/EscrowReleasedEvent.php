@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Events;
 
@@ -13,9 +15,8 @@ final readonly class EscrowReleasedEvent
     use SerializesModels;
 
     public function __construct(
-        public object $escrowHold,
-        public string $reason,
-        public string $correlationId,
-    ) {
-    }
+        public readonly int $escrowId,
+        public readonly string $reason,
+        public readonly string $correlationId = '',
+    ) {}
 }

@@ -22,10 +22,11 @@ final class CreatePropertyUseCase
 {
     public function __construct(
         private readonly PropertyRepositoryInterface $propertyRepository,
-        private readonly AgentRepositoryInterface    $agentRepository,
-        private readonly FraudControlService         $fraud,
-        private readonly ConnectionInterface         $db,
-        private readonly LoggerInterface             $logger) {}
+        private readonly AgentRepositoryInterface $agentRepository,
+        private readonly FraudControlService $fraud,
+        private readonly ConnectionInterface $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Create a new property listing in Draft status.
@@ -43,7 +44,7 @@ final class CreatePropertyUseCase
             correlationId: $dto->correlationId,
         );
 
-        $this->logger->info('RealEstate.CreateProperty started', [
+        $this->logger->$this->logger->info('RealEstate.CreateProperty started', [
             'correlation_id' => $dto->correlationId,
             'tenant_id'      => $dto->tenantId,
             'agent_id'       => $dto->agentId,
@@ -98,7 +99,7 @@ final class CreatePropertyUseCase
             $this->agentRepository->save($agent);
         });
 
-        $this->logger->info('RealEstate.CreateProperty completed', [
+        $this->logger->$this->logger->info('RealEstate.CreateProperty completed', [
             'correlation_id' => $dto->correlationId,
             'property_id'    => $propertyId->getValue(),
             'title'          => $dto->title,

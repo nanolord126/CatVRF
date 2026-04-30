@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Cosmetics\Http\Controllers;
@@ -9,6 +10,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
 
 final class CosmeticProductController extends Controller
 {
@@ -27,7 +29,7 @@ final class CosmeticProductController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        $this->logger->info('Cosmetics listed', ['correlation_id' => $correlationId, 'count' => $products->total()]);
+        $this->logger->$this->logger->info('Cosmetics listed', ['correlation_id' => $correlationId, 'count' => $products->total()]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -59,11 +61,11 @@ final class CosmeticProductController extends Controller
             return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Товар не найден'], 404);
         }
 
-        $this->logger->info('Cosmetic AR try-on requested', ['correlation_id' => $correlationId, 'product_id' => $id]);
+        $this->logger->$this->logger->info('Cosmetic AR try-on requested', ['correlation_id' => $correlationId, 'product_id' => $id]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
-            'ar_url' => '/cosmetics/ar-preview/' . $id,
+            'ar_url' => '/cosmetics/ar-preview/'.$id,
             'product_id' => $id,
         ]);
     }
@@ -86,12 +88,12 @@ final class CosmeticProductController extends Controller
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
                 'status' => 'pending',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
         });
 
-        $this->logger->info('Cosmetic order created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Cosmetic order created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'Заказ создан'], 201);
     }

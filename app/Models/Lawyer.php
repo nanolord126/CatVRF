@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Юрист/Адвокат (alias App\Domains\Legal\Models\Lawyer)
- *
- * @package App\Models
  */
 final class Lawyer extends Model
 {
-
     protected $table = 'lawyers';
 
     protected $fillable = [

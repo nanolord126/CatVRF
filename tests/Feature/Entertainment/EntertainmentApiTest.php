@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Entertainment;
 
@@ -16,15 +18,6 @@ final class EntertainmentApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        // Mock tenant
-        $this->tenant = User::factory()->create(['id' => 1]);
-        $this->actingAs($this->tenant);
-    }
-
     /**
      * Тест получения списка заведений
      */
@@ -32,7 +25,7 @@ final class EntertainmentApiTest extends TestCase
     {
         Venue::factory()->count(3)->create([
             'tenant_id' => $this->tenant->id,
-            'is_active' => true
+            'is_active' => true,
         ]);
 
         $response = $this->getJson('/api/v1/entertainment/venues');
@@ -51,7 +44,7 @@ final class EntertainmentApiTest extends TestCase
         $event = Event::factory()->create([
             'tenant_id' => $this->tenant->id,
             'venue_id' => $venue->id,
-            'status' => 'on_sale'
+            'status' => 'on_sale',
         ]);
 
         $correlationId = (string) Str::uuid();
@@ -60,9 +53,9 @@ final class EntertainmentApiTest extends TestCase
             'event_id' => $event->id,
             'seats' => [
                 ['row' => 1, 'col' => 5],
-                ['row' => 1, 'col' => 6]
+                ['row' => 1, 'col' => 6],
             ],
-            'correlation_id' => $correlationId
+            'correlation_id' => $correlationId,
         ];
 
         $response = $this->postJson('/api/v1/entertainment/book', $payload);
@@ -73,7 +66,7 @@ final class EntertainmentApiTest extends TestCase
 
         $this->assertDatabaseHas('entertainment_bookings', [
             'event_id' => $event->id,
-            'correlation_id' => $correlationId
+            'correlation_id' => $correlationId,
         ]);
     }
 
@@ -84,5 +77,14 @@ final class EntertainmentApiTest extends TestCase
     {
         // Add ticket verification logic test here matching the controller
         $this->assertTrue(true);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Mock tenant
+        $this->tenant = User::factory()->create(['id' => 1]);
+        $this->actingAs($this->tenant);
     }
 }

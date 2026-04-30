@@ -1,6 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Notifications\Services;
+
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+use Illuminate\Notifications\ChannelManager;
+
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Notifications\DTOs\SendNotificationDto;
 use App\Domains\Notifications\DTOs\CreateTemplateDto;
@@ -12,15 +22,21 @@ use App\Services\AuditService;
 use App\Domains\Notifications\Events\NotificationSent;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Log\LogManager;
+use App\Domains\Notifications\Jobs\SendEmailNotificationJob;
+use App\Domains\Notifications\Jobs\SendPushNotificationJob;
+use App\Domains\Notifications\Jobs\SendSmsNotificationJob;
+use App\Domains\Notifications\Jobs\SendTelegramNotificationJob;
 
 final readonly class NotificationService
 {
-    public function __construct(
+    public function __construct(private readonly BusDispatcher $bus,
+        private readonly ChannelManager $notificationManager,
+        private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
         private readonly DatabaseManager $db,
         private readonly LogManager $logger,
         private readonly AuditService $audit,
-        private readonly FraudControlService $fraud,
-    ) {}
+        private readonly FraudControlService $fraud,) {}
 
     /**
      * Send notification to user
@@ -41,8 +57,8 @@ final readonly class NotificationService
                     ->where('channel', $dto->channel)
                     ->first();
 
-                if ($preference && !$preference->shouldSend()) {
-                    $this->logger->channel('notifications')->info('Notification skipped due to preferences', [
+                if ($preference && ! $preference->shouldSend()) {
+                    $this->logger->channel('notifications')->$this->logger->info('Notification skipped due to preferences', [
                         'user_id' => $dto->userId,
                         'channel' => $dto->channel,
                         'correlation_id' => $correlationId,
@@ -52,7 +68,7 @@ final readonly class NotificationService
                 }
             }
 
-            $notification = Notification::create([
+            $notification = $this->notificationManager->create([
                 'tenant_id' => $dto->tenantId,
                 'user_id' => $dto->userId,
                 'type' => $dto->type,
@@ -68,13 +84,13 @@ final readonly class NotificationService
 
             $this->audit->record(
                 action: 'notification_sent',
-                subjectType: Notification::class,
+                subjectType: $this->notificationManager->class,
                 subjectId: $notification->id,
                 newValues: $notification->toArray(),
                 correlationId: $correlationId,
             );
 
-            event(new NotificationSent($notification, $correlationId));
+            $this->eventDispatcher->dispatch(new NotificationSent($notification, $correlationId));
 
             return $notification;
         });
@@ -114,12 +130,12 @@ final readonly class NotificationService
      */
     public function markAsRead(int $notificationId, string $correlationId): bool
     {
-        $notification = Notification::findOrFail($notificationId);
+        $notification = $this->notificationManager->findOrFail($notificationId);
         $notification->markAsRead();
 
         $this->audit->record(
             action: 'notification_marked_read',
-            subjectType: Notification::class,
+            subjectType: $this->notificationManager->class,
             subjectId: $notification->id,
             correlationId: $correlationId,
         );
@@ -179,14 +195,14 @@ final readonly class NotificationService
     private function dispatchToChannel(Notification $notification, string $correlationId): void
     {
         $jobClass = match ($notification->channel) {
-            'email' => \App\Domains\Notifications\Jobs\SendEmailNotificationJob::class,
-            'push' => \App\Domains\Notifications\Jobs\SendPushNotificationJob::class,
-            'sms' => \App\Domains\Notifications\Jobs\SendSmsNotificationJob::class,
-            'telegram' => \App\Domains\Notifications\Jobs\SendTelegramNotificationJob::class,
+            'email' => SendEmailNotificationJob::class,
+            'push' => SendPushNotificationJob::class,
+            'sms' => SendSmsNotificationJob::class,
+            'telegram' => SendTelegramNotificationJob::class,
             default => throw new \InvalidArgumentException("Unknown channel: {$notification->channel}"),
         };
 
-        dispatch(new $jobClass($notification->id, $correlationId))
+        $this->bus->dispatch(new $jobClass($notification->id, $correlationId))
             ->onQueue('notifications');
     }
 }

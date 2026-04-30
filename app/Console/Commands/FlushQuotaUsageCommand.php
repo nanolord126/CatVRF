@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Console\Commands;
 
@@ -14,6 +16,7 @@ use Illuminate\Console\Command;
  * Should be scheduled to run every 5-10 minutes.
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final class FlushQuotaUsageCommand extends Command

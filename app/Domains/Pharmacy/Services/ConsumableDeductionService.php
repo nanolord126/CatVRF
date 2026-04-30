@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ConsumableDeductionService — CatVRF 2026 Component.
@@ -7,36 +9,41 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/consumabledeductionservice
  */
 
-
 namespace App\Domains\Pharmacy\Services;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+
 final readonly class ConsumableDeductionService
 {
-
-    public function __construct(private readonly FraudControlService $fraud,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
-        public function deduct(int $id, int $qty, string $correlationId): void
-        {
-            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'qty', amount: 0, correlationId: $correlationId ?? '');
-            $this->db->transaction(function () use ($id, $qty, $correlationId) {
-                $c = PharmacyConsumable::findOrFail($id);
-                $c->decrement('stock', $qty);
-                $this->logger->info("Consumable deducted", ['id' => $id, 'qty' => $qty, 'correlation_id' => $correlationId]);
-            });
-        }
+    public function deduct(int $id, int $qty, string $correlationId): void
+    {
+        $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'qty', amount: 0, correlationId: $correlationId ?? '');
+        $this->db->transaction(function () use ($id, $qty, $correlationId) {
+            $c = PharmacyConsumable::findOrFail($id);
+            $c->decrement('stock', $qty);
+            $this->logger->$this->logger->info('Consumable deducted', ['id' => $id, 'qty' => $qty, 'correlation_id' => $correlationId]);
+        });
+    }
 
     /**
      * Get the string representation of this instance.
@@ -45,7 +52,7 @@ final readonly class ConsumableDeductionService
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -56,8 +63,8 @@ final readonly class ConsumableDeductionService
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

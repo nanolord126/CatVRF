@@ -21,10 +21,11 @@ use App\Policies\Company\PayrollPolicy;
 use App\Policies\Hotels\HotelBookingPolicy;
 use App\Policies\PayoutPolicy;
 use App\Policies\RestaurantOrderPolicy;
+use App\Policies\StaffSecurityPolicy;
 use App\Policies\TaxiRidePolicy;
 use App\Policies\WalletManagementPolicy;
+use Illuminate\Contracts\Auth\Access\Gate as GateContract;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Gate;
 
 final class AuthServiceProvider extends ServiceProvider
 {
@@ -44,6 +45,8 @@ final class AuthServiceProvider extends ServiceProvider
         // Channels
         BusinessChannel::class => ChannelPolicy::class,
         Post::class             => PostPolicy::class,
+        // Security
+        'staff-security' => StaffSecurityPolicy::class,
     ];
 
     public function boot(): void
@@ -57,25 +60,25 @@ final class AuthServiceProvider extends ServiceProvider
     private function defineGates(): void
     {
         // Admin gates
-        Gate::define('view-admin-dashboard', static fn($user) => $user->hasRole('admin'));
-        Gate::define('manage-platforms', static fn($user) => $user->hasRole('admin'));
-        Gate::define('manage-disputes', static fn($user) => $user->hasRole('admin'));
+        $this->app->make(GateContract::class)->define('view-admin-dashboard', static fn($user) => $user->hasRole('admin'));
+        $this->app->make(GateContract::class)->define('manage-platforms', static fn($user) => $user->hasRole('admin'));
+        $this->app->make(GateContract::class)->define('manage-disputes', static fn($user) => $user->hasRole('admin'));
 
         // Business owner gates
-        Gate::define('view-business-dashboard', static fn($user) => $user->hasRole('business_owner'));
-        Gate::define('manage-employees', static fn($user) => $user->hasRole('business_owner'));
-        Gate::define('manage-payroll', static fn($user) => $user->hasRole('business_owner'));
+        $this->app->make(GateContract::class)->define('view-business-dashboard', static fn($user) => $user->hasRole('business_owner'));
+        $this->app->make(GateContract::class)->define('manage-employees', static fn($user) => $user->hasRole('business_owner'));
+        $this->app->make(GateContract::class)->define('manage-payroll', static fn($user) => $user->hasRole('business_owner'));
 
             // Manager gates
-            Gate::define('manage-operations', static fn($user) => $user->hasRole('manager'));
-            Gate::define('view-analytics', static fn($user) => $user->hasRole('manager'));
+            $this->app->make(GateContract::class)->define('manage-operations', static fn($user) => $user->hasRole('manager'));
+            $this->app->make(GateContract::class)->define('view-analytics', static fn($user) => $user->hasRole('manager'));
 
             // Accountant gates
-            Gate::define('manage-payments', static fn($user) => $user->hasRole('accountant'));
-            Gate::define('view-financial-reports', static fn($user) => $user->hasRole('accountant'));
+            $this->app->make(GateContract::class)->define('manage-payments', static fn($user) => $user->hasRole('accountant'));
+            $this->app->make(GateContract::class)->define('view-financial-reports', static fn($user) => $user->hasRole('accountant'));
 
             // Employee gates
-            Gate::define('manage-tasks', static fn($user) => $user->hasRole('employee'));
-            Gate::define('view-schedule', static fn($user) => $user->hasRole('employee'));
+            $this->app->make(GateContract::class)->define('manage-tasks', static fn($user) => $user->hasRole('employee'));
+            $this->app->make(GateContract::class)->define('view-schedule', static fn($user) => $user->hasRole('employee'));
         }
 }

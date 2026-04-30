@@ -19,8 +19,6 @@ use App\Domains\Auto\Taxi\Domain\Entities\Ride;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Auto\Taxi\Application\Shared\Mappers
  */
 final class RideMapper
 {

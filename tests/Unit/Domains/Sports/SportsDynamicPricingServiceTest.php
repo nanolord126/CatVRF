@@ -13,37 +13,24 @@ use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Redis\Connections\Connection as RedisConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use App\Domains\Sports\Models\Membership;
+use Illuminate\Support\Str;
 
 final class SportsDynamicPricingServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private SportsDynamicPricingService $service;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
+
     private DatabaseManager $db;
+
     private Cache $cache;
+
     private RedisConnection $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->audit = $this->createMock(AuditService::class);
-        $this->db = $this->app->make(DatabaseManager::class);
-        $this->cache = $this->app->make(Cache::class);
-        $this->redis = $this->app->make('redis');
-
-        $this->service = new SportsDynamicPricingService(
-            fraud: $this->fraud,
-            audit: $this->audit,
-            db: $this->db,
-            cache: $this->cache,
-            logger: $this->app->make('log'),
-            redis: $this->redis,
-        );
-    }
 
     public function test_calculate_dynamic_price_success(): void
     {
@@ -57,7 +44,7 @@ final class SportsDynamicPricingServiceTest extends TestCase
             );
 
         $gym = Gym::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'uuid' => Str::uuid()->toString(),
             'tenant_id' => 1,
             'business_group_id' => null,
             'name' => 'Test Gym',
@@ -88,7 +75,7 @@ final class SportsDynamicPricingServiceTest extends TestCase
             ->method('check');
 
         $gym = Gym::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'uuid' => Str::uuid()->toString(),
             'tenant_id' => 1,
             'business_group_id' => null,
             'name' => 'Test Gym',
@@ -114,7 +101,7 @@ final class SportsDynamicPricingServiceTest extends TestCase
             ->method('check');
 
         $gym = Gym::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'uuid' => Str::uuid()->toString(),
             'tenant_id' => 1,
             'business_group_id' => null,
             'name' => 'Test Gym',
@@ -138,7 +125,7 @@ final class SportsDynamicPricingServiceTest extends TestCase
 
         $result = $this->service->createFlashMembership($gym->id, 1, $membershipData, 'test-correlation-id');
 
-        $this->assertInstanceOf(\App\Domains\Sports\Models\Membership::class, $result);
+        $this->assertInstanceOf(Membership::class, $result);
         $this->assertTrue($result->is_flash);
         $this->assertEquals(2100, $result->discounted_price);
         $this->assertEquals(30, $result->discount_percentage);
@@ -150,7 +137,7 @@ final class SportsDynamicPricingServiceTest extends TestCase
             ->method('check');
 
         $gym = Gym::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'uuid' => Str::uuid()->toString(),
             'tenant_id' => 1,
             'business_group_id' => null,
             'name' => 'Test Gym',
@@ -184,7 +171,7 @@ final class SportsDynamicPricingServiceTest extends TestCase
             ->method('check');
 
         $gym = Gym::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'uuid' => Str::uuid()->toString(),
             'tenant_id' => 1,
             'business_group_id' => null,
             'name' => 'Test Gym',
@@ -210,7 +197,7 @@ final class SportsDynamicPricingServiceTest extends TestCase
     public function test_update_pricing_based_on_load_success(): void
     {
         $gym = Gym::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'uuid' => Str::uuid()->toString(),
             'tenant_id' => 1,
             'business_group_id' => null,
             'name' => 'Test Gym',
@@ -232,5 +219,25 @@ final class SportsDynamicPricingServiceTest extends TestCase
         $this->assertArrayHasKey('updated_at', $pricingData);
 
         $this->redis->del($pricingKey);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->audit = $this->createMock(AuditService::class);
+        $this->db = $this->app->make(DatabaseManager::class);
+        $this->cache = $this->app->make(Cache::class);
+        $this->redis = $this->app->make('redis');
+
+        $this->service = new SportsDynamicPricingService(
+            fraud: $this->fraud,
+            audit: $this->audit,
+            db: $this->db,
+            cache: $this->cache,
+            logger: $this->app->make('log'),
+            redis: $this->redis,
+        );
     }
 }

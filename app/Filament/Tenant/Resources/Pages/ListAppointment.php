@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -20,15 +22,6 @@ final class ListAppointment extends ListRecords
     public function getTitle(): string
     {
         return 'Записи';
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Создать запись')
-                ->icon('heroicon-m-plus'),
-        ];
     }
 
     public function table(Table $table): Table
@@ -64,7 +57,7 @@ final class ListAppointment extends ListRecords
                     ->toggleable(),
                 TextColumn::make('price')
                     ->label('Цена')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable(),
                 BadgeColumn::make('status')
                     ->label('Статус')
@@ -117,5 +110,14 @@ final class ListAppointment extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Создать запись')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

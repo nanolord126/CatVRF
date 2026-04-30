@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\B2B\Widgets;
 
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 /**
  * CreditLimitWidget — виджет кредитного лимита B2B-клиента.
@@ -17,17 +19,17 @@ use Illuminate\Support\Facades\DB;
  */
 final class CreditLimitWidget extends StatsOverviewWidget
 {
+    protected static ?int $sort = 1;
+
     public function __construct(
         private readonly DatabaseManager $db,
     ) {}
-
-    protected static ?int $sort = 1;
 
     protected function getStats(): array
     {
         $businessGroupId = session('active_business_group_id');
 
-        if (!$businessGroupId) {
+        if (! $businessGroupId) {
             return [
                 Stat::make('Кредит', '–')
                     ->description('Бизнес-группа не выбрана')
@@ -39,7 +41,7 @@ final class CreditLimitWidget extends StatsOverviewWidget
             ->where('id', $businessGroupId)
             ->first();
 
-        if (!$group) {
+        if (! $group) {
             return [
                 Stat::make('Кредит', '–')->color('gray'),
             ];
@@ -54,8 +56,8 @@ final class CreditLimitWidget extends StatsOverviewWidget
         $trend = $this->db->table('orders')
             ->where('business_group_id', $businessGroupId)
             ->whereIn('status', ['pending', 'processing'])
-            ->where('created_at', '>=', now()->subDays(7))
-            ->selectRaw("DATE(created_at) as day, SUM(total_amount)/100 as total")
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(7))
+            ->selectRaw('DATE(created_at) as day, SUM(total_amount)/100 as total')
             ->groupBy('day')
             ->orderBy('day')
             ->pluck('total')
@@ -67,16 +69,16 @@ final class CreditLimitWidget extends StatsOverviewWidget
             ->where('business_group_id', $businessGroupId)
             ->whereIn('status', ['pending', 'processing'])
             ->whereNotNull('due_date')
-            ->where('due_date', '<', now())
+            ->where('due_date', '<', CarbonImmutable::now())
             ->count();
 
         return [
-            Stat::make('Кредитный лимит', number_format($limit, 0, '.', ' ') . ' ₽')
-                ->description('Tier: ' . strtoupper($group->b2b_tier ?? 'standard'))
+            Stat::make('Кредитный лимит', number_format($limit, 0, '.', ' ').' ₽')
+                ->description('Tier: '.strtoupper($group->b2b_tier ?? 'standard'))
                 ->descriptionIcon('heroicon-o-credit-card')
                 ->color('primary'),
 
-            Stat::make('Использовано', number_format($used, 0, '.', ' ') . ' ₽')
+            Stat::make('Использовано', number_format($used, 0, '.', ' ').' ₽')
                 ->description("{$pct}% от лимита")
                 ->descriptionIcon(
                     $pct > 80
@@ -86,7 +88,7 @@ final class CreditLimitWidget extends StatsOverviewWidget
                 ->color($pct > 80 ? 'danger' : ($pct > 60 ? 'warning' : 'success'))
                 ->chart($trend ?: [0]),
 
-            Stat::make('Доступно к использованию', number_format($available, 0, '.', ' ') . ' ₽')
+            Stat::make('Доступно к использованию', number_format($available, 0, '.', ' ').' ₽')
                 ->description(
                     $overdueCount > 0
                         ? "⚠ Просрочено заказов: {$overdueCount}"

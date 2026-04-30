@@ -1,7 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\DemandForecast\Filament\Resources;
-
 
 use App\Domains\DemandForecast\Models\DemandForecast;
 use Filament\Forms;
@@ -9,6 +10,10 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\DemandForecast\Filament\Resources\DemandForecastResource\Pages\CreateDemandForecast;
+use App\Domains\DemandForecast\Filament\Resources\DemandForecastResource\Pages\EditDemandForecast;
+use App\Domains\DemandForecast\Filament\Resources\DemandForecastResource\Pages\ListDemandForecasts;
+use Illuminate\Support\Str;
 
 final class DemandForecastResource extends Resource
 {
@@ -37,7 +42,7 @@ final class DemandForecastResource extends Resource
                 ->default(fn (): ?int => function_exists('tenant') && tenant() ? tenant()->id : null),
 
             Forms\Components\Hidden::make('correlation_id')
-                ->default(fn (): string => \Illuminate\Support\Str::uuid()->toString()),
+                ->default(fn (): string => Str::uuid()->toString()),
         ]);
     }
 
@@ -90,9 +95,9 @@ final class DemandForecastResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\DemandForecast\Filament\Resources\DemandForecastResource\Pages\ListDemandForecasts::route('/'),
-            'create' => \App\Domains\DemandForecast\Filament\Resources\DemandForecastResource\Pages\CreateDemandForecast::route('/create'),
-            'edit' => \App\Domains\DemandForecast\Filament\Resources\DemandForecastResource\Pages\EditDemandForecast::route('/{record}/edit'),
+            'index' => ListDemandForecasts::route('/'),
+            'create' => CreateDemandForecast::route('/create'),
+            'edit' => EditDemandForecast::route('/{record}/edit'),
         ];
     }
 }

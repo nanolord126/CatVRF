@@ -1,16 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
 use App\Services\FraudControlService;
 use App\Services\Fraud\FraudMLService;
 use App\Services\Security\RateLimiterService;
-use Illuminate\Database\DatabaseManager;
-use Illuminate\Http\Request;
-use Illuminate\Log\LogManager;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\LoggerInterface;
 
 /**
  * =================================================================

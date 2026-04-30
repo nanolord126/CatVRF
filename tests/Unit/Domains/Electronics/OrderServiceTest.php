@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Electronics;
 
@@ -15,20 +17,14 @@ final class OrderServiceTest extends BaseTestCase
     use RefreshDatabase;
 
     private OrderService $service;
-    private FraudControlService $fraudService;
-    private WalletService $walletService;
-    private CommissionService $commissionService;
-    private NotificationService $notificationService;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = $this->app->make(OrderService::class);
-        $this->fraudService = $this->app->make(FraudControlService::class);
-        $this->walletService = $this->app->make(WalletService::class);
-        $this->commissionService = $this->app->make(CommissionService::class);
-        $this->notificationService = $this->app->make(NotificationService::class);
-    }
+    private FraudControlService $fraudService;
+
+    private WalletService $walletService;
+
+    private CommissionService $commissionService;
+
+    private NotificationService $notificationService;
 
     public function test_calculate_commission_for_b2c_order(): void
     {
@@ -246,5 +242,15 @@ final class OrderServiceTest extends BaseTestCase
         $result = $this->service->validateOrder($data, $correlationId);
 
         $this->assertTrue($result['valid']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = $this->app->make(OrderService::class);
+        $this->fraudService = $this->app->make(FraudControlService::class);
+        $this->walletService = $this->app->make(WalletService::class);
+        $this->commissionService = $this->app->make(CommissionService::class);
+        $this->notificationService = $this->app->make(NotificationService::class);
     }
 }

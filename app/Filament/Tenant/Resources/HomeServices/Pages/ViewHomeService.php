@@ -1,14 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\HomeServices\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+
+use Carbon\CarbonImmutable;
+
 use App\Filament\Tenant\Resources\HomeServices\HomeServicesResource;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use Illuminate\Contracts\View\View;
 
 /**
  * Class ViewHomeService
@@ -20,41 +25,40 @@ use Illuminate\Support\Facades\Log;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Filament\Tenant\Resources\HomeServices\Pages
+ * @see FraudControlService
+ * @see AuditService
  */
 final class ViewHomeService extends ViewRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = HomeServicesResource::class;
 
-    protected function afterLoad(): void
-    {
-        \Illuminate\Support\Facades\Log::channel('audit')->info('HomeServices record viewed', [
-            'record_id' => $this->record->id,
-            'uuid' => $this->record->uuid,
-            'correlation_id' => $this->record->correlation_id ?? null,
-            'user_id' => auth()->id(),
-            'tenant_id' => filament()->getTenant()->id,
-            'timestamp' => now()->toIso8601String(),
-        ]);
-    }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     /**
      * Handle render operation.
      *
      * @throws \DomainException
      */
-    public function render(): \Illuminate\Contracts\View\View {
+    public function render(): View
+    {
         $this->logger->debug('ViewHomeService page rendered', [
             'record_id' => $this->record->id,
             'user_id' => auth()->id(),
         ]);
 
         return parent::render();
+    }
+
+    protected function afterLoad(): void
+    {
+        $this->log->channel('audit')->$this->logger->info('HomeServices record viewed', [
+            'record_id' => $this->record->id,
+            'uuid' => $this->record->uuid,
+            'correlation_id' => $this->record->correlation_id ?? null,
+            'user_id' => auth()->id(),
+            'tenant_id' => filament()->getTenant()->id,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
+        ]);
     }
 }

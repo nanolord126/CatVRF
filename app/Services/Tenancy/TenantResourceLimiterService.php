@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Tenancy;
+
+use Psr\Log\LoggerInterface;
 
 use App\Exceptions\TenantQuotaExceededException;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
@@ -24,12 +28,15 @@ use Illuminate\Log\LogManager;
  * Hard enforcement: throws TenantQuotaExceededException (HTTP 429) when quota exceeded.
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final readonly class TenantResourceLimiterService
 {
     private const QUOTA_PREFIX = 'tenant:quota:';
+
     private const QUOTA_TTL = 3600; // 1 hour window
+
     private const DAILY_TTL = 86400; // 24 hours
 
     // Lua script for atomic increment with quota check
@@ -53,11 +60,10 @@ final readonly class TenantResourceLimiterService
         return {1, new_value, quota}
     LUA;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly RedisFactory $redis,
         private readonly ConfigRepository $config,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     /**
      * Check if tenant can perform AI inference
@@ -158,78 +164,12 @@ final readonly class TenantResourceLimiterService
     }
 
     /**
-     * Get custom quota for tenant (or default)
-     */
-    private function getQuota(string $resourceType, int $tenantId): int
-    {
-        $key = self::QUOTA_PREFIX . "custom:{$resourceType}:{$tenantId}";
-        $customQuota = (int) $this->redis->connection()->get($key);
-
-        if ($customQuota > 0) {
-            return $customQuota;
-        }
-
-        // Get default from config
-        return $this->config->get("tenant.quotas.{$resourceType}.default", $this->getDefaultQuota($resourceType));
-    }
-
-    /**
-     * Get default quotas
-     */
-    private function getDefaultQuota(string $resourceType): int
-    {
-        return match ($resourceType) {
-            'ai_tokens' => 1000000, // 1M tokens per day
-            'redis_ops' => 100000, // 100K ops per hour
-            'db_queries' => 50000, // 50K queries per hour
-            'storage_bytes' => 10 * 1024 * 1024 * 1024, // 10GB per day
-            default => PHP_INT_MAX,
-        };
-    }
-
-    /**
-     * Atomic increment with quota check using Lua script
-     *
-     * @throws TenantQuotaExceededException
-     */
-    private function atomicIncrementWithCheck(
-        string $resourceType,
-        int $tenantId,
-        int $quota,
-        int $increment,
-        int $ttl
-    ): void {
-        $key = self::QUOTA_PREFIX . "{$resourceType}:{$tenantId}";
-        $result = $this->redis->connection()->eval(
-            self::LUA_INCREMENT_WITH_CHECK,
-            1,
-            $key,
-            $quota,
-            $increment,
-            $ttl
-        );
-
-        $success = $result[0];
-        $current = $result[1];
-        $currentQuota = $result[2];
-
-        if (!$success) {
-            throw new TenantQuotaExceededException(
-                $tenantId,
-                $resourceType,
-                $current,
-                $currentQuota,
-                $increment
-            );
-        }
-    }
-
-    /**
      * Get current usage (read-only, no enforcement)
      */
     public function getUsage(string $resourceType, int $tenantId): int
     {
-        $key = self::QUOTA_PREFIX . "{$resourceType}:{$tenantId}";
+        $key = self::QUOTA_PREFIX."{$resourceType}:{$tenantId}";
+
         return (int) $this->redis->connection()->get($key) ?: 0;
     }
 
@@ -255,30 +195,19 @@ final readonly class TenantResourceLimiterService
     }
 
     /**
-     * Record resource usage (legacy method, use atomicIncrementWithCheck instead)
-     * @deprecated Use checkAIQuota, checkRedisQuota, checkDBQuota, checkStorageQuota instead
-     */
-    private function recordUsage(string $resourceType, int $tenantId, int $amount, int $ttl): void
-    {
-        $key = self::QUOTA_PREFIX . "{$resourceType}:{$tenantId}";
-        $this->redis->connection()->incrby($key, $amount);
-        $this->redis->connection()->expire($key, $ttl);
-    }
-
-    /**
      * Set custom quota for tenant
      */
     public function setCustomQuota(string $resourceType, int $tenantId, int $quota, ?int $ttl = null): void
     {
-        $key = self::QUOTA_PREFIX . "custom:{$resourceType}:{$tenantId}";
-        
+        $key = self::QUOTA_PREFIX."custom:{$resourceType}:{$tenantId}";
+
         if ($ttl) {
             $this->redis->connection()->setex($key, $ttl, $quota);
         } else {
             $this->redis->connection()->set($key, $quota);
         }
 
-        $this->logger->channel('tenant')->info('Custom quota set', [
+        $this->logger->channel('tenant')->$this->logger->info('Custom quota set', [
             'tenant_id' => $tenantId,
             'resource_type' => $resourceType,
             'quota' => $quota,
@@ -318,7 +247,7 @@ final readonly class TenantResourceLimiterService
     {
         $resourceKey = "vertical_{$vertical}_{$operation}";
         $quota = $this->getQuota($resourceKey, $tenantId);
-        
+
         if ($quota === PHP_INT_MAX) {
             // Unlimited quota for this operation
             return;
@@ -335,11 +264,11 @@ final readonly class TenantResourceLimiterService
         $resources = $resourceType ? [$resourceType] : ['ai_tokens', 'redis_ops', 'db_queries', 'storage_bytes'];
 
         foreach ($resources as $resource) {
-            $key = self::QUOTA_PREFIX . "{$resource}:{$tenantId}";
+            $key = self::QUOTA_PREFIX."{$resource}:{$tenantId}";
             $this->redis->connection()->del($key);
         }
 
-        $this->logger->channel('tenant')->info('Quota usage reset', [
+        $this->logger->channel('tenant')->$this->logger->info('Quota usage reset', [
             'tenant_id' => $tenantId,
             'resource_type' => $resourceType,
         ]);
@@ -361,5 +290,84 @@ final readonly class TenantResourceLimiterService
         }
 
         return $current > $limit;
+    }
+
+    /**
+     * Get custom quota for tenant (or default)
+     */
+    private function getQuota(string $resourceType, int $tenantId): int
+    {
+        $key = self::QUOTA_PREFIX."custom:{$resourceType}:{$tenantId}";
+        $customQuota = (int) $this->redis->connection()->get($key);
+
+        if ($customQuota > 0) {
+            return $customQuota;
+        }
+
+        // Get default from config
+        return $this->config->get("tenant.quotas.{$resourceType}.default", $this->getDefaultQuota($resourceType));
+    }
+
+    /**
+     * Get default quotas
+     */
+    private function getDefaultQuota(string $resourceType): int
+    {
+        return match ($resourceType) {
+            'ai_tokens' => 1000000, // 1M tokens per day
+            'redis_ops' => 100000, // 100K ops per hour
+            'db_queries' => 50000, // 50K queries per hour
+            'storage_bytes' => 10 * 1024 * 1024 * 1024, // 10GB per day
+            default => PHP_INT_MAX,
+        };
+    }
+
+    /**
+     * Atomic increment with quota check using Lua script
+     *
+     * @throws TenantQuotaExceededException
+     */
+    private function atomicIncrementWithCheck(
+        string $resourceType,
+        int $tenantId,
+        int $quota,
+        int $increment,
+        int $ttl
+    ): void {
+        $key = self::QUOTA_PREFIX."{$resourceType}:{$tenantId}";
+        $result = $this->redis->connection()->eval(
+            self::LUA_INCREMENT_WITH_CHECK,
+            1,
+            $key,
+            $quota,
+            $increment,
+            $ttl
+        );
+
+        $success = $result[0];
+        $current = $result[1];
+        $currentQuota = $result[2];
+
+        if (! $success) {
+            throw new TenantQuotaExceededException(
+                $tenantId,
+                $resourceType,
+                $current,
+                $currentQuota,
+                $increment
+            );
+        }
+    }
+
+    /**
+     * Record resource usage (legacy method, use atomicIncrementWithCheck instead)
+     *
+     * @deprecated Use checkAIQuota, checkRedisQuota, checkDBQuota, checkStorageQuota instead
+     */
+    private function recordUsage(string $resourceType, int $tenantId, int $amount, int $ttl): void
+    {
+        $key = self::QUOTA_PREFIX."{$resourceType}:{$tenantId}";
+        $this->redis->connection()->incrby($key, $amount);
+        $this->redis->connection()->expire($key, $ttl);
     }
 }

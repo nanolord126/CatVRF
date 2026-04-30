@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Payment\Services;
 
-use Illuminate\Support\Facades\Cache;
 use Prometheus\CollectorRegistry;
 use Prometheus\Histogram;
 use Prometheus\Counter;
 use Prometheus\Gauge;
+use Psr\Log\LoggerInterface;
 
 /**
  * PaymentMetricsService - Prometheus metrics for payment layer.
@@ -23,24 +23,29 @@ use Prometheus\Gauge;
  * - Gateway success rate per provider
  * - Wallet volume
  * - Payment attempts per tenant
- *
- * @package App\Domains\Payment\Services
  */
 final readonly class PaymentMetricsService
 {
     private const NAMESPACE = 'catvrf_payment';
 
-    private Histogram $paymentLatency;
-    private Counter $paymentSuccess;
-    private Counter $paymentFailed;
-    private Counter $paymentFraudBlocked;
-    private Counter $gatewaySuccess;
-    private Counter $gatewayFailed;
-    private Gauge $walletBalance;
-    private Counter $paymentAttempts;
+    private readonly Histogram $paymentLatency;
+
+    private readonly Counter $paymentSuccess;
+
+    private readonly Counter $paymentFailed;
+
+    private readonly Counter $paymentFraudBlocked;
+
+    private readonly Counter $gatewaySuccess;
+
+    private readonly Counter $gatewayFailed;
+
+    private readonly Gauge $walletBalance;
+
+    private readonly Counter $paymentAttempts;
 
     public function __construct(
-        private CollectorRegistry $registry,
+        private readonly CollectorRegistry $registry,
     ) {
         $this->paymentLatency = $this->registry->getOrRegisterHistogram(
             self::NAMESPACE,
@@ -192,12 +197,9 @@ final readonly class PaymentMetricsService
 
     /**
      * Log metrics for external scraping (e.g., by log collector).
-     *
-     * @param \Psr\Log\LoggerInterface $logger
-     * @return void
      */
-    public function logMetrics(\Psr\Log\LoggerInterface $logger): void
+    public function logMetrics(LoggerInterface $logger): void
     {
-        $logger->info('Payment metrics', $this->getMetricsForLog());
+        $logger->$this->logger->info('Payment metrics', $this->getMetricsForLog());
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -18,7 +20,7 @@ final class MedicalAppointmentFactory extends Factory
             'correlation_id' => $this->faker->uuid(),
             'clinic_id' => 1,
             'doctor_id' => 1,
-            'patient_name' => $this->faker->firstName() . ' ' . $this->faker->lastName(),
+            'patient_name' => $this->faker->firstName().' '.$this->faker->lastName(),
             'patient_phone' => $this->faker->phoneNumber(),
             'appointment_date' => $this->faker->dateTimeBetween('+1 days', '+30 days'),
             'duration_minutes' => $this->faker->randomElement([30, 45, 60]),

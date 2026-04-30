@@ -1,8 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,6 +14,8 @@ use App\Models\BusinessGroup;
 
 final class Salon extends Model
 {
+    use TenantScoped;
+
     protected $table = 'beauty_salons';
 
     protected $fillable = [
@@ -26,7 +30,7 @@ final class Salon extends Model
         'status',
         'tags',
         'is_active',
-        'metadata'
+        'metadata',
     ];
 
     protected $casts = [
@@ -36,21 +40,6 @@ final class Salon extends Model
         'lat' => 'float',
         'lon' => 'float',
     ];
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            // Non-facade tenant resolving 
-            // Real system uses dependency or contextual function tenant()
-            $query->where('tenant_id', tenant()->id ?? 1);
-        });
-
-        static::creating(function ($model) {
-            if (!$model->uuid) {
-                $model->uuid = Str::uuid()->toString();
-            }
-        });
-    }
 
     public function tenant(): BelongsTo
     {
@@ -70,5 +59,20 @@ final class Salon extends Model
     public function services(): HasMany
     {
         return $this->hasMany(BeautyService::class, 'salon_id');
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            // Non-facade tenant resolving
+            // Real system uses dependency or contextual function tenant()
+            $query->where('tenant_id', tenant()->id ?? 1);
+        });
+
+        self::creating(function ($model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

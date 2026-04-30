@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Wallet\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use App\Domains\Wallet\Models\Wallet;
 use App\Models\User;
 
@@ -16,13 +18,17 @@ use App\Models\User;
 final class WalletPolicy
 {
     /** Просмотр списка кошельков — только своего tenant. */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return $user->tenant_id !== null;
     }
 
     /** Просмотр конкретного кошелька — проверка tenant + business_group. */
-    public function view(User $user, Wallet $wallet): bool
+    public function $this->viewFactory->make(User $user, Wallet $wallet): bool
     {
         return $this->isSameTenant($user, $wallet)
             && $this->isAccessibleByBusinessGroup($user, $wallet);

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\CarWashing\Models;
 
@@ -7,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
 
 /**
  * Class CarWashStation
@@ -26,13 +29,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Auto\CarWashing\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class CarWashStation extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes, TenantScoped;
+    use HasFactory;
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
 
     protected $table = 'car_wash_stations';
 
@@ -55,8 +60,8 @@ final class CarWashStation extends Model
         'tags' => 'json',
     ];
 
-        protected static function booted(): void
-        {
-            static::addGlobalScope('tenant', fn($q) => $q->where('car_wash_stations.tenant_id', tenant()->id));
-        }
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', fn ($q) => $q->where('car_wash_stations.tenant_id', tenant()->id));
+    }
 }

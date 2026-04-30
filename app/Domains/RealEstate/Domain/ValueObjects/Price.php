@@ -13,8 +13,9 @@ use InvalidArgumentException;
 final class Price
 {
     public function __construct(
-        private int $amountKopecks,
-        private string $currency = 'RUB') {
+        private readonly int $amountKopecks,
+        private readonly string $currency = 'RUB'
+    ) {
         if ($amountKopecks < 0) {
             throw new InvalidArgumentException(
                 "Price amount cannot be negative, got {$amountKopecks} kopecks."

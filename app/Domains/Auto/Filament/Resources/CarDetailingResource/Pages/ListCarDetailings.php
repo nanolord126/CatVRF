@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ListCarDetailings — CatVRF 2026 Component.
@@ -7,45 +9,23 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/listcardetailings
  */
-
 
 namespace App\Domains\Auto\Filament\Resources\CarDetailingResource\Pages;
 
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Components\Tab;
 
 final class ListCarDetailings extends ListRecords
 {
-
-    protected static string $resource = CarDetailingResource::class;
-
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\CreateAction::make(),
-            ];
-        }
-
-        public function getTabs(): array
-        {
-            return [
-                'all' => \Filament\Resources\Components\Tab::make('Все'),
-                'pending' => \Filament\Resources\Components\Tab::make('Ожидают')
-                    ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'pending')),
-                'in_progress' => \Filament\Resources\Components\Tab::make('В процессе')
-                    ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'in_progress')),
-                'completed' => \Filament\Resources\Components\Tab::make('Завершено')
-                    ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'completed')),
-            ];
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -61,6 +41,29 @@ final class ListCarDetailings extends ListRecords
      */
     private const CACHE_TTL = 3600;
 
+
+    protected static string $resource = CarDetailingResource::class;
+
+    public function getTabs(): array
+    {
+        return [
+            'all' => Tab::make('Все'),
+            'pending' => Tab::make('Ожидают')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'pending')),
+            'in_progress' => Tab::make('В процессе')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'in_progress')),
+            'completed' => Tab::make('Завершено')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'completed')),
+        ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
+
     /**
      * Get the component identifier for logging and audit purposes.
      *
@@ -68,7 +71,6 @@ final class ListCarDetailings extends ListRecords
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
-
 }

@@ -1,15 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * Модель правил комиссий.
- * 
+ *
  * Канон 2026: B2C = 14%, B2B = tier-based (8-12%)
- * 
+ *
  * @property int $id
  * @property string $uuid
  * @property int $tenant_id
@@ -24,13 +30,13 @@ use Illuminate\Database\Eloquent\Builder;
  * @property float|null $min_amount
  * @property float|null $max_amount
  * @property bool $is_active
- * @property \Carbon\Carbon|null $valid_from
- * @property \Carbon\Carbon|null $valid_until
+ * @property Carbon|null $valid_from
+ * @property Carbon|null $valid_until
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @property \Carbon\Carbon|null $deleted_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property Carbon|null $deleted_at
  */
 final class CommissionRule extends Model
 {
@@ -69,27 +75,6 @@ final class CommissionRule extends Model
         'tags' => 'json',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', static function (Builder $builder): void {
-            if (function_exists('tenant') && tenant()?->id) {
-                $builder->where('tenant_id', tenant()?->id);
-            }
-        });
-
-        static::addGlobalScope('businessGroup', static function (Builder $builder): void {
-            if (function_exists('tenant') && tenant()?->business_group_id) {
-                $builder->where('business_group_id', tenant()?->business_group_id);
-            }
-        });
-
-        static::creating(static function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
-            }
-        });
-    }
-
     /**
      * Scope: только активные правила
      */
@@ -98,11 +83,11 @@ final class CommissionRule extends Model
         return $query->where('is_active', true)
             ->where(function ($query) {
                 $query->whereNull('valid_from')
-                    ->orWhere('valid_from', '<=', now());
+                    ->orWhere('valid_from', '<=', CarbonImmutable::now());
             })
             ->where(function ($query) {
                 $query->whereNull('valid_until')
-                    ->orWhere('valid_until', '>=', now());
+                    ->orWhere('valid_until', '>=', CarbonImmutable::now());
             });
     }
 
@@ -112,5 +97,26 @@ final class CommissionRule extends Model
     public function scopeForEntity(Builder $query, string $entityType): Builder
     {
         return $query->where('entity_type', $entityType);
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', static function (Builder $builder): void {
+            if (function_exists('tenant') && tenant()?->id) {
+                $builder->where('tenant_id', tenant()?->id);
+            }
+        });
+
+        self::addGlobalScope('businessGroup', static function (Builder $builder): void {
+            if (function_exists('tenant') && tenant()?->business_group_id) {
+                $builder->where('business_group_id', tenant()?->business_group_id);
+            }
+        });
+
+        self::creating(static function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

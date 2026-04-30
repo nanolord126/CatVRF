@@ -1,21 +1,26 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Filament\Resources;
 
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\FashionWebRTCSessionResource\Pages;
+use App\Models\FashionWebRTCSession;
 
-final class FashionWebRTCSessionResource extends Resource
+final class FashionWebRTCSessionResource extends BaseOptimizedResource
 {
-    protected static ?string $model = \App\Models\FashionWebRTCSession::class;
+    protected static ?string $model = FashionWebRTCSession::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-video-camera';
+
     protected static ?string $navigationGroup = 'Fashion AI';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
@@ -109,5 +114,13 @@ final class FashionWebRTCSessionResource extends Resource
             'view' => Pages\ViewFashionWebRTCSession::route('/{record}'),
             'edit' => Pages\EditFashionWebRTCSession::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Fashion
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

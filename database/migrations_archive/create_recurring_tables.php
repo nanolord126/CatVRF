@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
-    public function up(): void {
+return new class () extends Migration {
+    public function up(): void
+    {
         Schema::create('wallet_cards', function (Blueprint $t) {
             $this->common($t);
             $t->foreignId('user_id')->constrained();
@@ -29,7 +32,12 @@ return new class extends Migration {
         });
     }
 
-    private function common(Blueprint $t) {
-        $t->id(); $t->string('correlation_id')->index(); $t->timestamps(); return $t;
+    private function common(Blueprint $t)
+    {
+        $t->id();
+        $t->string('correlation_id')->index();
+        $t->timestamps();
+
+        return $t;
     }
 };

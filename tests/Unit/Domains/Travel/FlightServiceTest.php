@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Travel;
 
@@ -9,6 +11,7 @@ use App\Domains\Travel\Services\FlightService;
  * Unit tests for FlightService.
  *
  * @covers \App\Domains\Travel\Services\FlightService
+ *
  * @group travel-services
  */
 final class FlightServiceTest extends TestCase
@@ -16,7 +19,7 @@ final class FlightServiceTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $class = $this->getServiceClass();
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             $this->markTestSkipped("Class {$class} not found");
         }
         $reflection = new \ReflectionClass($class);
@@ -27,7 +30,7 @@ final class FlightServiceTest extends TestCase
     public function test_has_book_flight_method(): void
     {
         $class = $this->getServiceClass();
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             $this->markTestSkipped("Class {$class} not found");
         }
         $methods = get_class_methods($class);
@@ -37,7 +40,7 @@ final class FlightServiceTest extends TestCase
     public function test_has_release_flight_method(): void
     {
         $class = $this->getServiceClass();
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             $this->markTestSkipped("Class {$class} not found");
         }
         $methods = get_class_methods($class);

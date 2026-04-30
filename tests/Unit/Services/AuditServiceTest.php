@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
@@ -11,6 +13,8 @@ use Illuminate\Log\LogManager;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Illuminate\Support\Str;
+use PHPUnit\Framework\MockObject\MockObject;
 
 /**
  * =================================================================
@@ -29,35 +33,16 @@ use Psr\Log\LoggerInterface;
 final class AuditServiceTest extends TestCase
 {
     private AuditService $service;
+
     private Request $request;
-    private AuthManager|\PHPUnit\Framework\MockObject\MockObject $auth;
-    private Queue|\PHPUnit\Framework\MockObject\MockObject $queue;
-    private LogManager|\PHPUnit\Framework\MockObject\MockObject $logManager;
-    private LoggerInterface|\PHPUnit\Framework\MockObject\MockObject $auditChannel;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
+    private AuthManager|MockObject $auth;
 
-        $this->request = Request::create('/api/test', 'POST');
-        $this->request->headers->set('User-Agent', 'PHPUnit/11.0');
+    private Queue|MockObject $queue;
 
-        $this->auth = $this->createMock(AuthManager::class);
-        $this->queue = $this->createMock(Queue::class);
-        $this->logManager = $this->createMock(LogManager::class);
-        $this->auditChannel = $this->createMock(LoggerInterface::class);
+    private LogManager|MockObject $logManager;
 
-        $this->logManager->method('channel')
-            ->with('audit')
-            ->willReturn($this->auditChannel);
-
-        $this->service = new AuditService(
-            $this->request,
-            $this->auth,
-            $this->queue,
-            $this->logManager,
-        );
-    }
+    private LoggerInterface|MockObject $auditChannel;
 
     #[Test]
     public function record_logs_to_audit_channel(): void
@@ -90,7 +75,7 @@ final class AuditServiceTest extends TestCase
                 self::anything(),
                 self::callback(function (array $context): bool {
                     return isset($context['correlation_id'])
-                        && \Illuminate\Support\Str::isUuid($context['correlation_id']);
+                        && Str::isUuid($context['correlation_id']);
                 }),
             );
 
@@ -190,5 +175,29 @@ final class AuditServiceTest extends TestCase
 
         self::assertNotNull($returnType, 'record() must have explicit return type');
         self::assertSame('void', $returnType->getName());
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->request = Request::create('/api/test', 'POST');
+        $this->request->headers->set('User-Agent', 'PHPUnit/11.0');
+
+        $this->auth = $this->createMock(AuthManager::class);
+        $this->queue = $this->createMock(Queue::class);
+        $this->logManager = $this->createMock(LogManager::class);
+        $this->auditChannel = $this->createMock(LoggerInterface::class);
+
+        $this->logManager->method('channel')
+            ->with('audit')
+            ->willReturn($this->auditChannel);
+
+        $this->service = new AuditService(
+            $this->request,
+            $this->auth,
+            $this->queue,
+            $this->logManager,
+        );
     }
 }

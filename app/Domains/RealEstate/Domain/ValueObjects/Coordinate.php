@@ -9,8 +9,9 @@ use InvalidArgumentException;
 final readonly class Coordinate
 {
     public function __construct(
-        private float $latitude,
-        private float $longitude) {
+        private readonly float $latitude,
+        private readonly float $longitude
+    ) {
         if ($latitude < -90.0 || $latitude > 90.0) {
             throw new InvalidArgumentException("Latitude must be between -90 and 90, got {$latitude}.");
         }

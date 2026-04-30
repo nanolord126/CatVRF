@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\database\factories;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Art\Models\Artist;
 use App\Domains\Art\Models\Project;
@@ -28,7 +31,7 @@ final class ProjectFactory extends Factory
             'budget_cents' => $this->faker->numberBetween(10_000, 100_000),
             'status' => 'active',
             'mode' => $this->faker->randomElement(['b2c', 'b2b']),
-            'deadline_at' => Carbon::now()->addWeeks(3),
+            'deadline_at' => CarbonImmutable::now()->addWeeks(3),
             'preferences' => ['color' => 'warm'],
             'tags' => ['vertical' => 'art'],
             'meta' => ['factory' => true],
@@ -52,7 +55,7 @@ final class ProjectFactory extends Factory
 
     public function urgent(): self
     {
-        return $this->state(fn () => ['deadline_at' => Carbon::now()->addDays(5), 'status' => 'active']);
+        return $this->state(fn () => ['deadline_at' => CarbonImmutable::now()->addDays(5), 'status' => 'active']);
     }
 
     public function enterprise(): self

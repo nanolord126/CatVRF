@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Вертикаль Construction & Repair
- *
- * @package App\Models
  */
 final class Construction extends Model
 {
-
     protected $table = 'constructions';
 
     protected $fillable = [

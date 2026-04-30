@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Insurance\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use Illuminate\Support\Str;
 
 /**
  * Class InsurancePolicyCollection
@@ -14,8 +17,6 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
  * Authorization policy for resource access control.
  * Enforces tenant-scoped permissions.
  * Integrates with B2C/B2B role system.
- *
- * @package App\Domains\Insurance\Http\Resources
  */
 final class InsurancePolicyCollection extends ResourceCollection
 {
@@ -32,7 +33,7 @@ final class InsurancePolicyCollection extends ResourceCollection
             'data' => $this->collection,
             'meta' => [
                 'total' => $this->collection->count(),
-                'correlation_id' => $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid()),
+                'correlation_id' => $request->header('X-Correlation-ID', (string) Str::uuid()),
             ],
         ];
     }

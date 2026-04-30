@@ -15,7 +15,7 @@ echo -e "${GREEN}=== CatVRF Payment Layer Deployment ===${NC}"
 echo ""
 
 # Configuration
-ENV=${1:-staging}
+ENV=${1:-production}
 FEATURE_FLAG_DISABLED=${2:-true}
 
 echo "Deploying to: $ENV"

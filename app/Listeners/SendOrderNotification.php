@@ -1,34 +1,30 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Listeners;
-use Illuminate\Bus\Queueable;
-use Illuminate\Foundation\Bus\Dispatchable;
+
+use Psr\Log\LoggerInterface;
 
 use App\Events\OrderCreated;
 use App\Notifications\OrderStatusNotification;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
-
-
 use Illuminate\Contracts\Notifications\Dispatcher;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 
 final class SendOrderNotification implements ShouldQueue
 {
-
-    public function __construct(private readonly Dispatcher $notification,
-        private readonly LogManager $logger,
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly Dispatcher $notification,
         private readonly DatabaseManager $db,
-    )
-    {
+    ) {
         // Implementation required by canon
     }
 
     /**
      * Handle the event
-     * @param OrderCreated $event
-     * @return void
      */
     public function handle(OrderCreated $event): void
     {
@@ -38,7 +34,7 @@ final class SendOrderNotification implements ShouldQueue
                 $order = $event->order->load(['user', 'items', 'tenant']);
 
                 // Log event
-                $this->logger->channel('audit')->info('Order notification sent', [
+                $this->logger->channel('audit')->$this->logger->info('Order notification sent', [
                     'order_id' => $order->id,
                     'order_uuid' => $order->uuid,
                     'user_id' => $order->user_id,

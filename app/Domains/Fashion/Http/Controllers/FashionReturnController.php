@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Http\Controllers;
 
@@ -184,7 +186,7 @@ final class FashionReturnController extends Controller
         $rejectedReturns = FashionReturn::where('status', 'rejected')->count();
         $totalAmountKopecks = FashionReturn::where('status', 'approved')->sum('amount_kopecks');
 
-        $this->logger->info('Fashion return analytics accessed', [
+        $this->logger->$this->logger->info('Fashion return analytics accessed', [
             'correlation_id' => $correlationId,
         ]);
 

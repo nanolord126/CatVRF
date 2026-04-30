@@ -14,8 +14,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Форматирование ответа для B2B API и Tenant Panel.
  * Включает оптовые цены, B2B-доступность, SKU.
  * Tenant isolation обеспечивается на уровне сервиса.
- *
- * @package App\Domains\VerticalName\Resources\B2B
  */
 final class VerticalItemResource extends JsonResource
 {

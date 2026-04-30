@@ -4,32 +4,42 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
 
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\ML\RecommendationService;
 use App\Domains\RealEstate\Models\Property;
 use App\Domains\RealEstate\DTOs\SearchPropertyDto;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Builder;
-use Exception;
 
 final readonly class PropertySearchService
 {
     private const SEARCH_CACHE_TTL_SECONDS = 300;
+
     private const MAX_RESULTS_PER_PAGE = 50;
+
     private const MIN_PRICE_FILTER = 100000;
+
     private const MAX_PRICE_FILTER = 1000000000;
+
     private const MIN_AREA_FILTER = 10;
+
     private const MAX_AREA_FILTER = 10000;
 
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private RecommendationService $recommendation,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly RecommendationService $recommendation,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
+        private readonly CacheManager $cache,) {}
 
     public function searchProperties(SearchPropertyDto $dto): array
     {
@@ -43,7 +53,7 @@ final readonly class PropertySearchService
         );
 
         $cacheKey = $this->generateSearchCacheKey($dto);
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -77,9 +87,9 @@ final readonly class PropertySearchService
             'search_id' => Str::uuid()->toString(),
         ];
 
-        Cache::put($cacheKey, $response, self::SEARCH_CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, $response, self::SEARCH_CACHE_TTL_SECONDS);
 
-        Log::channel('audit')->info('Property search executed', [
+        $this->log->channel('audit')->$this->logger->info('Property search executed', [
             'user_id' => $dto->userId,
             'total_results' => $total,
             'filters' => $this->getAppliedFilters($dto),
@@ -90,7 +100,7 @@ final readonly class PropertySearchService
         return $response;
     }
 
-    public function getPersonalizedRecommendations(int $userId, int $tenantId, int $limit = 10, string $correlationId): array
+    public function getPersonalizedRecommendations(int $userId, int $tenantId, int $limit, string $correlationId): array
     {
         $this->fraud->check(
             userId: $userId,
@@ -102,7 +112,7 @@ final readonly class PropertySearchService
         );
 
         $cacheKey = "recommendations:user:{$userId}:{$tenantId}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -130,9 +140,9 @@ final readonly class PropertySearchService
             }
         }
 
-        Cache::put($cacheKey, $enhancedResults, self::SEARCH_CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, $enhancedResults, self::SEARCH_CACHE_TTL_SECONDS);
 
-        Log::channel('audit')->info('Personalized recommendations generated', [
+        $this->log->channel('audit')->$this->logger->info('Personalized recommendations generated', [
             'user_id' => $userId,
             'results_count' => count($enhancedResults),
             'correlation_id' => $correlationId,
@@ -142,14 +152,14 @@ final readonly class PropertySearchService
         return $enhancedResults;
     }
 
-    public function getSimilarProperties(int $propertyId, int $tenantId, int $limit = 6, string $correlationId): array
+    public function getSimilarProperties(int $propertyId, int $tenantId, int $limit, string $correlationId): array
     {
         $property = Property::where('id', $propertyId)
             ->where('tenant_id', $tenantId)
             ->firstOrFail();
 
         $cacheKey = "similar:property:{$propertyId}:{$tenantId}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -170,7 +180,7 @@ final readonly class PropertySearchService
             ])
             ->where('city', $property->city)
             ->orderByRaw(
-                "ABS(price - ?) + ABS(area - ?) ASC",
+                'ABS(price - ?) + ABS(area - ?) ASC',
                 [$property->price, $property->area]
             )
             ->limit($limit)
@@ -183,7 +193,7 @@ final readonly class PropertySearchService
             ];
         })->toArray();
 
-        Cache::put($cacheKey, $enhancedResults, self::SEARCH_CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, $enhancedResults, self::SEARCH_CACHE_TTL_SECONDS);
 
         return $enhancedResults;
     }
@@ -221,7 +231,7 @@ final readonly class PropertySearchService
             ] : null,
         ];
 
-        Log::channel('audit')->info('Property retrieved by ID', [
+        $this->log->channel('audit')->$this->logger->info('Property retrieved by ID', [
             'property_id' => $propertyId,
             'tenant_id' => $tenantId,
             'correlation_id' => $correlationId,
@@ -233,7 +243,7 @@ final readonly class PropertySearchService
     public function getSearchFilters(int $tenantId, string $correlationId): array
     {
         $cacheKey = "search_filters:{$tenantId}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return $cached;
@@ -285,7 +295,7 @@ final readonly class PropertySearchService
                 ->toArray(),
         ];
 
-        Cache::put($cacheKey, $filters, self::SEARCH_CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, $filters, self::SEARCH_CACHE_TTL_SECONDS);
 
         return $filters;
     }
@@ -301,17 +311,17 @@ final readonly class PropertySearchService
             correlationId: $correlationId,
         );
 
-        $searchId = DB::table('saved_searches')->insertGetId([
+        $searchId = $this->db->table('saved_searches')->insertGetId([
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'uuid' => Str::uuid()->toString(),
             'search_criteria' => json_encode($searchCriteria),
             'correlation_id' => $correlationId,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
-        Log::channel('audit')->info('Search saved', [
+        $this->log->channel('audit')->$this->logger->info('Search saved', [
             'user_id' => $userId,
             'search_id' => $searchId,
             'correlation_id' => $correlationId,
@@ -320,8 +330,8 @@ final readonly class PropertySearchService
 
         return [
             'search_id' => $searchId,
-            'uuid' => DB::table('saved_searches')->where('id', $searchId)->value('uuid'),
-            'created_at' => now()->toIso8601String(),
+            'uuid' => $this->db->table('saved_searches')->where('id', $searchId)->value('uuid'),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 
@@ -428,10 +438,10 @@ final readonly class PropertySearchService
 
         $validSortFields = [
             'price', 'area', 'rooms', 'created_at', 'published_at',
-            'liquidity_score', 'fraud_score', 'suggested_price'
+            'liquidity_score', 'fraud_score', 'suggested_price',
         ];
 
-        if (!in_array($sortBy, $validSortFields, true)) {
+        if (! in_array($sortBy, $validSortFields, true)) {
             $sortBy = 'created_at';
         }
 
@@ -440,7 +450,7 @@ final readonly class PropertySearchService
             : 'desc';
 
         if ($sortBy === 'price' && $dto->sortBy === 'suggested_price') {
-            $query->orderByRaw('COALESCE(suggested_price, price) ' . $sortOrder);
+            $query->orderByRaw('COALESCE(suggested_price, price) '.$sortOrder);
         } else {
             $query->orderBy($sortBy, $sortOrder);
         }
@@ -551,7 +561,7 @@ final readonly class PropertySearchService
             $dto->perPage,
         ];
 
-        return 'search:' . md5(json_encode($criteria));
+        return 'search:'.md5(json_encode($criteria));
     }
 
     private function getAppliedFilters(SearchPropertyDto $dto): array
@@ -572,7 +582,7 @@ final readonly class PropertySearchService
             'is_b2b' => $dto->isB2b,
             'amenities' => $dto->amenities,
             'search_query' => $dto->searchQuery,
-        ], fn($value) => $value !== null);
+        ], fn ($value) => $value !== null);
     }
 
     private function calculateSimilarityScore(Property $property1, Property $property2): float
@@ -608,7 +618,7 @@ final readonly class PropertySearchService
         }
 
         return [
-            'date' => now()->toDateString(),
+            'date' => CarbonImmutable::now()->toDateString(),
             'slots' => $slots,
             'duration_minutes' => 30,
         ];

@@ -1,10 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 /**
  * Class Payroll
@@ -21,9 +24,8 @@ use Illuminate\Support\Str;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class Payroll extends Model
 {
@@ -49,15 +51,6 @@ final class Payroll extends Model
         'period_end'   => 'date',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(static function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = Str::uuid()->toString();
-            }
-        });
-    }
-
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
@@ -65,12 +58,21 @@ final class Payroll extends Model
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     /** Итого в рублях (computed в PHP для удобства, в БД — storedAs). */
     public function getTotalRublesAttribute(): float
     {
         return (int) $this->total_kopecks / 100;
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(static function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

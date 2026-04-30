@@ -1,17 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
+
+use Psr\Log\LoggerInterface;
 
 use App\Services\Search\ElasticsearchService;
 use App\Services\Search\SearchService;
 use App\Services\Security\RateLimiterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-
 use Illuminate\Support\Str;
 use OpenApi\Annotations as OA;
 use Illuminate\Log\LogManager;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Validation\ValidationException;
 
 /**
  * @OA\Tag(
@@ -21,13 +25,13 @@ use Illuminate\Contracts\Routing\ResponseFactory;
  */
 final class SearchController extends BaseApiV1Controller
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly SearchService $searchService,
         private readonly ElasticsearchService $elasticsearchService,
         private readonly RateLimiterService $rateLimiterService,
         private readonly LogManager $logger,
-        private readonly ResponseFactory $response,
-    ) {}
+        private readonly ResponseFactory $response,) {}
+
     /**
      * Global search across all verticals
      *
@@ -36,72 +40,95 @@ final class SearchController extends BaseApiV1Controller
      *     tags={"Search"},
      *     summary="Search across all verticals",
      *     description="Performs a global search using Elasticsearch with filters and sorting",
+     *
      *     @OA\Parameter(
      *         name="q",
      *         in="query",
      *         description="Search query",
      *         required=true,
+     *
      *         @OA\Schema(type="string", example="салон красоты")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="vertical",
      *         in="query",
      *         description="Filter by vertical (beauty, food, hotels, auto, etc)",
+     *
      *         @OA\Schema(type="string", example="beauty")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="category",
      *         in="query",
      *         description="Filter by category",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="min_price",
      *         in="query",
      *         description="Minimum price in kopeks",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="max_price",
      *         in="query",
      *         description="Maximum price in kopeks",
+     *
      *         @OA\Schema(type="integer")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="geo",
      *         in="query",
      *         description="Geographic filter (lat,lng,radius_km)",
+     *
      *         @OA\Schema(type="string", example="55.7558,37.6173,5")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="sort",
      *         in="query",
      *         description="Sort by (relevance, rating, price_asc, price_desc, newest)",
+     *
      *         @OA\Schema(type="string", example="relevance")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="page",
      *         in="query",
      *         description="Pagination page",
+     *
      *         @OA\Schema(type="integer", example=1)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="per_page",
      *         in="query",
      *         description="Results per page (max 100)",
+     *
      *         @OA\Schema(type="integer", example=20)
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Search results",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean", example=true),
      *             @OA\Property(property="data", type="object",
      *                 @OA\Property(property="total", type="integer", example=150),
      *                 @OA\Property(property="per_page", type="integer", example=20),
      *                 @OA\Property(property="current_page", type="integer", example=1),
      *                 @OA\Property(property="results", type="array",
+     *
      *                     @OA\Items(
+     *
      *                         @OA\Property(property="id", type="string", format="uuid"),
      *                         @OA\Property(property="vertical", type="string", example="beauty"),
      *                         @OA\Property(property="type", type="string", example="salon"),
@@ -120,6 +147,7 @@ final class SearchController extends BaseApiV1Controller
      *             @OA\Property(property="correlation_id", type="string", format="uuid")
      *         )
      *     ),
+     *
      *     @OA\Response(
      *         response=400,
      *         description="Invalid search parameters"
@@ -148,21 +176,22 @@ final class SearchController extends BaseApiV1Controller
             $tenantId = (int) tenant('id');
             $userId = $request->user()?->id;
             // Rate limiting check (different for light vs heavy searches)
-            $isHeavySearch = !empty($validated['geo']) || !empty($validated['category']);
+            $isHeavySearch = ! empty($validated['geo']) || ! empty($validated['category']);
             $rateLimitKey = $isHeavySearch ? 'search:heavy' : 'search:light';
             $rateLimitPassed = $this->rateLimiterService->check(
-                key: $rateLimitKey . ':' . ($userId ?? $request->ip()),
+                key: $rateLimitKey.':'.($userId ?? $request->ip()),
                 limit: $isHeavySearch ? 100 : 1000,
                 window: 3600, // 1 hour
                 correlationId: $correlationId,
             );
-            if (!$rateLimitPassed) {
+            if (! $rateLimitPassed) {
                 $this->logger->channel('fraud_alert')->warning('Search rate limit exceeded', [
                     'correlation_id' => $correlationId,
                     'user_id' => $userId,
                     'query' => $validated['q'],
                     'is_heavy' => $isHeavySearch,
                 ]);
+
                 return $this->response->json([
                     'success' => false,
                     'error' => 'Лимит поисков превышен. Попробуйте позже.',
@@ -184,7 +213,7 @@ final class SearchController extends BaseApiV1Controller
                 page: $validated['page'] ?? 1,
                 perPage: $validated['per_page'] ?? 20,
             );
-            $this->logger->channel('audit')->info('Search executed', [
+            $this->logger->channel('audit')->$this->logger->info('Search executed', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
@@ -192,12 +221,13 @@ final class SearchController extends BaseApiV1Controller
                 'results_count' => $results['total'],
                 'vertical' => $validated['vertical'],
             ]);
+
             return $this->response->json([
                 'success' => true,
                 'data' => $results,
                 'correlation_id' => $correlationId,
             ], 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->errorResponse(
                 message: 'Ошибка валидации',
                 statusCode: 422,
@@ -209,12 +239,14 @@ final class SearchController extends BaseApiV1Controller
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return $this->errorResponse(
                 message: 'Ошибка поиска',
                 statusCode: 500,
             );
         }
     }
+
     /**
      * Autocomplete search suggestions
      *
@@ -222,32 +254,43 @@ final class SearchController extends BaseApiV1Controller
      *     path="/v1/search/suggestions",
      *     tags={"Search"},
      *     summary="Get search suggestions",
+     *
      *     @OA\Parameter(
      *         name="q",
      *         in="query",
      *         description="Partial query for suggestions",
      *         required=true,
+     *
      *         @OA\Schema(type="string", minLength=1, maxLength=50)
      *     ),
+     *
      *     @OA\Parameter(
      *         name="vertical",
      *         in="query",
      *         description="Filter suggestions by vertical",
+     *
      *         @OA\Schema(type="string")
      *     ),
+     *
      *     @OA\Parameter(
      *         name="limit",
      *         in="query",
      *         description="Maximum suggestions (max 10)",
+     *
      *         @OA\Schema(type="integer", default=5)
      *     ),
+     *
      *     @OA\Response(
      *         response=200,
      *         description="Suggestions list",
+     *
      *         @OA\JsonContent(
+     *
      *             @OA\Property(property="success", type="boolean"),
      *             @OA\Property(property="data", type="array",
+     *
      *                 @OA\Items(
+     *
      *                     @OA\Property(property="text", type="string"),
      *                     @OA\Property(property="vertical", type="string"),
      *                     @OA\Property(property="category", type="string")
@@ -272,6 +315,7 @@ final class SearchController extends BaseApiV1Controller
                 limit: $validated['limit'] ?? 5,
                 tenantId: (int) tenant('id'),
             );
+
             return $this->response->json([
                 'success' => true,
                 'data' => $suggestions,
@@ -282,6 +326,7 @@ final class SearchController extends BaseApiV1Controller
                 'correlation_id' => $correlationId,
                 'exception' => $e->getMessage(),
             ]);
+
             return $this->errorResponse('Ошибка получения подсказок');
         }
     }

@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Medical;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Medical\Domain\Services\AIHealthConstructorService;
 
 /**
  * Unit tests for AIHealthConstructorService.
@@ -14,7 +17,7 @@ final class AIHealthConstructorServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Medical\Domain\Services\AIHealthConstructorService::class
+            AIHealthConstructorService::class
         );
         $this->assertTrue($reflection->isFinal(), 'AIHealthConstructorService must be final');
     }
@@ -22,7 +25,7 @@ final class AIHealthConstructorServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Medical\Domain\Services\AIHealthConstructorService::class
+            AIHealthConstructorService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'AIHealthConstructorService must be readonly');
     }
@@ -30,27 +33,26 @@ final class AIHealthConstructorServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Medical\Domain\Services\AIHealthConstructorService::class
+            AIHealthConstructorService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'AIHealthConstructorService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_matchSymptomToService_method_exists(): void
+    public function test_match_symptom_to_service_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Medical\Domain\Services\AIHealthConstructorService::class, 'matchSymptomToService'),
+            method_exists(AIHealthConstructorService::class, 'matchSymptomToService'),
             'AIHealthConstructorService must implement matchSymptomToService()'
         );
     }
 
-    public function test_analyzeVisionCondition_method_exists(): void
+    public function test_analyze_vision_condition_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Medical\Domain\Services\AIHealthConstructorService::class, 'analyzeVisionCondition'),
+            method_exists(AIHealthConstructorService::class, 'analyzeVisionCondition'),
             'AIHealthConstructorService must implement analyzeVisionCondition()'
         );
     }
-
 }

@@ -1,13 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Kreait\Firebase\Factory;
 use Kreait\Firebase\Messaging\CloudMessage;
-use Kreait\Firebase\Messaging\Notification as FirebaseNotification;
 use Illuminate\Log\LogManager;
 
 /**
@@ -24,16 +25,15 @@ abstract class PushNotificationService
      * OneSignal API (альтернатива)
      */
     private readonly ?string $oneSignalAppId;
+
     private readonly ?string $oneSignalApiKey;
 
     /**
      * Конструктор
      */
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly ConfigRepository $config,
-        private readonly LogManager $logger,
-    )
-    {
+        private readonly LogManager $logger,) {
         // Инициализировать Firebase если конфиг есть
         if ($this->config->get('services.firebase.credentials_path')) {
             try {
@@ -59,7 +59,7 @@ abstract class PushNotificationService
         ?int $tenantId = null
     ): bool {
         try {
-            if (!isset($this->messaging)) {
+            if (! isset($this->messaging)) {
                 throw new \RuntimeException('Firebase not configured');
             }
 
@@ -74,8 +74,8 @@ abstract class PushNotificationService
             // Отправить
             $this->messaging->send($message);
 
-            $this->logger->channel('audit')->info('Push notification sent', [
-                'token' => substr($token, 0, 20) . '...',
+            $this->logger->channel('audit')->$this->logger->info('Push notification sent', [
+                'token' => substr($token, 0, 20).'...',
                 'correlation_id' => $correlationId,
             ]);
 

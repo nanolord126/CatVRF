@@ -1,0 +1,142 @@
+{
+  "dashboard": {
+    "title": "Filament Usage & Performance",
+    "uid": "filament-performance",
+    "tags": ["filament", "admin", "performance"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Active Sessions",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "filament_active_sessions",
+            "legendFormat": "{{panel}}"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Resource Views (Last 5m)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(filament_resource_views_total[5m]) * 60",
+            "legendFormat": "{{resource}}"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Action Execution Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(filament_action_execution_duration_seconds_count[5m])",
+            "legendFormat": "{{action}} ({{status}})"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Action Execution Duration (p95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(filament_action_execution_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{action}}"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "targets": [
+          {
+            "expr": "rate(filament_errors_total[5m])",
+            "legendFormat": "{{error_type}}"
+          }
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [0.1],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ]
+        }
+      },
+      {
+        "id": 6,
+        "title": "Query Duration (p95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(filament_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{resource}}"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Cache Hit Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "targets": [
+          {
+            "expr": "rate(filament_cache_access_total{result=\"hit\"}[5m]) / rate(filament_cache_access_total[5m]) * 100",
+            "legendFormat": "{{cache_type}}"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Widget Render Duration (p95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(filament_widget_render_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{widget}}"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Resource Views by Panel",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+        "targets": [
+          {
+            "expr": "sum by (panel) (rate(filament_resource_views_total[5m]))",
+            "legendFormat": "{{panel}}"
+          }
+        ]
+      }
+    ]
+  }
+}

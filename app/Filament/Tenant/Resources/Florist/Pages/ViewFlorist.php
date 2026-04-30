@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ViewFlorist — CatVRF 2026 Component.
@@ -7,26 +9,27 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/viewflorist
  * @see https://catvrf.ru/docs/viewflorist
  * @see https://catvrf.ru/docs/viewflorist
  */
 
-
 namespace App\Filament\Tenant\Resources\Florist\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+
+use Carbon\CarbonImmutable;
+
 use App\Filament\Tenant\Resources\Florist\FloristResource;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\View\View;
 
 /**
  * Class ViewFlorist
@@ -34,40 +37,38 @@ use Illuminate\Support\Facades\Log;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Florist\Pages
  */
 final class ViewFlorist extends ViewRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = FloristResource::class;
 
-    protected function afterLoad(): void
-    {
-        \Illuminate\Support\Facades\Log::channel('audit')->info('Florist record viewed', [
-            'record_id' => $this->record->id,
-            'uuid' => $this->record->uuid,
-            'correlation_id' => $this->record->correlation_id ?? null,
-            'user_id' => auth()->id(),
-            'tenant_id' => filament()->getTenant()->id,
-            'timestamp' => now()->toIso8601String(),
-        ]);
-    }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     /**
      * Handle render operation.
      *
      * @throws \DomainException
      */
-    public function render(): \Illuminate\Contracts\View\View {
+    public function render(): View
+    {
         $this->logger->debug('ViewFlorist page rendered', [
             'record_id' => $this->record->id,
             'user_id' => auth()->id(),
         ]);
 
         return parent::render();
+    }
+
+    protected function afterLoad(): void
+    {
+        $this->log->channel('audit')->$this->logger->info('Florist record viewed', [
+            'record_id' => $this->record->id,
+            'uuid' => $this->record->uuid,
+            'correlation_id' => $this->record->correlation_id ?? null,
+            'user_id' => auth()->id(),
+            'tenant_id' => filament()->getTenant()->id,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
+        ]);
     }
 }

@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Вертикаль Publishing (издательство, медиа)
- *
- * @package App\Models
  */
 final class Publishing extends Model
 {
-
     protected $table = 'publishing';
 
     protected $fillable = [

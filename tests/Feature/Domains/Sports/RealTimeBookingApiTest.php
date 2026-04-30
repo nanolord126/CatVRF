@@ -9,48 +9,17 @@ use App\Domains\Sports\Models\Trainer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Support\Str;
 
 final class RealTimeBookingApiTest extends TestCase
 {
     use RefreshDatabase;
 
     private User $user;
+
     private Gym $gym;
+
     private Trainer $trainer;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->user = User::factory()->create();
-        $this->actingAs($this->user);
-
-        $this->gym = Gym::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
-            'tenant_id' => 1,
-            'business_group_id' => null,
-            'name' => 'Test Gym',
-            'address' => 'Test Address',
-            'single_visit_price' => 500,
-            'monthly_membership_price' => 3000,
-            'personal_training_price' => 1500,
-            'group_class_price' => 500,
-            'max_daily_capacity' => 200,
-            'is_active' => true,
-        ]);
-
-        $this->trainer = Trainer::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
-            'tenant_id' => 1,
-            'business_group_id' => null,
-            'gym_id' => $this->gym->id,
-            'user_id' => User::factory()->create()->id,
-            'name' => 'Test Trainer',
-            'specialization' => 'fitness',
-            'hourly_rate' => 1500,
-            'is_active' => true,
-        ]);
-    }
 
     public function test_hold_slot_success(): void
     {
@@ -137,5 +106,39 @@ final class RealTimeBookingApiTest extends TestCase
             ->assertJson([
                 'success' => true,
             ]);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+        $this->actingAs($this->user);
+
+        $this->gym = Gym::create([
+            'uuid' => Str::uuid()->toString(),
+            'tenant_id' => 1,
+            'business_group_id' => null,
+            'name' => 'Test Gym',
+            'address' => 'Test Address',
+            'single_visit_price' => 500,
+            'monthly_membership_price' => 3000,
+            'personal_training_price' => 1500,
+            'group_class_price' => 500,
+            'max_daily_capacity' => 200,
+            'is_active' => true,
+        ]);
+
+        $this->trainer = Trainer::create([
+            'uuid' => Str::uuid()->toString(),
+            'tenant_id' => 1,
+            'business_group_id' => null,
+            'gym_id' => $this->gym->id,
+            'user_id' => User::factory()->create()->id,
+            'name' => 'Test Trainer',
+            'specialization' => 'fitness',
+            'hourly_rate' => 1500,
+            'is_active' => true,
+        ]);
     }
 }

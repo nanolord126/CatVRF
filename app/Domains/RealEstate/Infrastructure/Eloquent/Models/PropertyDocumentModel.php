@@ -6,6 +6,8 @@ namespace App\Domains\RealEstate\Infrastructure\Eloquent\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * Class PropertyDocumentModel
@@ -25,9 +27,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\RealEstate\Infrastructure\Eloquent\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class PropertyDocumentModel extends Model
 {
@@ -47,21 +48,21 @@ final class PropertyDocumentModel extends Model
     public function property(): BelongsTo
     {
         return $this->belongsTo(PropertyModel::class, 'property_id', 'id');
-    }
+    }
+
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
+        self::addGlobalScope('tenant', function ($query) {
             if (function_exists('tenant') && tenant()) {
                 $query->where('tenant_id', tenant()->id);
             }
         });
 
-        static::creating(function ($model) {
+        self::creating(function ($model) {
             if (empty($model->uuid)) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
+                $model->uuid = Str::uuid()->toString();
             }
         });
     }
-
 }

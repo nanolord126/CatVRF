@@ -1,14 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+
 use App\Filament\Tenant\Resources\ElectronicsResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
@@ -17,16 +17,13 @@ use Illuminate\Support\Str;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class CreateElectronics extends CreateRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = ElectronicsResource::class;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -42,7 +39,7 @@ final class CreateElectronics extends CreateRecord
     protected function afterCreate(): void
     {
         $record = $this->record;
-        \Illuminate\Support\Facades\Log::channel('audit')->info('Electronic product created', [
+        $this->log->channel('audit')->$this->logger->info('Electronic product created', [
             'product_id'     => $record->id,
             'name'           => $record->name,
             'brand'          => $record->brand,

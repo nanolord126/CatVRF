@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Domains\Education;
 
@@ -13,15 +15,8 @@ use App\Domains\Education\Events\LearningPathGeneratedEvent;
 final class LearningPathApiTest extends TestCase
 {
     private User $user;
+
     private string $token;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->user = User::factory()->create();
-        $this->token = $this->user->createToken('test-token')->plainTextToken;
-    }
 
     public function test_generate_learning_path_unauthorized(): void
     {
@@ -198,5 +193,13 @@ final class LearningPathApiTest extends TestCase
             ]);
 
         $response->assertStatus(201);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+        $this->token = $this->user->createToken('test-token')->plainTextToken;
     }
 }

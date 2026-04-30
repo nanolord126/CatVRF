@@ -1,9 +1,9 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
-
-use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -53,33 +53,21 @@ final class Referral extends Model
     ];
 
     /**
-     * Global scope: tenant scoping
-     */
-    protected static function booted()
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            if ($this->guard->check() && $this->guard->user()->tenant_id) {
-                $query->where('tenant_id', $this->guard->user()->tenant_id);
-            }
-        });
-    }
-
-    /**
      * Relations
      */
     public function referrer(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'referrer_id');
+        return $this->belongsTo(User::class, 'referrer_id');
     }
 
     public function referee(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'referee_id');
+        return $this->belongsTo(User::class, 'referee_id');
     }
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     /**
@@ -98,5 +86,17 @@ final class Referral extends Model
     public function scopeRewarded($query)
     {
         return $query->where('status', 'rewarded');
+    }
+
+    /**
+     * Global scope: tenant scoping
+     */
+    protected static function booted()
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            if ($this->guard->check() && $this->guard->user()->tenant_id) {
+                $query->where('tenant_id', $this->guard->user()->tenant_id);
+            }
+        });
     }
 }

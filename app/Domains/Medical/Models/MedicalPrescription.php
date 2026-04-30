@@ -1,58 +1,54 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Medical\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\CarbonImmutable;
+use App\Models\User;
 
 final class MedicalPrescription extends Model
 {
-
+    use TenantScoped;
 
-        protected $table = 'medical_prescriptions';
+    protected $table = 'medical_prescriptions';
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'record_id',
-            'patient_id',
-            'doctor_id',
-            'medications',
-            'valid_until',
-            'is_digital_signed',
-            'correlation_id',
-        ];
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'record_id',
+        'patient_id',
+        'doctor_id',
+        'medications',
+        'valid_until',
+        'is_digital_signed',
+        'correlation_id',
+    ];
 
-        protected $hidden = ['deleted_at', 'correlation_id'];
+    protected $hidden = ['deleted_at', 'correlation_id'];
 
-        protected $casts = [
-            'medications' => 'array',
-            'valid_until' => 'datetime',
-            'is_digital_signed' => 'boolean',
-        ];
+    protected $casts = [
+        'medications' => 'array',
+        'valid_until' => 'datetime',
+        'is_digital_signed' => 'boolean',
+    ];
 
-        protected static function booted_disabled(): void
-        {
-            static::addGlobalScope('tenant', function ($query) {
-                $query->where('tenant_id', tenant()->id ?? 0);
-            });
-        }
+    public function appointment(): BelongsTo
+    {
+        return $this->belongsTo(MedicalAppointment::class, 'appointment_id');
+    }
 
-        public function appointment(): BelongsTo
-        {
-            return $this->belongsTo(MedicalAppointment::class, 'appointment_id');
-        }
+    public function doctor(): BelongsTo
+    {
+        return $this->belongsTo(MedicalDoctor::class, 'doctor_id');
+    }
 
-        public function doctor(): BelongsTo
-        {
-            return $this->belongsTo(MedicalDoctor::class, 'doctor_id');
-        }
-
-        public function patient(): BelongsTo
-        {
-            return $this->belongsTo(\App\Models\User::class, 'patient_id');
-        }
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'patient_id');
+    }
 
     /**
      * Get the string representation of this instance.
@@ -61,7 +57,7 @@ final class MedicalPrescription extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -72,8 +68,15 @@ final class MedicalPrescription extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted_disabled(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            $query->where('tenant_id', tenant()->id ?? 0);
+        });
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
@@ -24,6 +26,7 @@ final class ProcessDriverPayoutJob implements ShouldQueue
     use SerializesModels;
 
     public int $tries;
+
     public int $timeout;
 
     public function __construct(
@@ -43,7 +46,7 @@ final class ProcessDriverPayoutJob implements ShouldQueue
         $commissionRate = 0.14;
         $driverEarningsKopeki = (int) floor($this->finalPriceKopeki * (1 - $commissionRate));
 
-        $this->logger->channel('audit')->info('Processing driver payout', [
+        $this->logger->channel('audit')->$this->logger->info('Processing driver payout', [
             'driver_id' => $this->driverId,
             'final_price_rubles' => $this->finalPriceKopeki / 100,
             'driver_earnings_rubles' => $driverEarningsKopeki / 100,

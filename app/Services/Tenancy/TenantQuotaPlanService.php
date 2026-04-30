@@ -1,11 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Tenancy;
+
+use Psr\Log\LoggerInterface;
 
 use App\Models\Tenant;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Log\LogManager;
+use Carbon\CarbonImmutable;
 
 /**
  * Tenant Quota Plan Service
@@ -19,17 +24,17 @@ use Illuminate\Log\LogManager;
  * - Enterprise: Unlimited or very high quotas for large enterprises
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final readonly class TenantQuotaPlanService
 {
     private const QUOTA_PREFIX = 'tenant:quota:custom:';
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly RedisFactory $redis,
         private readonly ConfigRepository $config,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     /**
      * Apply quota plan to tenant
@@ -42,7 +47,7 @@ final readonly class TenantQuotaPlanService
             $this->setQuota($resource, $tenantId, $quota);
         }
 
-        $this->logger->info('Quota plan applied to tenant', [
+        $this->logger->$this->logger->info('Quota plan applied to tenant', [
             'tenant_id' => $tenantId,
             'plan' => $plan,
             'quotas' => $quotas,
@@ -92,40 +97,18 @@ final readonly class TenantQuotaPlanService
     }
 
     /**
-     * Get default quotas (fallback)
-     */
-    private function getDefaultQuotas(): array
-    {
-        return [
-            'ai_tokens' => 1000000,
-            'redis_ops' => 100000,
-            'db_queries' => 50000,
-            'storage_bytes' => 10 * 1024 * 1024 * 1024,
-        ];
-    }
-
-    /**
-     * Set quota for a specific resource
-     */
-    private function setQuota(string $resourceType, int $tenantId, int $quota): void
-    {
-        $key = self::QUOTA_PREFIX . "{$resourceType}:{$tenantId}";
-        $this->redis->connection()->set($key, $quota);
-    }
-
-    /**
      * Get tenant's current plan
      */
     public function getTenantPlan(int $tenantId): string
     {
         $tenant = Tenant::find($tenantId);
-        
-        if (!$tenant) {
+
+        if (! $tenant) {
             return 'free';
         }
 
         $meta = is_string($tenant->meta) ? json_decode($tenant->meta, true) : $tenant->meta;
-        
+
         return $meta['quota_plan'] ?? 'free';
     }
 
@@ -135,7 +118,7 @@ final readonly class TenantQuotaPlanService
     public function upgradePlan(int $tenantId, string $newPlan): bool
     {
         $currentPlan = $this->getTenantPlan($tenantId);
-        
+
         if ($currentPlan === $newPlan) {
             return false;
         }
@@ -147,11 +130,11 @@ final readonly class TenantQuotaPlanService
         if ($tenant) {
             $meta = is_string($tenant->meta) ? json_decode($tenant->meta, true) : $tenant->meta;
             $meta['quota_plan'] = $newPlan;
-            $meta['quota_plan_upgraded_at'] = now()->toIso8601String();
+            $meta['quota_plan_upgraded_at'] = CarbonImmutable::now()->toIso8601String();
             $tenant->update(['meta' => $meta]);
         }
 
-        $this->logger->info('Tenant quota plan upgraded', [
+        $this->logger->$this->logger->info('Tenant quota plan upgraded', [
             'tenant_id' => $tenantId,
             'from_plan' => $currentPlan,
             'to_plan' => $newPlan,
@@ -187,5 +170,27 @@ final readonly class TenantQuotaPlanService
                 'price' => null, // Contact sales
             ],
         ];
+    }
+
+    /**
+     * Get default quotas (fallback)
+     */
+    private function getDefaultQuotas(): array
+    {
+        return [
+            'ai_tokens' => 1000000,
+            'redis_ops' => 100000,
+            'db_queries' => 50000,
+            'storage_bytes' => 10 * 1024 * 1024 * 1024,
+        ];
+    }
+
+    /**
+     * Set quota for a specific resource
+     */
+    private function setQuota(string $resourceType, int $tenantId, int $quota): void
+    {
+        $key = self::QUOTA_PREFIX."{$resourceType}:{$tenantId}";
+        $this->redis->connection()->set($key, $quota);
     }
 }

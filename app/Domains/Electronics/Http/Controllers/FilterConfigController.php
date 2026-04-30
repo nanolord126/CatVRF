@@ -11,15 +11,14 @@ use Illuminate\Http\Request;
 final readonly class FilterConfigController
 {
     public function __construct(
-        private ElectronicsFilterConfigService $filterConfigService,
-    ) {
-    }
+        private readonly ElectronicsFilterConfigService $filterConfigService,
+    ) {}
 
     public function getAllTypes(): JsonResponse
     {
         $types = $this->filterConfigService->getAllTypes();
 
-        return response()->json([
+        return new JsonResponse([
             'types' => $types,
         ]);
     }
@@ -29,7 +28,7 @@ final readonly class FilterConfigController
         $limit = (int) request()->query('limit', 6);
         $types = $this->filterConfigService->getPopularTypes($limit);
 
-        return response()->json([
+        return new JsonResponse([
             'types' => $types,
         ]);
     }
@@ -38,13 +37,13 @@ final readonly class FilterConfigController
     {
         $config = $this->filterConfigService->getFilterConfig($type);
 
-        if (!$config) {
-            return response()->json([
+        if (! $config) {
+            return new JsonResponse([
                 'error' => 'Type not found',
             ], 404);
         }
 
-        return response()->json([
+        return new JsonResponse([
             'config' => $config->toArray(),
         ]);
     }
@@ -54,12 +53,12 @@ final readonly class FilterConfigController
         $patterns = $this->filterConfigService->getSearchPatterns($type);
 
         if (empty($patterns)) {
-            return response()->json([
+            return new JsonResponse([
                 'error' => 'Type not found',
             ], 404);
         }
 
-        return response()->json($patterns);
+        return new JsonResponse($patterns);
     }
 
     public function getTypeSuggestions(Request $request, string $type): JsonResponse
@@ -74,7 +73,7 @@ final readonly class FilterConfigController
 
         $suggestions = $this->filterConfigService->getTypeSearchSuggestions($type, $query, $limit);
 
-        return response()->json([
+        return new JsonResponse([
             'suggestions' => $suggestions,
             'query' => $query,
         ]);
@@ -84,7 +83,7 @@ final readonly class FilterConfigController
     {
         $hierarchy = $this->filterConfigService->getTypeHierarchy();
 
-        return response()->json([
+        return new JsonResponse([
             'hierarchy' => $hierarchy,
         ]);
     }
@@ -95,6 +94,6 @@ final readonly class FilterConfigController
 
         $validation = $this->filterConfigService->validateFilterValues($type, $filters);
 
-        return response()->json($validation);
+        return new JsonResponse($validation);
     }
 }

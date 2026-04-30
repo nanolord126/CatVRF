@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Delivery;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Domains\Logistics\Models\Courier;
@@ -12,12 +15,13 @@ use App\Services\WalletService;
 use App\Services\Geo\GeoService;
 use App\Services\Geo\GeoTelemetryService;
 use Illuminate\Support\Collection;
-
-
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Auth\Guard;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Models\Order;
 
 /**
  * RouteOptimizationService — оптимизация маршрутов доставки.
@@ -33,24 +37,22 @@ use Illuminate\Contracts\Auth\Guard;
  */
 final readonly class RouteOptimizationService
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private GeoService $geo,
-        private TrafficPredictionService $trafficML,
-        private GeotrackingService $geoTracking,
-        private WalletService $wallet,
-        private FraudControlService $fraud,
-        private GeoTelemetryService $geoTelemetry,
+        private readonly GeoService $geo,
+        private readonly TrafficPredictionService $trafficML,
+        private readonly GeotrackingService $geoTracking,
+        private readonly WalletService $wallet,
+        private readonly FraudControlService $fraud,
+        private readonly GeoTelemetryService $geoTelemetry,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-        private readonly Guard $guard,
-    ) {}
+        private readonly Guard $guard,) {}
 
     /**
      * Оптимизировать маршрут для курьера по его активным заказам.
      *
-     * @param int   $courierId
-     * @param int[] $orderIds
+     * @param  int[]  $orderIds
      * @return array{
      *   route: array<int, array{order_id: int, lat: float, lon: float, estimated_minutes: int}>,
      *   total_distance_km: float,
@@ -97,7 +99,7 @@ final readonly class RouteOptimizationService
         // Бонус за экономию времени
         $this->maybeAwardEfficiencyBonus($courierId, $previousTotalMin, $finalRoute['total_minutes'], $correlationId);
 
-        $this->logger->channel('audit')->info('Route optimized', [
+        $this->logger->channel('audit')->$this->logger->info('Route optimized', [
             'courier_id'         => $courierId,
             'orders_count'       => $orders->count(),
             'total_distance_km'  => $finalRoute['total_distance_km'],
@@ -109,12 +111,71 @@ final readonly class RouteOptimizationService
         return $finalRoute;
     }
 
+    /**
+     * Predict ETA for a courier to deliver an order
+     *
+     * @param  Courier  $courier  Курьер
+     * @param  Order  $order  Заказ
+     * @return int Предполагаемое время в минутах
+     */
+    public function predictEta(Courier $courier, Order $order): int
+    {
+        $correlationId = Str::uuid()->toString();
+
+        try {
+            // Получаем текущую позицию курьера
+            $courierLocation = $this->geoTracking->getCurrentLocation($courier->id);
+
+            // Координаты доставки
+            $deliveryLat = $order->delivery_lat ?? 55.75;
+            $deliveryLng = $order->delivery_lon ?? 37.62;
+
+            // Рассчитываем расстояние
+            $distanceKm = $this->calculateDistance(
+                $courierLocation['lat'],
+                $courierLocation['lon'],
+                $deliveryLat,
+                $deliveryLng
+            );
+
+            // Базовая скорость в зависимости от типа транспорта
+            $baseSpeedKmh = match ($courier->vehicle_type) {
+                Courier::VEHICLE_PEDESTRIAN => 5,
+                Courier::VEHICLE_BIKE => 15,
+                Courier::VEHICLE_SCOOTER => 20,
+                Courier::VEHICLE_CAR, Courier::VEHICLE_TAXI => 30,
+                default => 15,
+            };
+
+            // Базовое время в минутах с коэффициентом пробок (1.3 в среднем)
+            $trafficMultiplier = 1.3;
+            $baseMinutes = ($distanceKm / $baseSpeedKmh) * 60;
+
+            // Итоговое время с учетом пробок
+            $estimatedMinutes = (int) ceil($baseMinutes * $trafficMultiplier);
+
+            // Минимум 15 минут, максимум 2 часа
+            return max(15, min(120, $estimatedMinutes));
+
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->warning('ETA prediction failed, using fallback', [
+                'courier_id' => $courier->id,
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            // Fallback: 30 минут
+            return 30;
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────
     // PRIVATE: построение точек
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * @param array{lat: float, lon: float}|null $currentLocation
+     * @param  array{lat: float, lon: float}|null  $currentLocation
      * @return array<int, array{order_id: int|null, lat: float, lon: float, is_depot: bool, priority: int}>
      */
     private function buildPoints(?array $currentLocation, Collection $orders): array
@@ -135,7 +196,7 @@ final readonly class RouteOptimizationService
                 ? $order->dropoff_point
                 : json_decode((string) $order->dropoff_point, true);
 
-            $isBusiness = !empty($order->business_group_id);
+            $isBusiness = ! empty($order->business_group_id);
 
             $points[] = [
                 'order_id' => $order->id,
@@ -154,7 +215,7 @@ final readonly class RouteOptimizationService
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * @param array<int, array{order_id: int|null, lat: float, lon: float, is_depot: bool, priority: int}> $points
+     * @param  array<int, array{order_id: int|null, lat: float, lon: float, is_depot: bool, priority: int}>  $points
      * @return array<int, array{order_id: int|null, lat: float, lon: float, is_depot: bool, priority: int}>
      */
     private function greedyNearest(array $points): array
@@ -170,7 +231,7 @@ final readonly class RouteOptimizationService
         $currentLat = $depot['lat'];
         $currentLon = $depot['lon'];
 
-        while (!empty($remaining)) {
+        while (! empty($remaining)) {
             // Сортируем: сначала по приоритету (B2B=2 > B2C=1), затем по дистанции
             usort($remaining, function (array $a, array $b) use ($currentLat, $currentLon): int {
                 if ($a['priority'] !== $b['priority']) {
@@ -184,6 +245,7 @@ final readonly class RouteOptimizationService
                     ['lat' => $currentLat, 'lon' => $currentLon],
                     ['lat' => $b['lat'], 'lon' => $b['lon']],
                 );
+
                 return $distA <=> $distB;
             });
 
@@ -201,7 +263,7 @@ final readonly class RouteOptimizationService
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * @param array<int, array{order_id: int|null, lat: float, lon: float, is_depot: bool, priority: int}> $route
+     * @param  array<int, array{order_id: int|null, lat: float, lon: float, is_depot: bool, priority: int}>  $route
      * @return array<int, array{order_id: int|null, lat: float, lon: float, is_depot: bool, priority: int}>
      */
     private function twoOptImprove(array $route): array
@@ -214,18 +276,18 @@ final readonly class RouteOptimizationService
             for ($i = 1; $i < $n - 1; $i++) {
                 for ($j = $i + 1; $j < $n; $j++) {
                     $currentDist = $this->mapService->calculateDistance(
-                            ['lat' => $route[$i - 1]['lat'], 'lon' => $route[$i - 1]['lon']],
-                            ['lat' => $route[$i]['lat'],     'lon' => $route[$i]['lon']],
-                        )
+                        ['lat' => $route[$i - 1]['lat'], 'lon' => $route[$i - 1]['lon']],
+                        ['lat' => $route[$i]['lat'],     'lon' => $route[$i]['lon']],
+                    )
                         + $this->mapService->calculateDistance(
                             ['lat' => $route[$j]['lat'],     'lon' => $route[$j]['lon']],
                             ['lat' => $route[($j + 1) % $n]['lat'], 'lon' => $route[($j + 1) % $n]['lon']],
                         );
 
                     $newDist = $this->mapService->calculateDistance(
-                            ['lat' => $route[$i - 1]['lat'], 'lon' => $route[$i - 1]['lon']],
-                            ['lat' => $route[$j]['lat'],     'lon' => $route[$j]['lon']],
-                        )
+                        ['lat' => $route[$i - 1]['lat'], 'lon' => $route[$i - 1]['lon']],
+                        ['lat' => $route[$j]['lat'],     'lon' => $route[$j]['lon']],
+                    )
                         + $this->mapService->calculateDistance(
                             ['lat' => $route[$i]['lat'],     'lon' => $route[$i]['lon']],
                             ['lat' => $route[($j + 1) % $n]['lat'], 'lon' => $route[($j + 1) % $n]['lon']],
@@ -251,7 +313,7 @@ final readonly class RouteOptimizationService
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * @param array<int, array{lat: float, lon: float}> $points
+     * @param  array<int, array{lat: float, lon: float}>  $points
      * @return array<int, array{from: array{lat: float, lon: float}, to: array{lat: float, lon: float}}>
      */
     private function buildRoutesForML(array $points): array
@@ -263,12 +325,13 @@ final readonly class RouteOptimizationService
                 'to'   => ['lat' => $points[$i + 1]['lat'], 'lon' => $points[$i + 1]['lon']],
             ];
         }
+
         return $routes;
     }
 
     /**
-     * @param array<int, array{order_id: int|null, lat: float, lon: float}> $points
-     * @param array<int, array{distance_km: float, predicted_minutes: int}> $times
+     * @param  array<int, array{order_id: int|null, lat: float, lon: float}>  $points
+     * @param  array<int, array{distance_km: float, predicted_minutes: int}>  $times
      * @return array{route: array, total_distance_km: float, total_minutes: int, algorithm: string}
      */
     private function assembleFinalRoute(array $points, array $times): array
@@ -317,7 +380,7 @@ final readonly class RouteOptimizationService
 
             DeliveryOrder::where('id', $stop['order_id'])->update([
                 'route_json'              => json_encode($stop),
-                'estimated_delivery_at'   => now()->addMinutes((int) $stop['estimated_minutes']),
+                'estimated_delivery_at'   => CarbonImmutable::now()->addMinutes((int) $stop['estimated_minutes']),
                 'correlation_id'          => $correlationId,
             ]);
         }
@@ -332,14 +395,14 @@ final readonly class RouteOptimizationService
             ->get();
 
         return $orders->sum(
-            fn (DeliveryOrder $o): int => max(0, (int) now()->diffInMinutes($o->estimated_delivery_at))
+            fn (DeliveryOrder $o): int => max(0, (int) CarbonImmutable::now()->diffInMinutes($o->estimated_delivery_at))
         );
     }
 
     private function maybeAwardEfficiencyBonus(
-        int    $courierId,
-        int    $previousMinutes,
-        int    $newMinutes,
+        int $courierId,
+        int $previousMinutes,
+        int $newMinutes,
         string $correlationId,
     ): void {
         if ($previousMinutes <= 0 || $newMinutes >= $previousMinutes) {
@@ -364,7 +427,7 @@ final readonly class RouteOptimizationService
             return;
         }
 
-        $this->wallet->credit((int) $walletId, $bonusKopecks, \App\Domains\Wallet\Enums\BalanceTransactionType::BONUS, $correlationId, null, null, [
+        $this->wallet->credit((int) $walletId, $bonusKopecks, BalanceTransactionType::BONUS, $correlationId, null, null, [
             'courier_id'     => $courierId,
             'saved_minutes'  => $savedMinutes,
             'bonus_kopecks'  => $bonusKopecks,
@@ -380,5 +443,26 @@ final readonly class RouteOptimizationService
             'total_minutes'     => 0,
             'algorithm'         => 'empty',
         ];
+    }
+
+    /**
+     * Calculate distance between two points in km (Haversine formula)
+     */
+    private function calculateDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $earthRadius = 6371; // km
+
+        $lat1Rad = deg2rad($lat1);
+        $lat2Rad = deg2rad($lat2);
+        $deltaLat = deg2rad($lat2 - $lat1);
+        $deltaLng = deg2rad($lng2 - $lng1);
+
+        $a = sin($deltaLat / 2) * sin($deltaLat / 2) +
+             cos($lat1Rad) * cos($lat2Rad) *
+             sin($deltaLng / 2) * sin($deltaLng / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
     }
 }

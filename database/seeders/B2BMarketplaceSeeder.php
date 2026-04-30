@@ -68,29 +68,29 @@ final class B2BMarketplaceSeeder extends Seeder
         foreach ($manufacturers as $m) {
             $manufacturer = B2BManufacturer::create(array_merge($m, [
                 'contact_phone' => '+79001234567',
-                'legal_address' => 'Sample Legal Address ' . Str::random(10),
+                'legal_address' => 'Sample Legal Address '.Str::random(10),
                 'correlation_id' => (string) Str::uuid(),
             ]));
 
             // Create some products for each manufacturer
             $itemCount = 5;
             for ($i = 1; $i <= $itemCount; $i++) {
-                $productName = $manufacturer->category . ' Bulk Item ' . $i;
+                $productName = $manufacturer->category.' Bulk Item '.$i;
                 $unit = 'box';
 
                 if ($manufacturer->category === 'Food') {
                     $unit = 'kg';
                 } elseif ($manufacturer->category === 'Real Estate') {
-                    $productName = 'Monthly Office Rent - Tier ' . $i;
+                    $productName = 'Monthly Office Rent - Tier '.$i;
                     $unit = 'month';
                 } elseif ($manufacturer->category === 'Water Delivery') {
-                    $productName = 'Bulk Water Delivery (19L) x' . (10 * $i);
+                    $productName = 'Bulk Water Delivery (19L) x'.(10 * $i);
                     $unit = 'pallet';
                 }
 
                 B2BProduct::create([
                     'manufacturer_id' => $manufacturer->id,
-                    'sku' => strtoupper(substr($manufacturer->name, 0, 3)) . '-' . Str::random(5),
+                    'sku' => strtoupper(substr($manufacturer->name, 0, 3)).'-'.Str::random(5),
                     'name' => $productName,
                     'description' => 'A high-quality bulk product/service for your business needs.',
                     'unit' => $unit,
@@ -110,7 +110,7 @@ final class B2BMarketplaceSeeder extends Seeder
             WholesaleContract::create([
                 'manufacturer_id' => $firstManufacturer->id,
                 'tenant_id' => $tenant->id,
-                'contract_number' => 'CONT-' . Str::upper(Str::random(8)),
+                'contract_number' => 'CONT-'.Str::upper(Str::random(8)),
                 'signed_at' => now()->subMonths(2),
                 'expires_at' => now()->addYear(),
                 'special_discount_percent' => 10.00,

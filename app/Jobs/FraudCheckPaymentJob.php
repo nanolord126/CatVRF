@@ -6,34 +6,37 @@ namespace App\Jobs;
 
 use App\Domains\FraudML\DTOs\PaymentFraudMLDto;
 use App\Domains\FraudML\Services\PaymentFraudMLService;
-use Illuminate\Bus\Batch;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
 use Throwable;
 
 /**
  * FraudCheckPaymentJob - Async fraud check for payments
- * 
+ *
  * CRITICAL FIX: Moves FraudML inference out of critical payment path
  * - Reduces latency in payment flow (40+ms -> <5ms)
  * - Fallback to rule-based if ML timeout (>30ms)
  * - Unique by idempotency key to prevent duplicate processing
  * - Dedicated queue for payment fraud checks
- * 
+ *
  * CANON 2026 - Production Ready
  */
-final class FraudCheckPaymentJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
+final class FraudCheckPaymentJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use SerializesModels;
 
     public int $timeout = 30; // 30 seconds timeout
+
     public int $tries = 3; // 3 retries
+
     public array $backoff = [5, 10, 20]; // Exponential backoff
 
     /**
@@ -51,14 +54,14 @@ final class FraudCheckPaymentJob implements ShouldQueue, ShouldBeUniqueUntilProc
     {
         return [
             'fraud-check:payment',
-            'vertical:' . ($this->dto->vertical_code ?? 'payment'),
-            'tenant:' . $this->dto->tenant_id,
-            'user:' . $this->dto->user_id,
+            'vertical:'.($this->dto->vertical_code ?? 'payment'),
+            'tenant:'.$this->dto->tenant_id,
+            'user:'.$this->dto->user_id,
         ];
     }
 
     public function __construct(
-        private PaymentFraudMLDto $dto
+        private readonly PaymentFraudMLDto $dto
     ) {
         $this->timeout = 30; // 30 seconds timeout
         $this->tries = 3; // 3 retries
@@ -76,7 +79,7 @@ final class FraudCheckPaymentJob implements ShouldQueue, ShouldBeUniqueUntilProc
             $result = $fraudMLService->scorePayment($this->dto);
             $latencyMs = (microtime(true) - $startTime) * 1000;
 
-            $logger->info('Fraud check payment job completed', [
+            $logger->$this->logger->info('Fraud check payment job completed', [
                 'idempotency_key' => $this->dto->idempotency_key,
                 'correlation_id' => $this->dto->correlation_id,
                 'score' => $result['score'],
@@ -107,6 +110,18 @@ final class FraudCheckPaymentJob implements ShouldQueue, ShouldBeUniqueUntilProc
     }
 
     /**
+     * Handle job failure after retries exhausted
+     */
+    public function failed(Throwable $exception): void
+    {
+        $this->log->error('Fraud check payment job failed after retries', [
+            'idempotency_key' => $this->dto->idempotency_key,
+            'correlation_id' => $this->dto->correlation_id,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
+    /**
      * Handle job failure with fallback
      */
     private function handleFallback(LoggerInterface $logger): void
@@ -115,6 +130,7 @@ final class FraudCheckPaymentJob implements ShouldQueue, ShouldBeUniqueUntilProc
             'idempotency_key' => $this->dto->idempotency_key,
             'correlation_id' => $this->dto->correlation_id,
             'reason' => 'ml_failure',
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ]);
 
         // In production: emit event to trigger rule-based fallback
@@ -128,25 +144,13 @@ final class FraudCheckPaymentJob implements ShouldQueue, ShouldBeUniqueUntilProc
     {
         // In production: use PrometheusMetricsService
         // For now: log metrics for scraping
-        Log::info('fraud_ml_payment_metrics', [
+        $this->log->$this->logger->info('fraud_ml_payment_metrics', [
             'score' => $result['score'],
             'decision' => $result['decision'],
             'latency_ms' => $latencyMs,
             'vertical_code' => $this->dto->vertical_code,
             'is_emergency' => $this->dto->is_emergency_payment,
             'urgency_level' => $this->dto->urgency_level,
-        ]);
-    }
-
-    /**
-     * Handle job failure after retries exhausted
-     */
-    public function failed(Throwable $exception): void
-    {
-        Log::error('Fraud check payment job failed after retries', [
-            'idempotency_key' => $this->dto->idempotency_key,
-            'correlation_id' => $this->dto->correlation_id,
-            'error' => $exception->getMessage(),
         ]);
     }
 }

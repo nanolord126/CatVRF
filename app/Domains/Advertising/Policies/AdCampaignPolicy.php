@@ -1,14 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Advertising\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use App\Models\User;
 use App\Domains\Advertising\Models\AdCampaign;
+
 final class AdCampaignPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return $user->tenant_id !== null;

@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Beauty;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Auth\Guard;
@@ -15,15 +21,14 @@ use App\Services\FraudControlService;
 /**
  * Beauty Review API Controller — отзывы на салоны/мастеров.
  */
-class ReviewController extends Controller
+final class ReviewController extends Controller
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly FraudControlService $fraudService,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
-        private readonly ResponseFactory $response,
-    ) {}
+        private readonly ResponseFactory $response,) {}
 
     /**
      * POST /reviews — создать отзыв (auth).
@@ -58,11 +63,11 @@ class ReviewController extends Controller
                     'reviewable_id' => $request->integer('reviewable_id'),
                     'rating' => $request->integer('rating'),
                     'comment' => $request->input('comment', ''),
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
-                $this->logger->channel('audit')->info('Beauty review created', [
+                $this->logger->channel('audit')->$this->logger->info('Beauty review created', [
                     'correlation_id' => $correlationId,
                     'review_id' => $reviewId,
                     'user_id' => auth()->id(),
@@ -115,10 +120,10 @@ class ReviewController extends Controller
                     'rating' => $request->input('rating'),
                     'comment' => $request->input('comment'),
                     'correlation_id' => $correlationId,
-                    'updated_at' => now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]));
 
-                $this->logger->channel('audit')->info('Beauty review updated', [
+                $this->logger->channel('audit')->$this->logger->info('Beauty review updated', [
                     'correlation_id' => $correlationId,
                     'review_id' => $id,
                 ]);
@@ -165,7 +170,7 @@ class ReviewController extends Controller
                     ], 404);
                 }
 
-                $this->logger->channel('audit')->info('Beauty review deleted', [
+                $this->logger->channel('audit')->$this->logger->info('Beauty review deleted', [
                     'correlation_id' => $correlationId,
                     'review_id' => $id,
                 ]);

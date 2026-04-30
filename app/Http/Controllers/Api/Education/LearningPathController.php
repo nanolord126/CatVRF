@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Education;
 
@@ -9,12 +11,15 @@ use App\Domains\Education\Services\AI\EducationLearningPathAIConstructorService;
 use App\Domains\Education\Resources\LearningPathResource;
 use App\Domains\Education\Events\LearningPathGeneratedEvent;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Event;
+use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 final readonly class LearningPathController extends Controller
 {
     public function __construct(
-        private EducationLearningPathAIConstructorService $aiConstructor,
+        private readonly Dispatcher $events,
+        private readonly EducationLearningPathAIConstructorService $aiConstructor,
     ) {}
 
     public function generate(CreateLearningPathRequest $request): JsonResponse
@@ -23,7 +28,7 @@ final readonly class LearningPathController extends Controller
 
         $recommendation = $this->aiConstructor->generatePersonalizedLearningPath($dto);
 
-        Event::dispatch(new LearningPathGeneratedEvent(
+        $this->events->dispatch(new LearningPathGeneratedEvent(
             userId: $dto->userId,
             courseId: $dto->courseId,
             tenantId: $dto->tenantId,
@@ -38,13 +43,13 @@ final readonly class LearningPathController extends Controller
             ->header('X-Correlation-ID', $dto->correlationId);
     }
 
-    public function adapt(int $enrollmentId, \Illuminate\Http\Request $request): JsonResponse
+    public function adapt(int $enrollmentId, Request $request): JsonResponse
     {
         $request->validate([
             'progress_data' => ['required', 'array'],
         ]);
 
-        $correlationId = $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
 
         $recommendation = $this->aiConstructor->adaptLearningPath(
             enrollmentId: $enrollmentId,

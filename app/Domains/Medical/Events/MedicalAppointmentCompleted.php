@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * MedicalAppointmentCompleted — CatVRF 2026 Component.
@@ -7,31 +9,32 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/medicalappointmentcompleted
  */
 
-
 namespace App\Domains\Medical\Events;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 final class MedicalAppointmentCompleted
 {
+    use Dispatchable;
+    use SerializesModels;
 
-
-    use \Illuminate\Foundation\Events\Dispatchable, \Illuminate\Queue\SerializesModels;
-
-        public function __construct(
-            public MedicalAppointment $appointment,
-            public MedicalRecord $record,
-            public string $correlation_id
-        ) {}
+    public function __construct(
+        public MedicalAppointment $appointment,
+        public MedicalRecord $record,
+        public string $correlation_id
+    ) {}
 
     /**
      * Get the string representation of this instance.
@@ -40,7 +43,7 @@ final class MedicalAppointmentCompleted
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -51,9 +54,8 @@ final class MedicalAppointmentCompleted
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }
-

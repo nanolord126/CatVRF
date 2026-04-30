@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Facades\Route;
 use App\Domains\Food\Http\Controllers\DeliveryOrderController;
 
@@ -11,7 +13,7 @@ Route::middleware(['auth:sanctum'])->prefix('v1/food')->group(function () {
         Route::post('/{delivery}/start', [DeliveryOrderController::class, 'start']);
         Route::get('/{delivery}/track', [DeliveryOrderController::class, 'track']);
     });
-    
+
     // Order-specific delivery endpoint
     Route::get('/orders/{order}/delivery', [DeliveryOrderController::class, 'show']);
 });

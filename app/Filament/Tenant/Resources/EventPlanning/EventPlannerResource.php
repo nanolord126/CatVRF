@@ -1,143 +1,147 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\EventPlanning;
 
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
-use Filament\Forms;
-use Filament\Tables;
+use App\Filament\Tenant\Resources\EventPlanning\EventPlannerResource\Pages\CreateEventPlanner;
+use App\Filament\Tenant\Resources\EventPlanning\EventPlannerResource\Pages\EditEventPlanner;
+use App\Filament\Tenant\Resources\EventPlanning\EventPlannerResource\Pages\ListEventPlanners;
 
 final class EventPlannerResource extends Resource
 {
-
     protected static ?string $model = EventPlanner::class;
 
-        protected static ?string $navigationIcon = 'heroicon-o-user-group';
-        protected static ?string $navigationGroup = 'Event Planning Management';
-        protected static ?string $label = 'Planners';
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
-        public static function form(Form $form): Form
-        {
-            return $form
-                ->schema([
-                    Section::make('Planner Details')
-                        ->description('General information about the event planner profile.')
-                        ->schema([
-                            Grid::make(3)
-                                ->schema([
-                                    TextInput::make('name')
-                                        ->required()
-                                        ->maxLength(255)
-                                        ->placeholder('e.g. Dream Weddings Co.'),
+    protected static ?string $navigationGroup = 'Event Planning Management';
 
-                                    Select::make('specialization')
-                                        ->multiple()
-                                        ->options([
-                                            'wedding' => 'Weddings',
-                                            'corporate' => 'Corporate Events',
-                                            'concert' => 'Concerts & Festivals',
-                                            'private' => 'Private Parties',
-                                            'exhibition' => 'Exhibitions',
-                                        ])
-                                        ->required(),
+    protected static ?string $label = 'Planners';
 
-                                    TextInput::make('experience_years')
-                                        ->required()
-                                        ->numeric()
-                                        ->minValue(0)
-                                        ->placeholder('Years of experience'),
-                                ]),
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Section::make('Planner Details')
+                    ->description('General information about the event planner profile.')
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->placeholder('e.g. Dream Weddings Co.'),
 
-                            Textarea::make('bio')
-                                ->rows(4)
-                                ->columnSpanFull()
-                                ->placeholder('Describe the planner experience and mission.'),
+                                Select::make('specialization')
+                                    ->multiple()
+                                    ->options([
+                                        'wedding' => 'Weddings',
+                                        'corporate' => 'Corporate Events',
+                                        'concert' => 'Concerts & Festivals',
+                                        'private' => 'Private Parties',
+                                        'exhibition' => 'Exhibitions',
+                                    ])
+                                    ->required(),
 
-                            FileUpload::make('portfolio_images')
-                                ->image()
-                                ->multiple()
-                                ->directory('event-planners/portfolios')
-                                ->columnSpanFull(),
-                        ]),
+                                TextInput::make('experience_years')
+                                    ->required()
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->placeholder('Years of experience'),
+                            ]),
 
-                    Section::make('System Attributes')
-                        ->collapsible()
-                        ->schema([
-                            Grid::make(2)
-                                ->schema([
-                                    TextInput::make('uuid')
-                                        ->disabled()
-                                        ->dehydrated(false)
-                                        ->default(fn () => (string) Str::uuid())
-                                        ->label('System UUID'),
+                        Textarea::make('bio')
+                            ->rows(4)
+                            ->columnSpanFull()
+                            ->placeholder('Describe the planner experience and mission.'),
 
-                                    TextInput::make('correlation_id')
-                                        ->disabled()
-                                        ->dehydrated(true)
-                                        ->default(fn () => (string) Str::uuid())
-                                        ->label('Current Correlation Context'),
-                                ]),
-                        ]),
-                ]);
-        }
-
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    ImageColumn::make('portfolio_images')
-                        ->circular()
-                        ->limit(3)
-                        ->label('Portfolio'),
-
-                    TextColumn::make('name')
-                        ->searchable()
-                        ->sortable()
-                        ->weight('bold'),
-
-                    TextColumn::make('specialization')
-                        ->badge()
-                        ->color('primary'),
-
-                    TextColumn::make('experience_years')
-                        ->label('Exp.')
-                        ->suffix(' years')
-                        ->sortable(),
-
-                    TextColumn::make('rating')
-                        ->numeric(1)
-                        ->icon('heroicon-s-star')
-                        ->color('warning')
-                        ->placeholder('N/A'),
-
-                    TextColumn::make('created_at')
-                        ->dateTime()
-                        ->sortable()
-                        ->toggleable(isToggledHiddenByDefault: true),
-                ])
-                ->filters([])
-                ->actions([
-                    ActionGroup::make([
-                        ViewAction::make(),
-                        EditAction::make(),
-                        DeleteAction::make(),
+                        FileUpload::make('portfolio_images')
+                            ->image()
+                            ->multiple()
+                            ->directory('event-planners/portfolios')
+                            ->columnSpanFull(),
                     ]),
-                ])
-                ->bulkActions([]);
-        }
 
-        public static function getRelations(): array
-        {
-            return [];
-        }
+                Section::make('System Attributes')
+                    ->collapsible()
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('uuid')
+                                    ->disabled()
+                                    ->dehydrated(false)
+                                    ->default(fn () => (string) Str::uuid())
+                                    ->label('System UUID'),
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => \App\Filament\Tenant\Resources\EventPlanning\EventPlannerResource\Pages\ListEventPlanners::route('/'),
-                'create' => \App\Filament\Tenant\Resources\EventPlanning\EventPlannerResource\Pages\CreateEventPlanner::route('/create'),
-                'edit' => \App\Filament\Tenant\Resources\EventPlanning\EventPlannerResource\Pages\EditEventPlanner::route('/{record}/edit'),
-            ];
-        }
+                                TextInput::make('correlation_id')
+                                    ->disabled()
+                                    ->dehydrated(true)
+                                    ->default(fn () => (string) Str::uuid())
+                                    ->label('Current Correlation Context'),
+                            ]),
+                    ]),
+            ]);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                ImageColumn::make('portfolio_images')
+                    ->circular()
+                    ->limit(3)
+                    ->label('Portfolio'),
+
+                TextColumn::make('name')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold'),
+
+                TextColumn::make('specialization')
+                    ->badge()
+                    ->color('primary'),
+
+                TextColumn::make('experience_years')
+                    ->label('Exp.')
+                    ->suffix(' years')
+                    ->sortable(),
+
+                TextColumn::make('rating')
+                    ->numeric(1)
+                    ->icon('heroicon-s-star')
+                    ->color('warning')
+                    ->placeholder('N/A'),
+
+                TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([])
+            ->actions([
+                ActionGroup::make([
+                    ViewAction::make(),
+                    EditAction::make(),
+                    DeleteAction::make(),
+                ]),
+            ])
+            ->bulkActions([]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => ListEventPlanners::route('/'),
+            'create' => CreateEventPlanner::route('/create'),
+            'edit' => EditEventPlanner::route('/{record}/edit'),
+        ];
+    }
 }

@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Advertising\Services;
-
-
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
@@ -11,12 +11,14 @@ use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
+
 final readonly class AdvertisingService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
         private readonly Guard $guard,
     ) {}
@@ -36,7 +38,7 @@ final readonly class AdvertisingService
                 'tenant_id'      => tenant()->id ?? $data['tenant_id'] ?? null,
             ]));
 
-            $this->logger->info('Advertising record created', [
+            $this->logger->$this->logger->info('Advertising record created', [
                 'id'             => $record->id,
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $record->tenant_id,
@@ -101,7 +103,7 @@ final readonly class AdvertisingService
      */
     public function list(array $filters = []): Collection
     {
-        return AdCampaign::when(!empty($filters['status']), fn($q) => $q->where('status', $filters['status']))
+        return AdCampaign::when(! empty($filters['status']), fn ($q) => $q->where('status', $filters['status']))
             ->latest()
             ->get();
     }

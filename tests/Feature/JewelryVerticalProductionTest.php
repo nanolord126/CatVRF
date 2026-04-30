@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature;
 
@@ -24,19 +26,10 @@ class JewelryVerticalProductionTest extends TestCase
     use RefreshDatabase;
 
     private Tenant $tenant;
+
     private User $user;
+
     private string $correlationId;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->correlationId = (string) Str::uuid();
-
-        // Standard setup for Tenant and User
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->be($this->user);
-    }
 
     /**
      * @test
@@ -100,7 +93,7 @@ class JewelryVerticalProductionTest extends TestCase
         JewelryProduct::create([
             'tenant_id' => $this->tenant->id,
             'store_id' => $store->id,
-            'category_id' => 1, 
+            'category_id' => 1,
             'name' => 'Rose Gold Spring Ring',
             'sku' => 'RNG-SPRING-01',
             'metal_type' => 'rose-gold',
@@ -136,7 +129,7 @@ class JewelryVerticalProductionTest extends TestCase
         $this->assertEquals('jewelry', $result->vertical);
         $this->assertNotEmpty($result->suggestions);
         $this->assertGreaterThan(0.5, $result->confidence_score);
-        
+
         // Ensure white metal is recommended for "Cool Summer" palette (matching the matrix in the constructor)
         $meta = $result->payload;
         if ($meta['seasonal_type'] === 'cool-summer') {
@@ -169,6 +162,17 @@ class JewelryVerticalProductionTest extends TestCase
     {
         // This test requires a mocked FraudControlService to return true on score check
         // Conceptually, it ensures that Layer 3 (Service) aborts mutation when Layer 8 (Security) identifies risk.
-        $this->assertTrue(true); 
+        $this->assertTrue(true);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->correlationId = (string) Str::uuid();
+
+        // Standard setup for Tenant and User
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $this->be($this->user);
     }
 }

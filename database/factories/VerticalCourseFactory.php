@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Domains\Education\Models\Course;
 use App\Domains\Education\Models\VerticalCourse;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 class VerticalCourseFactory extends Factory
 {
@@ -13,9 +16,9 @@ class VerticalCourseFactory extends Factory
     public function definition(): array
     {
         $course = Course::factory()->create();
-        
+
         return [
-            'uuid' => \Illuminate\Support\Str::uuid(),
+            'uuid' => Str::uuid(),
             'tenant_id' => 1,
             'course_id' => $course->id,
             'vertical' => $this->faker->randomElement(['beauty', 'hotels', 'flowers', 'auto', 'medical', 'fitness', 'restaurants', 'pharmacy']),
@@ -26,7 +29,7 @@ class VerticalCourseFactory extends Factory
             'prerequisites' => null,
             'learning_objectives' => null,
             'metadata' => null,
-            'correlation_id' => \Illuminate\Support\Str::uuid(),
+            'correlation_id' => Str::uuid(),
         ];
     }
 

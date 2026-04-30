@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Promo;
+
+use Psr\Log\LoggerInterface;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Log\LogManager;
@@ -10,178 +14,181 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 
 final class PromoController extends Controller
 {
-
-    public function __construct(
-            private readonly FraudControlService $fraudService,
-            private readonly LogManager $logger,
-            private readonly DatabaseManager $db,
-            private readonly Guard $guard,
-            private readonly ResponseFactory $response,
-    ) {}
-        /**
-         * POST /api/v1/promo/apply
-         * Применить промокод к заказу/бронированию.
-         *
-         * @return JsonResponse
-         */
-        public function apply(ApplyPromoRequest $request): JsonResponse
-        {
-            $correlationId = $request->getCorrelationId();
-            $tenantId = $request->getTenantId();
-            $code = $request->input('code');
-            $orderAmount = $request->integer('order_amount');
-            try {
-                return $this->db->transaction(function () use ($code, $orderAmount, $correlationId, $tenantId, $request) {
-                    // 1. Найти кампанию
-                    $campaign = PromoCampaign::where('code', $code)
-                        ->where('tenant_id', $tenantId)
-                        ->where('status', 'active')
-                        ->first();
-                    if (!$campaign) {
-                        return $this->response->json([
-                            'success' => false,
-                            'message' => 'Promo code not found or inactive',
-                            'correlation_id' => $correlationId,
-                        ], 404)->send();
-                    }
-                    // 2. Проверить минимальную сумму заказа
-                    if ($orderAmount < $campaign->min_order_amount) {
-                        return $this->response->json([
-                            'success' => false,
-                            'message' => 'Order amount below minimum',
-                            'correlation_id' => $correlationId,
-                            'data' => [
-                                'minimum_required' => $campaign->min_order_amount,
-                                'current_amount' => $orderAmount,
-                            ],
-                        ], 400)->send();
-                    }
-                    // 3. Проверить бюджет
-                    if ($campaign->spent_budget >= $campaign->budget) {
-                        $campaign->update(['status' => 'exhausted']);
-                        return $this->response->json([
-                            'success' => false,
-                            'message' => 'Promo budget exhausted',
-                            'correlation_id' => $correlationId,
-                        ], 400)->send();
-                    }
-                    // 4. Проверить использования на пользователя
-                    $userUsageCount = PromoUse::where('promo_campaign_id', $campaign->id)
-                        ->where('user_id', $this->guard->id())
-                        ->count();
-                    if ($userUsageCount >= $campaign->max_uses_per_user) {
-                        return $this->response->json([
-                            'success' => false,
-                            'message' => 'Maximum uses per user exceeded',
-                            'correlation_id' => $correlationId,
-                        ], 400)->send();
-                    }
-                    // 5. Fraud check на злоупотребление промо
-                    $fraudResult = $this->fraudService->checkPromoAbuse(
-                        user_id: $this->guard->id(),
-                        campaign_id: $campaign->id,
-                        amount: $orderAmount,
-                        correlation_id: $correlationId,
-                    );
-                    if ($fraudResult['decision'] === 'block') {
-                        $this->logger->channel('fraud_alert')->warning('Promo abuse detected', [
-                            'correlation_id' => $correlationId,
-                            'user_id' => $this->guard->id(),
-                            'campaign_id' => $campaign->id,
-                        ]);
-                        return $this->response->json([
-                            'success' => false,
-                            'message' => 'Promo application blocked',
-                            'correlation_id' => $correlationId,
-                        ], 403)->send();
-                    }
-                    // 6. Рассчитать скидку в зависимости от типа
-                    $discountAmount = match ($campaign->type) {
-                        'fixed_amount' => (int) $campaign->discount_value,
-                        'referral_bonus' => 0, // Bonuses handled separately
-                        default => 0,
-                    };
-                    $finalAmount = $orderAmount - $discountAmount;
-                    // 7. Записать использование промо
-                    $promoUse = PromoUse::create([
-                        'promo_campaign_id' => $campaign->id,
-                        'user_id' => $this->guard->id(),
-                        'tenant_id' => $tenantId,
-                        'discount_amount' => $discountAmount,
-                        'correlation_id' => $correlationId,
-                    ]);
-                    // 8. Обновить бюджет кампании
-                    $campaign->increment('spent_budget', $discountAmount);
-                    // 9. Логирование
-                    $this->logger->channel('audit')->info('Promo applied', [
-                        'correlation_id' => $correlationId,
-                        'campaign_id' => $campaign->id,
-                        'code' => $code,
-                        'user_id' => $this->guard->id(),
-                        'discount_amount' => $discountAmount,
-                        'order_amount' => $orderAmount,
-                        'final_amount' => $finalAmount,
-                    ]);
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraudService,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,) {}
+
+    /**
+     * POST /api/v1/promo/apply
+     * Применить промокод к заказу/бронированию.
+     */
+    public function apply(ApplyPromoRequest $request): JsonResponse
+    {
+        $correlationId = $request->getCorrelationId();
+        $tenantId = $request->getTenantId();
+        $code = $request->input('code');
+        $orderAmount = $request->integer('order_amount');
+        try {
+            return $this->db->transaction(function () use ($code, $orderAmount, $correlationId, $tenantId) {
+                // 1. Найти кампанию
+                $campaign = PromoCampaign::where('code', $code)
+                    ->where('tenant_id', $tenantId)
+                    ->where('status', 'active')
+                    ->first();
+                if (! $campaign) {
                     return $this->response->json([
-                        'success' => true,
-                        'message' => 'Promo applied successfully',
+                        'success' => false,
+                        'message' => 'Promo code not found or inactive',
+                        'correlation_id' => $correlationId,
+                    ], 404)->send();
+                }
+                // 2. Проверить минимальную сумму заказа
+                if ($orderAmount < $campaign->min_order_amount) {
+                    return $this->response->json([
+                        'success' => false,
+                        'message' => 'Order amount below minimum',
                         'correlation_id' => $correlationId,
                         'data' => [
-                            'promo_use_id' => $promoUse->id,
-                            'code' => $code,
-                            'discount' => $discountAmount,
-                            'final_amount' => $finalAmount,
+                            'minimum_required' => $campaign->min_order_amount,
+                            'current_amount' => $orderAmount,
                         ],
-                    ], 200);
-                });
-            } catch (\Exception $e) {
-                $this->logger->channel('audit')->error($e->getMessage(), [
-                    'exception' => $e::class,
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
+                    ], 400)->send();
+                }
+                // 3. Проверить бюджет
+                if ($campaign->spent_budget >= $campaign->budget) {
+                    $campaign->update(['status' => 'exhausted']);
+
+                    return $this->response->json([
+                        'success' => false,
+                        'message' => 'Promo budget exhausted',
+                        'correlation_id' => $correlationId,
+                    ], 400)->send();
+                }
+                // 4. Проверить использования на пользователя
+                $userUsageCount = PromoUse::where('promo_campaign_id', $campaign->id)
+                    ->where('user_id', $this->guard->id())
+                    ->count();
+                if ($userUsageCount >= $campaign->max_uses_per_user) {
+                    return $this->response->json([
+                        'success' => false,
+                        'message' => 'Maximum uses per user exceeded',
+                        'correlation_id' => $correlationId,
+                    ], 400)->send();
+                }
+                // 5. Fraud check на злоупотребление промо
+                $fraudResult = $this->fraudService->checkPromoAbuse(
+                    user_id: $this->guard->id(),
+                    campaign_id: $campaign->id,
+                    amount: $orderAmount,
+                    correlation_id: $correlationId,
+                );
+                if ($fraudResult['decision'] === 'block') {
+                    $this->logger->channel('fraud_alert')->warning('Promo abuse detected', [
+                        'correlation_id' => $correlationId,
+                        'user_id' => $this->guard->id(),
+                        'campaign_id' => $campaign->id,
+                    ]);
+
+                    return $this->response->json([
+                        'success' => false,
+                        'message' => 'Promo application blocked',
+                        'correlation_id' => $correlationId,
+                    ], 403)->send();
+                }
+                // 6. Рассчитать скидку в зависимости от типа
+                $discountAmount = match ($campaign->type) {
+                    'fixed_amount' => (int) $campaign->discount_value,
+                    'referral_bonus' => 0, // Bonuses handled separately
+                    default => 0,
+                };
+                $finalAmount = $orderAmount - $discountAmount;
+                // 7. Записать использование промо
+                $promoUse = PromoUse::create([
+                    'promo_campaign_id' => $campaign->id,
+                    'user_id' => $this->guard->id(),
+                    'tenant_id' => $tenantId,
+                    'discount_amount' => $discountAmount,
+                    'correlation_id' => $correlationId,
+                ]);
+                // 8. Обновить бюджет кампании
+                $campaign->increment('spent_budget', $discountAmount);
+                // 9. Логирование
+                $this->logger->channel('audit')->$this->logger->info('Promo applied', [
+                    'correlation_id' => $correlationId,
+                    'campaign_id' => $campaign->id,
+                    'code' => $code,
+                    'user_id' => $this->guard->id(),
+                    'discount_amount' => $discountAmount,
+                    'order_amount' => $orderAmount,
+                    'final_amount' => $finalAmount,
                 ]);
 
-                $this->logger->channel('audit')->error('Promo application failed', [
-                    'correlation_id' => $correlationId,
-                    'error' => $e->getMessage(),
-                ]);
                 return $this->response->json([
-                    'success' => false,
-                    'message' => 'Promo application failed',
+                    'success' => true,
+                    'message' => 'Promo applied successfully',
                     'correlation_id' => $correlationId,
-                ], 500);
-            }
-        }
-        /**
-         * POST /api/v1/promo/{id}/validate
-         * Проверить промокод без применения.
-         */
-        public function validate(PromoCampaign $campaign, ApplyPromoRequest $request): JsonResponse
-        {
-            $correlationId = $request->getCorrelationId();
-            $orderAmount = $request->integer('order_amount');
-            if ($campaign->tenant_id !== $request->getTenantId()) {
-                return $this->response->json([
-                    'success' => false,
-                    'message' => 'Unauthorized',
-                    'correlation_id' => $correlationId,
-                ], 403);
-            }
-            $discountAmount = match ($campaign->type) {
-                'fixed_amount' => (int) $campaign->discount_value,
-                default => 0,
-            };
-            return $this->response->json([
-                'success' => true,
+                    'data' => [
+                        'promo_use_id' => $promoUse->id,
+                        'code' => $code,
+                        'discount' => $discountAmount,
+                        'final_amount' => $finalAmount,
+                    ],
+                ], 200);
+            });
+        } catch (\Exception $e) {
+            $this->logger->channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            $this->logger->channel('audit')->error('Promo application failed', [
                 'correlation_id' => $correlationId,
-                'data' => [
-                    'code' => $campaign->code,
-                    'type' => $campaign->type,
-                    'discount' => $discountAmount,
-                    'final_amount' => $orderAmount - $discountAmount,
-                    'valid' => true,
-                ],
-            ], 200);
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->response->json([
+                'success' => false,
+                'message' => 'Promo application failed',
+                'correlation_id' => $correlationId,
+            ], 500);
         }
+    }
+
+    /**
+     * POST /api/v1/promo/{id}/validate
+     * Проверить промокод без применения.
+     */
+    public function validate(PromoCampaign $campaign, ApplyPromoRequest $request): JsonResponse
+    {
+        $correlationId = $request->getCorrelationId();
+        $orderAmount = $request->integer('order_amount');
+        if ($campaign->tenant_id !== $request->getTenantId()) {
+            return $this->response->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+                'correlation_id' => $correlationId,
+            ], 403);
+        }
+        $discountAmount = match ($campaign->type) {
+            'fixed_amount' => (int) $campaign->discount_value,
+            default => 0,
+        };
+
+        return $this->response->json([
+            'success' => true,
+            'correlation_id' => $correlationId,
+            'data' => [
+                'code' => $campaign->code,
+                'type' => $campaign->type,
+                'discount' => $discountAmount,
+                'final_amount' => $orderAmount - $discountAmount,
+                'valid' => true,
+            ],
+        ], 200);
+    }
 }

@@ -7,11 +7,11 @@ namespace Database\Factories;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Domains\Hotel\HotelBooking;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Domains\Hotel\HotelBooking>
+ * @extends Factory<HotelBooking>
  */
 final class HotelBookingFactory extends Factory
 {

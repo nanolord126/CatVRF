@@ -1,10 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Observers;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Medical\Models\Appointment;
 use App\Services\Cache\CacheService;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 /**
  * Appointment Observer
@@ -15,13 +19,14 @@ use Illuminate\Support\Facades\Log;
  * This ensures that slots and recommendations are always based on fresh data.
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.18
  */
 final readonly class AppointmentObserver
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly CacheService $cache,
-    ) {}
+        private readonly LogManager $log,) {}
 
     /**
      * Handle the Appointment "created" event.
@@ -86,7 +91,7 @@ final readonly class AppointmentObserver
             // Invalidate dynamic price cache for the appointment
             $this->cache->invalidateDynamicPrice($tenantId, 'appointment', $appointment->id);
 
-            Log::info('Appointment cache invalidated', [
+            $this->log->$this->logger->info('Appointment cache invalidated', [
                 'tenant_id' => $tenantId,
                 'appointment_id' => $appointment->id,
                 'doctor_id' => $doctorId,
@@ -94,7 +99,7 @@ final readonly class AppointmentObserver
                 'client_id' => $clientId,
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to invalidate appointment cache', [
+            $this->log->error('Failed to invalidate appointment cache', [
                 'tenant_id' => $tenantId,
                 'appointment_id' => $appointment->id,
                 'error' => $e->getMessage(),

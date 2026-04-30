@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * InteriorDesigner — CatVRF 2026 Component.
@@ -7,35 +9,42 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/interiordesigner
  */
 
-
 namespace App\Domains\Furniture\InteriorDesign\Models;
+
+use Carbon\CarbonImmutable;
+
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\TenantScoped;
-
 use Carbon\Carbon;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class InteriorDesigner extends Model
 {
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
 
+    protected $table = 'interior_designers';
 
-    use HasUuids,SoftDeletes,TenantScoped;protected $table='interior_designers';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','styles','price_kopecks_per_sqm','rating','is_verified','tags'];protected $casts=['styles'=>'json','price_kopecks_per_sqm'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('interior_designers.tenant_id',tenant()->id));}
+    protected $fillable = ['uuid', 'tenant_id', 'user_id', 'correlation_id', 'name', 'styles', 'price_kopecks_per_sqm', 'rating', 'is_verified', 'tags'];
+
+    protected $casts = ['styles' => 'json', 'price_kopecks_per_sqm' => 'integer', 'rating' => 'float', 'is_verified' => 'boolean', 'tags' => 'json'];
 
     /**
      * Связь с проектами дизайнера.
      */
-    public function projects(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function projects(): HasMany
     {
         return $this->hasMany(DesignProject::class, 'designer_id');
     }
@@ -63,7 +72,7 @@ final class InteriorDesigner extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -74,10 +83,15 @@ final class InteriorDesigner extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
+            'class' => self::class,
             'id' => $this->id ?? null,
             'name' => $this->name ?? null,
-            'timestamp' => Carbon::now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted()
+    {
+        self::addGlobalScope('tenant', fn ($q) => $q->where('interior_designers.tenant_id', tenant()->id));
     }
 }

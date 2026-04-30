@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Application\Providers;
 
@@ -25,7 +27,7 @@ final class BeautyServiceProvider extends ServiceProvider
         $routeFiles = [
             app_path('Domains/Beauty/routes.php'),
             app_path('Domains/Beauty/Http/routes.php'),
-            base_path('modules/Beauty/routes.php'),
+            base_path(/* TODO: inject path via DI */'modules/Beauty/routes.php'),
         ];
 
         foreach ($routeFiles as $routeFile) {
@@ -40,7 +42,7 @@ final class BeautyServiceProvider extends ServiceProvider
         $migrationPaths = [
             app_path('Domains/Beauty/Infrastructure/Persistence/Migrations'),
             app_path('Domains/Beauty/Database/Migrations'),
-            base_path('modules/Beauty/Migrations'),
+            base_path(/* TODO: inject path via DI */'modules/Beauty/Migrations'),
         ];
 
         $validPaths = [];
@@ -63,6 +65,6 @@ final class BeautyServiceProvider extends ServiceProvider
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
-     */}
+     */
+}

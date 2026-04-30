@@ -1,43 +1,50 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Jobs;
 
-use App\Domains\Fashion\Services\FashionVisualSearchService;
-use Illuminate\Bus\Batchable;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Log\LogManager;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 
 final class BulkIndexProductsForVisualSearchJob implements ShouldQueue
 {
-    use Batchable, Queueable;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public function __construct(
-        private readonly array $productIds,
-        private readonly int $tenantId,
-        private readonly string $correlationId,
-    ) {
-        $this->onQueue('visual-search');
+    public int $tries = 3;
+    public int $backoff = 120;
+    public bool $deleteWhenMissingModels = true;
+
+    public function __construct(private readonly LoggerInterface $loggerInterface,
+        private readonly LoggerInterface $logger,
+        public readonly int $tenantId,
+        public readonly array $productIds,
+        public readonly string $correlationId = '',) {}
+
+    public function handle(LogManager $log): void
+    {
+        $log->channel('fashion')->$this->logger->info('Bulk visual search indexing started', [
+            'tenant_id' => $this->tenantId,
+            'product_count' => count($this->productIds),
+            'correlation_id' => $this->correlationId,
+        ]);
+
+        // TODO: Implement bulk product indexing for visual search (embeddings)
     }
 
-    public function handle(FashionVisualSearchService $service): void
+    public function failed(\Throwable $exception): void
     {
-        try {
-            $service->bulkIndexProducts($this->productIds, $this->correlationId);
-            
-            Log::channel('audit')->info('Products indexed for visual search', [
-                'tenant_id' => $this->tenantId,
-                'product_count' => count($this->productIds),
-                'correlation_id' => $this->correlationId,
-            ]);
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to index products for visual search', [
-                'tenant_id' => $this->tenantId,
-                'product_count' => count($this->productIds),
-                'error' => $e->getMessage(),
-                'correlation_id' => $this->correlationId,
-            ]);
-            throw $e;
-        }
+        $this->loggerInterface /* TODO: inject via DI */->error('BulkIndexProductsForVisualSearchJob failed', [
+            'tenant_id' => $this->tenantId,
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Domains\Fashion\Models\FashionProduct;
-use App\Domains\Fashion\Models\FashionOrder;
 use App\Domains\Fashion\Models\FashionCategory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +18,7 @@ final class FashionSeeder extends Seeder
             $this->command->info('Seeding Fashion vertical...');
 
             $categories = ['clothing', 'shoes', 'accessories', 'bags'];
-            
+
             foreach ($categories as $category) {
                 FashionCategory::create([
                     'uuid' => Str::uuid()->toString(),

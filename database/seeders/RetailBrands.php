@@ -9,7 +9,8 @@ namespace Database\Seeders;
  */
 final class RetailBrands extends BaseBrandSeeder
 {
-    public function run(): void {
+    public function run(): void
+    {
         $this->seedBrands('Clothing', [
             ['name' => 'Zara', 'country' => 'Spain'], ['name' => 'H&M', 'country' => 'Sweden'],
             ['name' => 'Uniqlo', 'country' => 'Japan'], ['name' => 'Gap', 'country' => 'USA'],
@@ -38,7 +39,7 @@ final class RetailBrands extends BaseBrandSeeder
             ['name' => 'Finn Flare', 'country' => 'Russia'],
             ['name' => 'Kot-Wear (Partner)', 'country' => 'Russia', 'is_platform_partner' => true],
         ]);
-        
+
         $this->seedBrands('Household', [
             ['name' => 'P&G', 'country' => 'USA'], ['name' => 'Unilever Home', 'country' => 'UK/Netherlands'],
             ['name' => 'Henkel', 'country' => 'Germany'], ['name' => 'Reckitt', 'country' => 'UK'],
@@ -69,5 +70,3 @@ final class RetailBrands extends BaseBrandSeeder
         ]);
     }
 }
-
-

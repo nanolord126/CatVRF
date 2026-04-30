@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -21,7 +22,7 @@ final class AdPlacementSeeder extends Seeder
             'description' => 'Отображается в шапке главной страницы всех тенантов.',
             'is_active' => true,
             'correlation_id' => (string) Str::uuid(),
-            'tags' => ['source:seeder']
+            'tags' => ['source:seeder'],
         ]);
 
         AdPlacement::updateOrCreate(['code' => 'sidebar_recommendation'], [
@@ -29,7 +30,7 @@ final class AdPlacementSeeder extends Seeder
             'allowed_types' => ['native', 'card'],
             'dimensions' => ['width' => 400, 'height' => 600],
             'description' => 'Блок нативного продвижения товаров и услуг в боковой панели.',
-            'is_active' => true
+            'is_active' => true,
         ]);
 
         AdPlacement::updateOrCreate(['code' => 'footer_sticky'], [
@@ -37,7 +38,7 @@ final class AdPlacementSeeder extends Seeder
             'allowed_types' => ['native'],
             'dimensions' => ['width' => '100vw', 'height' => 80],
             'description' => 'Узкий баннер в нижней части экрана для мобильных устройств.',
-            'is_active' => true
+            'is_active' => true,
         ]);
     }
 }

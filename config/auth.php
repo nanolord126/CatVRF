@@ -1,5 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Models\User;
+use App\Services\Infrastructure\DopplerService;
+
 return [
 
     /*
@@ -14,8 +19,8 @@ return [
     */
 
     'defaults' => [
-        'guard' => App\Services\Infrastructure\DopplerService::get('AUTH_GUARD', 'web'),
-        'passwords' => App\Services\Infrastructure\DopplerService::get('AUTH_PASSWORD_BROKER', 'users'),
+        'guard' => DopplerService::get('AUTH_GUARD', 'web'),
+        'passwords' => DopplerService::get('AUTH_PASSWORD_BROKER', 'users'),
     ],
 
     /*
@@ -44,6 +49,10 @@ return [
             'driver' => 'session',
             'provider' => 'couriers',
         ],
+        'sanctum' => [
+            'driver' => 'sanctum',
+            'provider' => 'users',
+        ],
     ],
 
     /*
@@ -66,11 +75,11 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            'model' => User::class,
         ],
         'couriers' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class, // Assuming couriers are also users
+            'model' => User::class, // Assuming couriers are also users
         ],
     ],
 
@@ -96,7 +105,7 @@ return [
     'passwords' => [
         'users' => [
             'provider' => 'users',
-            'table' => App\Services\Infrastructure\DopplerService::get('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'table' => DopplerService::get('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
             'expire' => 60,
             'throttle' => 60,
         ],
@@ -113,6 +122,6 @@ return [
     |
     */
 
-    'password_timeout' => App\Services\Infrastructure\DopplerService::get('AUTH_PASSWORD_TIMEOUT', 10800),
+    'password_timeout' => DopplerService::get('AUTH_PASSWORD_TIMEOUT', 10800),
 
 ];

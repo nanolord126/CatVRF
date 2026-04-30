@@ -1,19 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Delivery;
 
-
-
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
-use App\Domains\Logistics\Models\Courier;
 use App\Domains\Logistics\Models\Warehouse;
-
-use Illuminate\Support\Facades\Http;
-
-use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Cache\CacheManager;
+use App\Traits\WithAuditLogging;
+use App\Services\Audit\AuditService;
 
 /**
  * MapService — работа с картами и маршрутами.
@@ -26,27 +24,33 @@ use Illuminate\Cache\CacheManager;
  */
 final readonly class MapService
 {
+    use WithAuditLogging;
+
+    private const YANDEX_ROUTER_URL  = 'https://api-maps.yandex.ru/services/route/v2';
+
+    private const YANDEX_GEOCODE_URL = 'https://geocode-maps.yandex.ru/1.x';
+
+    private const CACHE_TTL_SECONDS  = 300;
+
     public function __construct(
         private readonly Request $request,
         private readonly ConfigRepository $config,
         private readonly LogManager $logger,
         private readonly CacheManager $cache,
+        private readonly HttpFactory $http,
+        private readonly AuditService $audit,
     ) {}
-
-    private const YANDEX_ROUTER_URL  = 'https://api-maps.yandex.ru/services/route/v2';
-    private const YANDEX_GEOCODE_URL = 'https://geocode-maps.yandex.ru/1.x';
-    private const CACHE_TTL_SECONDS  = 300;
 
     /**
      * Построить маршрут между двумя точками.
      *
-     * @param array{lat: float, lon: float} $from
-     * @param array{lat: float, lon: float} $to
+     * @param  array{lat: float, lon: float}  $from
+     * @param  array{lat: float, lon: float}  $to
      * @return array{distance_km: float, duration_min: int, polyline: string}
      */
     public function calculateRoute(array $from, array $to): array
     {
-        $cacheKey = 'route:' . md5("{$from['lat']},{$from['lon']}-{$to['lat']},{$to['lon']}");
+        $cacheKey = 'route:'.md5("{$from['lat']},{$from['lon']}-{$to['lat']},{$to['lon']}");
 
         return $this->cache->remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($from, $to): array {
             try {
@@ -54,8 +58,9 @@ final readonly class MapService
             } catch (\Throwable $e) {
                 $this->logger->channel('audit')->warning('MapService: Yandex route failed, using Haversine fallback', [
                     'error' => $e->getMessage(),
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
-            ]);
+                    'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+                ]);
+
                 return $this->routeViaHaversine($from, $to);
             }
         });
@@ -67,8 +72,10 @@ final readonly class MapService
     public function calculateDistance(array $from, array $to): float
     {
         return $this->haversineKm(
-            (float) $from['lat'], (float) $from['lon'],
-            (float) $to['lat'],   (float) $to['lon'],
+            (float) $from['lat'],
+            (float) $from['lon'],
+            (float) $to['lat'],
+            (float) $to['lon'],
         );
     }
 
@@ -77,8 +84,7 @@ final readonly class MapService
      *
      * Выбирает ближайший активный склад с учётом загруженности.
      *
-     * @param array{lat: float, lon: float} $deliveryLocation
-     * @param string $vertical
+     * @param  array{lat: float, lon: float}  $deliveryLocation
      */
     public function findOptimalWarehouse(array $deliveryLocation, string $vertical): ?Warehouse
     {
@@ -93,8 +99,10 @@ final readonly class MapService
         return $warehouses
             ->sortBy(function (Warehouse $warehouse) use ($deliveryLocation): float {
                 return $this->haversineKm(
-                    (float) $warehouse->lat, (float) $warehouse->lon,
-                    (float) $deliveryLocation['lat'], (float) $deliveryLocation['lon'],
+                    (float) $warehouse->lat,
+                    (float) $warehouse->lon,
+                    (float) $deliveryLocation['lat'],
+                    (float) $deliveryLocation['lon'],
                 );
             })
             ->first();
@@ -107,7 +115,7 @@ final readonly class MapService
      */
     public function geocodeAddress(string $address): ?array
     {
-        $cacheKey = 'geocode:' . md5($address);
+        $cacheKey = 'geocode:'.md5($address);
 
         return $this->cache->remember($cacheKey, 3600, function () use ($address): ?array {
             $apiKey = $this->config->get('services.yandex_maps.key', '');
@@ -117,7 +125,7 @@ final readonly class MapService
             }
 
             try {
-                $response = Http::timeout(5)
+                $response = $this->http->timeout(5)
                     ->retry(2, 200)
                     ->get(self::YANDEX_GEOCODE_URL, [
                         'geocode' => $address,
@@ -141,8 +149,8 @@ final readonly class MapService
                 $this->logger->channel('audit')->warning('MapService: geocoding failed', [
                     'address' => $address,
                     'error'   => $e->getMessage(),
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
-            ]);
+                    'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+                ]);
                 throw new \DomainException('Operation returned no result');
             }
         });
@@ -151,8 +159,8 @@ final readonly class MapService
     /**
      * Построить маршрут через Yandex Maps API.
      *
-     * @param array{lat: float, lon: float} $from
-     * @param array{lat: float, lon: float} $to
+     * @param  array{lat: float, lon: float}  $from
+     * @param  array{lat: float, lon: float}  $to
      * @return array{distance_km: float, duration_min: int, polyline: string}
      */
     private function routeViaYandex(array $from, array $to): array
@@ -163,7 +171,7 @@ final readonly class MapService
             return $this->routeViaHaversine($from, $to);
         }
 
-        $response = Http::timeout(5)
+        $response = $this->http->timeout(5)
             ->retry(2, 200)
             ->get(self::YANDEX_ROUTER_URL, [
                 'waypoints' => "{$from['lat']},{$from['lon']}|{$to['lat']},{$to['lon']}",
@@ -188,15 +196,17 @@ final readonly class MapService
     /**
      * Fallback — расчёт по формуле Гаверсинуса (без API).
      *
-     * @param array{lat: float, lon: float} $from
-     * @param array{lat: float, lon: float} $to
+     * @param  array{lat: float, lon: float}  $from
+     * @param  array{lat: float, lon: float}  $to
      * @return array{distance_km: float, duration_min: int, polyline: string}
      */
     private function routeViaHaversine(array $from, array $to): array
     {
         $distanceKm = $this->haversineKm(
-            (float) $from['lat'], (float) $from['lon'],
-            (float) $to['lat'],   (float) $to['lon'],
+            (float) $from['lat'],
+            (float) $from['lon'],
+            (float) $to['lat'],
+            (float) $to['lon'],
         );
 
         // Средняя скорость курьера на авто в городе — 25 км/ч

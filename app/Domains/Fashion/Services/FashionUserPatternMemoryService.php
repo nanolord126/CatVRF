@@ -1,34 +1,41 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
+
+use Psr\Log\LoggerInterface;
 
 use App\Services\AuditService;
 use App\Services\FraudControlService;
 use App\Services\ML\UserBehaviorAnalyzerService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
  * ML-сервис анализа паттернов памяти пользователей Fashion.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * Анализирует поведение пользователей, запоминает паттерны,
  * предсказывает будущие действия и персонализирует рекомендации.
  */
 final readonly class FashionUserPatternMemoryService
 {
     private const MEMORY_RETENTION_DAYS = 180;
+
     private const MIN_INTERACTIONS_FOR_PATTERN = 5;
+
     private const PATTERN_CONFIDENCE_THRESHOLD = 0.7;
 
-    public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private UserBehaviorAnalyzerService $behaviorAnalyzer,
-        private \Illuminate\Database\DatabaseManager $db,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly UserBehaviorAnalyzerService $behaviorAnalyzer,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Записать взаимодействие пользователя с товаром в память.
@@ -84,7 +91,7 @@ final readonly class FashionUserPatternMemoryService
                 'color' => $product['color'] ?? null,
                 'context' => json_encode($context, JSON_UNESCAPED_UNICODE),
                 'correlation_id' => $correlationId,
-                'created_at' => Carbon::now(),
+                'created_at' => CarbonImmutable::now(),
             ]);
 
             $this->updateUserMemoryPatterns($userId, $tenantId, $correlationId);
@@ -102,7 +109,7 @@ final readonly class FashionUserPatternMemoryService
                 correlationId: $correlationId
             );
 
-            Log::channel('audit')->info('Fashion user interaction recorded', [
+            $this->log->channel('audit')->$this->logger->info('Fashion user interaction recorded', [
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
                 'product_id' => $productId,
@@ -140,7 +147,7 @@ final readonly class FashionUserPatternMemoryService
             'user_id' => $userId,
             'patterns' => $patterns,
             'total_patterns' => count($patterns),
-            'last_updated' => !empty($patterns) ? max(array_column($patterns, 'updated_at')) : null,
+            'last_updated' => ! empty($patterns) ? max(array_column($patterns, 'updated_at')) : null,
             'correlation_id' => $correlationId,
         ];
     }
@@ -198,7 +205,7 @@ final readonly class FashionUserPatternMemoryService
             ->where('status', 'active')
             ->where('stock_quantity', '>', 0);
 
-        if (!empty($preferredCategories)) {
+        if (! empty($preferredCategories)) {
             $query->whereIn('id', function ($q) use ($preferredCategories, $tenantId) {
                 $q->select('product_id')
                     ->from('fashion_product_categories')
@@ -207,7 +214,7 @@ final readonly class FashionUserPatternMemoryService
             });
         }
 
-        if (!empty($preferredBrands)) {
+        if (! empty($preferredBrands)) {
             $query->whereIn('brand', $preferredBrands);
         }
 
@@ -215,7 +222,7 @@ final readonly class FashionUserPatternMemoryService
         $query->whereBetween('price_b2c', [$priceRange['min'], $priceRange['max']]);
 
         $viewedProductIds = array_column($interactionHistory, 'product_id');
-        if (!empty($viewedProductIds)) {
+        if (! empty($viewedProductIds)) {
             $query->whereNotIn('id', $viewedProductIds);
         }
 
@@ -235,7 +242,7 @@ final readonly class FashionUserPatternMemoryService
             ];
         }
 
-        usort($enrichedRecommendations, fn($a, $b) => $b['relevance_score'] <=> $a['relevance_score']);
+        usort($enrichedRecommendations, fn ($a, $b) => $b['relevance_score'] <=> $a['relevance_score']);
 
         return [
             'user_id' => $userId,
@@ -251,7 +258,7 @@ final readonly class FashionUserPatternMemoryService
      */
     public function cleanupOldMemoryRecords(int $daysToKeep = self::MEMORY_RETENTION_DAYS): array
     {
-        $cutoffDate = Carbon::now()->subDays($daysToKeep);
+        $cutoffDate = CarbonImmutable::now()->subDays($daysToKeep);
 
         $deletedInteractions = $this->db->table('fashion_user_memory_interactions')
             ->where('created_at', '<', $cutoffDate)
@@ -261,7 +268,7 @@ final readonly class FashionUserPatternMemoryService
             ->where('updated_at', '<', $cutoffDate)
             ->delete();
 
-        Log::channel('audit')->info('Fashion user memory cleanup completed', [
+        $this->log->channel('audit')->$this->logger->info('Fashion user memory cleanup completed', [
             'deleted_interactions' => $deletedInteractions,
             'deleted_patterns' => $deletedPatterns,
             'cutoff_date' => $cutoffDate->toIso8601String(),
@@ -296,7 +303,7 @@ final readonly class FashionUserPatternMemoryService
 
         return [
             'user_id' => $userId,
-            'export_date' => Carbon::now()->toIso8601String(),
+            'export_date' => CarbonImmutable::now()->toIso8601String(),
             'total_interactions' => count($interactions),
             'total_patterns' => count($patterns),
             'interactions' => $interactions,
@@ -342,7 +349,7 @@ final readonly class FashionUserPatternMemoryService
         $interactions = $this->db->table('fashion_user_memory_interactions')
             ->where('user_id', $userId)
             ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', Carbon::now()->subDays(self::MEMORY_RETENTION_DAYS))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(self::MEMORY_RETENTION_DAYS))
             ->get()
             ->toArray();
 
@@ -376,7 +383,7 @@ final readonly class FashionUserPatternMemoryService
                         'pattern_value' => is_array($patternValue) ? json_encode($patternValue, JSON_UNESCAPED_UNICODE) : $patternValue,
                         'confidence' => $confidence,
                         'sample_size' => count($interactions),
-                        'updated_at' => Carbon::now(),
+                        'updated_at' => CarbonImmutable::now(),
                     ]
                 );
             }
@@ -393,6 +400,7 @@ final readonly class FashionUserPatternMemoryService
         }
 
         arsort($categoryScores);
+
         return array_slice(array_keys($categoryScores), 0, 5, true);
     }
 
@@ -409,13 +417,14 @@ final readonly class FashionUserPatternMemoryService
         }
 
         arsort($brandScores);
+
         return array_slice(array_keys($brandScores), 0, 5, true);
     }
 
     private function extractPriceRange(array $interactions): string
     {
-        $prices = array_column(array_filter($interactions, fn($i) => $i['interaction_type'] === 'purchase'), 'price');
-        
+        $prices = array_column(array_filter($interactions, fn ($i) => $i['interaction_type'] === 'purchase'), 'price');
+
         if (empty($prices)) {
             $prices = array_column($interactions, 'price');
         }
@@ -446,6 +455,7 @@ final readonly class FashionUserPatternMemoryService
         }
 
         arsort($styleScores);
+
         return array_slice(array_keys($styleScores), 0, 3, true);
     }
 
@@ -462,6 +472,7 @@ final readonly class FashionUserPatternMemoryService
         }
 
         arsort($colorScores);
+
         return array_slice(array_keys($colorScores), 0, 5, true);
     }
 
@@ -528,7 +539,7 @@ final readonly class FashionUserPatternMemoryService
     private function extractConversionRate(array $interactions): float
     {
         $totalInteractions = count($interactions);
-        $purchases = count(array_filter($interactions, fn($i) => $i['interaction_type'] === 'purchase'));
+        $purchases = count(array_filter($interactions, fn ($i) => $i['interaction_type'] === 'purchase'));
 
         return $totalInteractions > 0 ? $purchases / $totalInteractions : 0;
     }
@@ -537,7 +548,7 @@ final readonly class FashionUserPatternMemoryService
     {
         $baseConfidence = 0.5;
         $sampleSize = count($interactions);
-        
+
         if ($sampleSize >= 100) {
             $baseConfidence += 0.3;
         } elseif ($sampleSize >= 50) {
@@ -565,7 +576,7 @@ final readonly class FashionUserPatternMemoryService
 
     private function getCurrentSessionInteractions(int $userId): array
     {
-        $sessionStart = Carbon::now()->subMinutes(30);
+        $sessionStart = CarbonImmutable::now()->subMinutes(30);
 
         return $this->db->table('fashion_user_memory_interactions')
             ->where('user_id', $userId)
@@ -579,7 +590,7 @@ final readonly class FashionUserPatternMemoryService
     {
         return $this->db->table('fashion_user_memory_interactions')
             ->where('user_id', $userId)
-            ->where('created_at', '>=', Carbon::now()->subDays($days))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays($days))
             ->orderBy('created_at', 'desc')
             ->get()
             ->toArray();
@@ -589,10 +600,10 @@ final readonly class FashionUserPatternMemoryService
     {
         $likelihood = 0.3;
         $conversionRate = $patterns['patterns']['conversion_rate']['pattern_value'] ?? 0;
-        
+
         $likelihood += $conversionRate * 0.5;
 
-        $recentCartActions = count(array_filter($recentInteractions, fn($i) => $i['interaction_type'] === 'add_to_cart'));
+        $recentCartActions = count(array_filter($recentInteractions, fn ($i) => $i['interaction_type'] === 'add_to_cart'));
         $likelihood += min($recentCartActions * 0.1, 0.2);
 
         return min($likelihood, 1.0);
@@ -616,9 +627,9 @@ final readonly class FashionUserPatternMemoryService
     private function predictOptimalConversionTime(array $patterns, array $recentInteractions): string
     {
         $peakHours = $patterns['patterns']['peak_shopping_hours']['pattern_value']['peak_hours'] ?? [12, 18, 20];
-        $currentHour = Carbon::now()->hour;
+        $currentHour = CarbonImmutable::now()->hour;
 
-        if (in_array($currentHour, $peakHours)) {
+        if (in_array($currentHour, $peakHours, true)) {
             return 'now';
         }
 
@@ -642,8 +653,8 @@ final readonly class FashionUserPatternMemoryService
             $risk += 0.2;
         }
 
-        $recentViews = count(array_filter($currentSession, fn($i) => $i['interaction_type'] === 'view'));
-        if ($recentViews > 10 && !array_filter($currentSession, fn($i) => $i['interaction_type'] === 'add_to_cart')) {
+        $recentViews = count(array_filter($currentSession, fn ($i) => $i['interaction_type'] === 'view'));
+        if ($recentViews > 10 && ! array_filter($currentSession, fn ($i) => $i['interaction_type'] === 'add_to_cart')) {
             $risk += 0.3;
         }
 
@@ -654,12 +665,12 @@ final readonly class FashionUserPatternMemoryService
     {
         $actions = [];
 
-        $cartItems = count(array_filter($recentInteractions, fn($i) => $i['interaction_type'] === 'add_to_cart'));
+        $cartItems = count(array_filter($recentInteractions, fn ($i) => $i['interaction_type'] === 'add_to_cart'));
         if ($cartItems > 0) {
             $actions[] = ['action' => 'checkout', 'priority' => 'high', 'reason' => 'Items in cart'];
         }
 
-        $views = count(array_filter($recentInteractions, fn($i) => $i['interaction_type'] === 'view'));
+        $views = count(array_filter($recentInteractions, fn ($i) => $i['interaction_type'] === 'view'));
         if ($views > 5 && $cartItems === 0) {
             $actions[] = ['action' => 'add_to_cart_prompt', 'priority' => 'medium', 'reason' => 'High engagement'];
         }
@@ -684,17 +695,17 @@ final readonly class FashionUserPatternMemoryService
         $productCategories = $this->getProductCategories((int) $product['id']);
 
         $preferredCategories = $patterns['patterns']['preferred_categories']['pattern_value'] ?? [];
-        if (in_array($productCategories['primary'], $preferredCategories)) {
+        if (in_array($productCategories['primary'], $preferredCategories, true)) {
             $score += 0.2;
         }
 
         $preferredBrands = $patterns['patterns']['preferred_brands']['pattern_value'] ?? [];
-        if (in_array($product['brand'], $preferredBrands)) {
+        if (in_array($product['brand'], $preferredBrands, true)) {
             $score += 0.15;
         }
 
         $preferredStyles = $patterns['patterns']['preferred_styles']['pattern_value'] ?? [];
-        if (in_array($productCategories['style_profile'], $preferredStyles)) {
+        if (in_array($productCategories['style_profile'], $preferredStyles, true)) {
             $score += 0.1;
         }
 
@@ -707,12 +718,12 @@ final readonly class FashionUserPatternMemoryService
 
         $productCategories = $this->getProductCategories((int) $product['id']);
         $preferredCategories = $patterns['patterns']['preferred_categories']['pattern_value'] ?? [];
-        if (in_array($productCategories['primary'], $preferredCategories)) {
+        if (in_array($productCategories['primary'], $preferredCategories, true)) {
             $reasons[] = 'Matches your preferred category';
         }
 
         $preferredBrands = $patterns['patterns']['preferred_brands']['pattern_value'] ?? [];
-        if (in_array($product['brand'], $preferredBrands)) {
+        if (in_array($product['brand'], $preferredBrands, true)) {
             $reasons[] = 'Brand you like';
         }
 

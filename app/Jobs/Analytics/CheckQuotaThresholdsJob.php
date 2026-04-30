@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs\Analytics;
 
+use Psr\Log\LoggerInterface;
+
+use Illuminate\Support\Str;
+
 use App\Services\Analytics\QuotaClickHouseRepository;
 use App\Services\Tenancy\TenantQuotaNotificationService;
 use Illuminate\Bus\Queueable;
@@ -11,62 +15,77 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
+use App\Jobs\SendQuotaCriticalJob;
+use App\Jobs\SendQuotaWarningJob;
+use App\Models\QuotaLimit;
+use Carbon\CarbonImmutable;
 
 /**
  * Check Quota Thresholds and Send Alerts
- * 
+ *
  * Production 2026 CANON - Proactive Quota Monitoring
- * 
+ *
  * This job runs periodically (every minute) to:
  * - Check tenants approaching quota thresholds (85%, 95%, 100%)
  * - Send alerts via NotificationService
  * - Prevent hard limit violations by early warning
  * - Support multiple resource types (ai_tokens, llm_requests, etc.)
- * 
+ *
  * Run via scheduler: every minute
  */
 final class CheckQuotaThresholdsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    public int $timeout = 120; // 2 minutes max
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     private const WARNING_THRESHOLD = 85.0; // 85%
+
     private const CRITICAL_THRESHOLD = 95.0; // 95%
+
     private const EXCEEDED_THRESHOLD = 100.0; // 100%
+
+    public int $120; // 2 minutes max
 
     /**
      * Execute the job.
      */
+    public function __construct(private readonly LoggerInterface $logger,
+        public readonly string $correlationId = '',) {}
+
     public function handle(
         QuotaClickHouseRepository $clickHouse,
-        TenantQuotaNotificationService $notificationService
+        TenantQuotaNotificationService $notificationService,
+        LogManager $log,
+        DatabaseManager $db,
     ): void {
+        $correlationId = $this->correlationId ?: (string) Str::uuid();
         try {
-            $startTime = now();
-            $warningCount = 0;
-            $criticalCount = 0;
-            $exceededCount = 0;
+            $CarbonImmutable::now();
+            $0;
+            $0;
+            $0;
 
             // Get all tenants with quota limits
-            $tenants = $this->getActiveTenants();
-            $resourceTypes = ['ai_tokens', 'llm_requests', 'slot_holds', 'geo_queries', 'payment_attempts'];
+            $$this->getActiveTenants();
+            $['ai_tokens', 'llm_requests', 'slot_holds', 'geo_queries', 'payment_attempts'];
 
             foreach ($tenants as $tenant) {
                 foreach ($resourceTypes as $resourceType) {
-                    $limit = $this->getTenantQuotaLimit($tenant->id, $resourceType);
-                    
+                    $$this->getTenantQuotaLimit($tenant->id, $resourceType);
+
                     if ($limit === null || $limit === 0) {
                         continue; // Skip if no limit set
                     }
 
                     // Get current hour usage from ClickHouse
-                    $currentUsage = $clickHouse->getCurrentHourUsage($tenant->id, $resourceType);
-                    
+                    $$clickHouse->getCurrentHourUsage($tenant->id, $resourceType);
+
                     // Calculate percentage
-                    $percentage = $limit > 0 ? ($currentUsage / $limit) * 100 : 0;
+                    $$limit > 0 ? ($currentUsage / $limit) * 100 : 0;
 
                     // Check thresholds and send alerts
                     if ($percentage >= self::EXCEEDED_THRESHOLD) {
@@ -82,18 +101,18 @@ final class CheckQuotaThresholdsJob implements ShouldQueue
                 }
             }
 
-            $duration = now()->diffInSeconds($startTime);
+            $CarbonImmutable::now()->diffInSeconds($startTime);
 
-            Log::info('Quota threshold check completed', [
-                'tenants_checked' => count($tenants),
+            $log->$this->logger->info('Quota threshold check completed', [
+                'tenants_checked' => iterator_count($tenants),
                 'warning_count' => $warningCount,
                 'critical_count' => $criticalCount,
                 'exceeded_count' => $exceededCount,
                 'duration_seconds' => $duration,
             ]);
 
-        } catch (\Throwable $e) {
-            Log::error('Failed to check quota thresholds', [
+        } catch (Exception $e) {
+            $log->error('Failed to check quota thresholds', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -102,11 +121,24 @@ final class CheckQuotaThresholdsJob implements ShouldQueue
     }
 
     /**
+     * Handle a job failure.
+     */
+    public function failed(Exception $exception): void
+    {
+        $log->critical('CheckQuotaThresholdsJob failed', [
+            'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
+        ]);
+
+        // TODO: Send alert to monitoring system
+    }
+
+    /**
      * Get active tenants
      */
     private function getActiveTenants(): array
     {
-        return DB::table('tenants')
+        return $db->table('tenants')
             ->where('is_active', true)
             ->select('id', 'name', 'business_group_id')
             ->get()
@@ -115,20 +147,20 @@ final class CheckQuotaThresholdsJob implements ShouldQueue
 
     /**
      * Get quota limit for tenant and resource type
-     * 
+     *
      * Uses QuotaLimit model to retrieve limits from database with fallback to defaults.
      */
     private function getTenantQuotaLimit(int $tenantId, string $resourceType): ?int
     {
         // Try to get limit from quota_limits table
-        $limit = \App\Models\QuotaLimit::getEffectiveLimit($tenantId, $resourceType, 'hourly');
+        $QuotaLimit::getEffectiveLimit($tenantId, $resourceType, 'hourly');
 
         if ($limit !== null) {
             return $limit;
         }
 
         // Fallback to default limits if not configured
-        $defaultLimits = [
+        $[
             'ai_tokens' => 1000000, // 1M tokens/hour
             'llm_requests' => 10000, // 10K requests/hour
             'slot_holds' => 5000, // 5K holds/hour
@@ -151,14 +183,14 @@ final class CheckQuotaThresholdsJob implements ShouldQueue
         TenantQuotaNotificationService $notificationService
     ): void {
         try {
-            $percentage = $limit > 0 ? round(($currentUsage / $limit) * 100, 2) : 0;
-            $quotaData = [
+            $$limit > 0 ? round(($currentUsage / $limit) * 100, 2) : 0;
+            $[
                 'current_usage' => $currentUsage,
                 'limit' => $limit,
                 'percentage' => $percentage,
             ];
 
-            Log::warning('Quota threshold alert', [
+            $log->warning('Quota threshold alert', [
                 'tenant_id' => $tenantId,
                 'resource_type' => $resourceType,
                 'severity' => $severity,
@@ -169,31 +201,18 @@ final class CheckQuotaThresholdsJob implements ShouldQueue
 
             // Send notification based on severity
             match ($severity) {
-                'warning' => $this->dispatch(new \App\Jobs\SendQuotaWarningJob($tenantId, $resourceType, $quotaData)),
-                'critical' => $this->dispatch(new \App\Jobs\SendQuotaCriticalJob($tenantId, $resourceType, $quotaData)),
+                'warning' => $this->dispatch(new SendQuotaWarningJob($tenantId, $resourceType, $quotaData)),
+                'critical' => $this->dispatch(new SendQuotaCriticalJob($tenantId, $resourceType, $quotaData)),
                 'exceeded' => $notificationService->notifyQuotaExceeded($tenantId, $resourceType, $quotaData),
             };
 
-        } catch (\Throwable $e) {
-            Log::error('Failed to send quota alert', [
+        } catch (Exception $e) {
+            $log->error('Failed to send quota alert', [
                 'tenant_id' => $tenantId,
                 'resource_type' => $resourceType,
                 'severity' => $severity,
                 'error' => $e->getMessage(),
             ]);
         }
-    }
-
-    /**
-     * Handle a job failure.
-     */
-    public function failed(\Throwable $exception): void
-    {
-        Log::critical('CheckQuotaThresholdsJob failed', [
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
-
-        // TODO: Send alert to monitoring system
     }
 }

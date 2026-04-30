@@ -1,20 +1,32 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Books\Pages;
 
-
+use Psr\Log\LoggerInterface;
 
 use App\Filament\Tenant\Resources\Books\BooksResource;
 use Filament\Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use Illuminate\Contracts\View\View;
 
 final class ListBook extends ListRecords
 {
     protected static string $resource = BooksResource::class;
+
+    public function __construct(
+        private readonly LoggerInterface $logger,
+    ) {}
+
+    public function render(): View
+    {
+        return parent::render();
+    }
 
     protected function getHeaderActions(): array
     {
@@ -31,7 +43,7 @@ final class ListBook extends ListRecords
         $userId = auth()->id();
         $correlationId = Str::uuid()->toString();
 
-        Log::channel('audit')->info('Books ListRecords accessed', [
+        $this->log->channel('audit')->$this->logger->info('Books ListRecords accessed', [
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'correlation_id' => $correlationId,
@@ -51,10 +63,5 @@ final class ListBook extends ListRecords
                 ->label('Удалить выбранные')
                 ->icon('heroicon-m-trash'),
         ];
-    }
-
-    public function render(): \Illuminate\Contracts\View\View
-    {
-        return parent::render();
     }
 }

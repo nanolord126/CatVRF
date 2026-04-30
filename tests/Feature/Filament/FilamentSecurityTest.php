@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Filament;
 
@@ -6,6 +8,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Http\UploadedFile;
 
 /**
  * Filament UI Security Tests
@@ -19,35 +22,19 @@ use Tests\TestCase;
  * - Data exposure prevention
  * - Rate limiting
  */
-
 class FilamentSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
     private Tenant $tenant;
+
     private User $adminUser;
+
     private User $regularUser;
+
     private string $adminToken;
+
     private string $userToken;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->tenant = Tenant::factory()->create();
-        
-        $this->adminUser = User::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'role' => 'admin',
-        ]);
-        
-        $this->regularUser = User::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'role' => 'user',
-        ]);
-
-        $this->adminToken = $this->adminUser->createToken('test')->plainTextToken;
-        $this->userToken = $this->regularUser->createToken('test')->plainTextToken;
-    }
 
     public function test_unauthorized_access_to_admin_panel(): void
     {
@@ -146,7 +133,7 @@ class FilamentSecurityTest extends TestCase
         // Should be rate limited after threshold
         $lastResponse = $responses[19];
         $this->assertTrue(
-            $lastResponse->status() === 429 || 
+            $lastResponse->status() === 429 ||
             $lastResponse->status() === 200
         );
     }
@@ -158,9 +145,9 @@ class FilamentSecurityTest extends TestCase
             ->get('/admin/users');
 
         $response->assertSuccessful();
-        
+
         $responseData = json_encode($response->json());
-        
+
         // Sensitive fields should not be in response
         $this->assertFalse(str_contains($responseData, 'password'));
         $this->assertFalse(str_contains($responseData, 'token'));
@@ -180,7 +167,7 @@ class FilamentSecurityTest extends TestCase
     public function test_file_upload_security(): void
     {
         // Attempt to upload malicious file
-        $file = new \Illuminate\Http\UploadedFile(
+        $file = new UploadedFile(
             base_path('tests/fixtures/malicious.php'),
             'malicious.php',
             'application/x-php',
@@ -223,7 +210,7 @@ class FilamentSecurityTest extends TestCase
     {
         // Simulate expired session
         $expiredToken = $this->adminUser->createToken('expired')->plainTextToken;
-        
+
         // Invalidate token (simulate expiration)
         $this->adminUser->tokens()->delete();
 
@@ -272,5 +259,24 @@ class FilamentSecurityTest extends TestCase
 
         // Should fail or ignore protected fields
         $this->assertTrue($response->status() < 500);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->tenant = Tenant::factory()->create();
+
+        $this->adminUser = User::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'role' => 'admin',
+        ]);
+
+        $this->regularUser = User::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'role' => 'user',
+        ]);
+
+        $this->adminToken = $this->adminUser->createToken('test')->plainTextToken;
+        $this->userToken = $this->regularUser->createToken('test')->plainTextToken;
     }
 }

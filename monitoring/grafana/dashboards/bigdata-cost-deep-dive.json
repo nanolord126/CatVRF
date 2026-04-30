@@ -1,0 +1,90 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "ClickHouse Storage vs Compute Cost",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "catvrf_bigdata_cost_clickhouse_storage_cost_usd", "legendFormat": "Storage", "refId": "A" },
+        { "expr": "catvrf_bigdata_cost_clickhouse_compute_cost_usd", "legendFormat": "Compute", "refId": "B" },
+        { "expr": "catvrf_bigdata_cost_clickhouse_total_cost_usd", "legendFormat": "Total", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } }
+    },
+    {
+      "title": "Compression Ratio by Table",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "catvrf_bigdata_cost_compression_ratio",
+          "legendFormat": "{{table}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "green", "value": 10 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Query Count (Daily)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "catvrf_bigdata_cost_clickhouse_query_count", "legendFormat": "Queries", "refId": "A" }
+      ]
+    },
+    {
+      "title": "Kafka Cost Breakdown",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "catvrf_bigdata_cost_kafka_total_cost_usd", "legendFormat": "Kafka Total", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } }
+    },
+    {
+      "title": "Kafka Throughput (bytes in)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "catvrf_bigdata_cost_kafka_bytes_in", "legendFormat": "Bytes In", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    },
+    {
+      "title": "Spark/ML Job Cost & ROI",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "catvrf_bigdata_cost_unit_cost_to_gmv_ratio",
+          "legendFormat": "{{context}}",
+          "refId": "A",
+          "format": "table"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["bigdata", "finops", "clickhouse", "kafka", "spark"],
+  "templating": { "list": [] },
+  "time": { "from": "now-30d", "to": "now" },
+  "title": "ClickHouse / Kafka / Spark Cost Deep Dive",
+  "uid": "bigdata-cost-deep-dive",
+  "version": 1
+}

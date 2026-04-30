@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Payout;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\PaymentTransaction;
@@ -12,6 +15,7 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 use Throwable;
+use Illuminate\Pagination\Paginator;
 
 /**
  * Сервис управления выплатами (Payout Service)
@@ -37,22 +41,18 @@ use Throwable;
  */
 final class PayoutService
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly ConnectionInterface $db,
         private readonly FraudControlService $fraud,
         private readonly PaymentGatewayService $paymentGateway,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     /**
      * Создать заявку на выплату (пользователь/бизнес запрашивает вывод)
      *
-     * @param int $tenantId
-     * @param int $businessGroupId
-     * @param int $amountCents (копейки)
-     * @param array $bankDetails (account, bic, inn для Tinkoff/Sber)
-     * @param ?string $correlationId
+     * @param  int  $amountCents  (копейки)
+     * @param  array  $bankDetails  (account, bic, inn для Tinkoff/Sber)
      * @return PayoutRequest (модель)
      *
      * @throws DomainException
@@ -77,7 +77,7 @@ final class PayoutService
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Payout: Request initiated', [
+            $this->logger->channel('audit')->$this->logger->info('Payout: Request initiated', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'business_group_id' => $businessGroupId,
@@ -104,7 +104,7 @@ final class PayoutService
             });
 
             // 3. SUCCESS LOG
-            $this->logger->channel('audit')->info('Payout: Request created', [
+            $this->logger->channel('audit')->$this->logger->info('Payout: Request created', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequest->id,
                 'amount' => $amountCents,
@@ -133,14 +133,13 @@ final class PayoutService
     /**
      * Обработать выплату (инициировать платёж через gateway)
      *
-     * @param int $payoutRequestId
-     * @param ?string $correlationId
      * @return PaymentTransaction
      *
      * @throws DomainException
      * @throws Throwable
      */
-    public function processPayout(int $payoutRequestId, ?string $correlationId = null) {
+    public function processPayout(int $payoutRequestId, ?string $correlationId = null)
+    {
         $correlationId ??= Str::uuid()->toString();
 
         try {
@@ -160,7 +159,7 @@ final class PayoutService
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Payout: Processing initiated', [
+            $this->logger->channel('audit')->$this->logger->info('Payout: Processing initiated', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequestId,
                 'amount' => $payoutRequest->amount,
@@ -210,7 +209,7 @@ final class PayoutService
             });
 
             // 3. SUCCESS LOG
-            $this->logger->channel('audit')->info('Payout: Processing succeeded', [
+            $this->logger->channel('audit')->$this->logger->info('Payout: Processing succeeded', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequestId,
                 'payment_transaction_id' => $paymentTransaction->id,
@@ -236,7 +235,7 @@ final class PayoutService
             // REVERT payout status if transaction was started
             try {
                 $payoutRequest?->update(['status' => 'failed']);
-            } catch (\Throwable $_) {
+            } catch (Throwable $_) {
                 // Ignore revert errors
             }
 
@@ -252,8 +251,7 @@ final class PayoutService
      * - Выплат фрилансерам за выполненные работы
      * - Массовых возвратов клиентам
      *
-     * @param array<int> $payoutRequestIds (список ID заявок)
-     * @param ?string $correlationId
+     * @param  array<int>  $payoutRequestIds  (список ID заявок)
      * @return array ['successful' => [...], 'failed' => [...]]
      *
      * @throws Throwable
@@ -277,7 +275,7 @@ final class PayoutService
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Payout: Batch processing initiated', [
+            $this->logger->channel('audit')->$this->logger->info('Payout: Batch processing initiated', [
                 'correlation_id' => $correlationId,
                 'batch_id' => $batchId,
                 'request_count' => count($payoutRequestIds),
@@ -322,7 +320,7 @@ final class PayoutService
             }
 
             // 3. SUCCESS LOG
-            $this->logger->channel('audit')->info('Payout: Batch processing completed', [
+            $this->logger->channel('audit')->$this->logger->info('Payout: Batch processing completed', [
                 'correlation_id' => $correlationId,
                 'batch_id' => $batchId,
                 'successful_count' => count($successful),
@@ -358,10 +356,7 @@ final class PayoutService
     /**
      * Отменить заявку на выплату (если ещё в статусе pending)
      *
-     * @param int $payoutRequestId
-     * @param string $reason (user_request, insufficient_balance, fraud_check_failed)
-     * @param ?string $correlationId
-     * @return void
+     * @param  string  $reason  (user_request, insufficient_balance, fraud_check_failed)
      *
      * @throws DomainException
      * @throws Throwable
@@ -382,7 +377,7 @@ final class PayoutService
                 );
             }
 
-            $this->logger->channel('audit')->info('Payout: Cancellation initiated', [
+            $this->logger->channel('audit')->$this->logger->info('Payout: Cancellation initiated', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequestId,
                 'reason' => $reason,
@@ -396,7 +391,7 @@ final class PayoutService
                 ]);
             });
 
-            $this->logger->channel('audit')->info('Payout: Cancellation succeeded', [
+            $this->logger->channel('audit')->$this->logger->info('Payout: Cancellation succeeded', [
                 'correlation_id' => $correlationId,
                 'payout_id' => $payoutRequestId,
             ]);
@@ -420,9 +415,6 @@ final class PayoutService
 
     /**
      * Получить статус выплаты
-     *
-     * @param int $payoutRequestId
-     * @return array
      */
     public function getPayoutStatus(int $payoutRequestId): array
     {
@@ -448,12 +440,8 @@ final class PayoutService
 
     /**
      * Получить историю выплат пользователя
-     *
-     * @param int $tenantId
-     * @param int $perPage
-     * @return \Illuminate\Pagination\Paginator
      */
-    public function getPayoutHistory(int $tenantId, int $perPage = 20): \Illuminate\Pagination\Paginator
+    public function getPayoutHistory(int $tenantId, int $perPage = 20): Paginator
     {
         return \App\Models\PayoutRequest::where('tenant_id', $tenantId)
             ->orderBy('created_at', 'desc')

@@ -8,6 +8,11 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use App\Domains\Wallet\Controllers\WalletController;
+use App\Domains\Wallet\Jobs\ProcessWalletJob;
+use App\Domains\Wallet\Models\Wallet;
+use App\Domains\Wallet\Services\AI\WalletConstructorService;
+use App\Domains\Wallet\Services\WalletService;
 
 /**
  * =================================================================
@@ -29,33 +34,33 @@ use ReflectionClass;
  */
 final class WalletStructureTest extends TestCase
 {
-    private const BASE = __DIR__ . '/../../../../app/Domains/Wallet';
+    private const BASE = __DIR__.'/../../../../app/Domains/Wallet';
 
     /* ================================================================== */
-    /*  Layer 1 — Models                                                   */
+    /*  Layer 1 — Models */
     /* ================================================================== */
 
     #[Test]
     public function layer1_model_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Models');
+        self::assertDirectoryExists(self::BASE.'/Models');
     }
 
     #[Test]
     public function layer1_wallet_model_exists(): void
     {
-        self::assertFileExists(self::BASE . '/Models/Wallet.php');
+        self::assertFileExists(self::BASE.'/Models/Wallet.php');
     }
 
     #[Test]
     public function layer1_model_is_final(): void
     {
-        $ref = new ReflectionClass(\App\Domains\Wallet\Models\Wallet::class);
+        $ref = new ReflectionClass(Wallet::class);
         self::assertTrue($ref->isFinal(), 'Wallet model must be final');
     }
 
     /* ================================================================== */
-    /*  Layer 2 — DTOs                                                     */
+    /*  Layer 2 — DTOs */
     /* ================================================================== */
 
     /** @return list<array{string, string}> */
@@ -75,7 +80,7 @@ final class WalletStructureTest extends TestCase
     #[DataProvider('dtosProvider')]
     public function layer2_dto_file_exists(string $name, string $fqcn): void
     {
-        self::assertFileExists(self::BASE . "/DTOs/{$name}.php", "Layer 2 — DTO {$name} must exist");
+        self::assertFileExists(self::BASE."/DTOs/{$name}.php", "Layer 2 — DTO {$name} must exist");
     }
 
     #[Test]
@@ -90,30 +95,30 @@ final class WalletStructureTest extends TestCase
     #[Test]
     public function layer2_dto_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/DTOs');
+        self::assertDirectoryExists(self::BASE.'/DTOs');
     }
 
     /* ================================================================== */
-    /*  Layer 3 — Services (+ AI Constructor)                              */
+    /*  Layer 3 — Services (+ AI Constructor) */
     /* ================================================================== */
 
     #[Test]
     public function layer3_services_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Services');
-        self::assertDirectoryExists(self::BASE . '/Services/AI');
+        self::assertDirectoryExists(self::BASE.'/Services');
+        self::assertDirectoryExists(self::BASE.'/Services/AI');
     }
 
     #[Test]
     public function layer3_main_service_exists(): void
     {
-        self::assertFileExists(self::BASE . '/Services/WalletService.php');
+        self::assertFileExists(self::BASE.'/Services/WalletService.php');
     }
 
     #[Test]
     public function layer3_main_service_is_final_readonly(): void
     {
-        $ref = new ReflectionClass(\App\Domains\Wallet\Services\WalletService::class);
+        $ref = new ReflectionClass(WalletService::class);
         self::assertTrue($ref->isFinal(), 'WalletService must be final');
         self::assertTrue($ref->isReadOnly(), 'WalletService must be readonly');
     }
@@ -122,7 +127,7 @@ final class WalletStructureTest extends TestCase
     public function layer3_ai_constructor_exists(): void
     {
         self::assertFileExists(
-            self::BASE . '/Services/AI/WalletConstructorService.php',
+            self::BASE.'/Services/AI/WalletConstructorService.php',
             'CANON: AI Constructor MANDATORY for every vertical',
         );
     }
@@ -130,13 +135,13 @@ final class WalletStructureTest extends TestCase
     #[Test]
     public function layer3_ai_constructor_is_final_readonly(): void
     {
-        $ref = new ReflectionClass(\App\Domains\Wallet\Services\AI\WalletConstructorService::class);
+        $ref = new ReflectionClass(WalletConstructorService::class);
         self::assertTrue($ref->isFinal(), 'AI Constructor must be final');
         self::assertTrue($ref->isReadOnly(), 'AI Constructor must be readonly');
     }
 
     /* ================================================================== */
-    /*  Layer 4 — Requests                                                 */
+    /*  Layer 4 — Requests */
     /* ================================================================== */
 
     /** @return list<array{string}> */
@@ -151,7 +156,7 @@ final class WalletStructureTest extends TestCase
     #[Test]
     public function layer4_requests_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Http/Requests');
+        self::assertDirectoryExists(self::BASE.'/Http/Requests');
     }
 
     #[Test]
@@ -159,7 +164,7 @@ final class WalletStructureTest extends TestCase
     public function layer4_request_file_exists(string $name): void
     {
         self::assertFileExists(
-            self::BASE . "/Http/Requests/{$name}.php",
+            self::BASE."/Http/Requests/{$name}.php",
             "Layer 4 — Request {$name} must exist",
         );
     }
@@ -173,23 +178,23 @@ final class WalletStructureTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Layer 5 — Resources (API JsonResource)                             */
+    /*  Layer 5 — Resources (API JsonResource) */
     /* ================================================================== */
 
     #[Test]
     public function layer5_resources_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Resources');
+        self::assertDirectoryExists(self::BASE.'/Resources');
     }
 
     #[Test]
     public function layer5_wallet_resource_exists(): void
     {
-        self::assertFileExists(self::BASE . '/Resources/WalletResource.php');
+        self::assertFileExists(self::BASE.'/Resources/WalletResource.php');
     }
 
     /* ================================================================== */
-    /*  Layer 6 — Events                                                   */
+    /*  Layer 6 — Events */
     /* ================================================================== */
 
     /** @return list<array{string}> */
@@ -204,7 +209,7 @@ final class WalletStructureTest extends TestCase
     #[Test]
     public function layer6_events_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Events');
+        self::assertDirectoryExists(self::BASE.'/Events');
     }
 
     #[Test]
@@ -212,7 +217,7 @@ final class WalletStructureTest extends TestCase
     public function layer6_event_file_exists(string $name): void
     {
         self::assertFileExists(
-            self::BASE . "/Events/{$name}.php",
+            self::BASE."/Events/{$name}.php",
             "Layer 6 — Event {$name} must exist",
         );
     }
@@ -226,7 +231,7 @@ final class WalletStructureTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Layer 7 — Listeners                                                */
+    /*  Layer 7 — Listeners */
     /* ================================================================== */
 
     /** @return list<array{string}> */
@@ -241,7 +246,7 @@ final class WalletStructureTest extends TestCase
     #[Test]
     public function layer7_listeners_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Listeners');
+        self::assertDirectoryExists(self::BASE.'/Listeners');
     }
 
     #[Test]
@@ -249,7 +254,7 @@ final class WalletStructureTest extends TestCase
     public function layer7_listener_file_exists(string $name): void
     {
         self::assertFileExists(
-            self::BASE . "/Listeners/{$name}.php",
+            self::BASE."/Listeners/{$name}.php",
             "Layer 7 — Listener {$name} must exist",
         );
     }
@@ -263,43 +268,43 @@ final class WalletStructureTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Layer 8 — Jobs                                                     */
+    /*  Layer 8 — Jobs */
     /* ================================================================== */
 
     #[Test]
     public function layer8_jobs_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Jobs');
+        self::assertDirectoryExists(self::BASE.'/Jobs');
     }
 
     #[Test]
     public function layer8_process_job_exists(): void
     {
-        self::assertFileExists(self::BASE . '/Jobs/ProcessWalletJob.php');
+        self::assertFileExists(self::BASE.'/Jobs/ProcessWalletJob.php');
     }
 
     #[Test]
     public function layer8_job_is_final(): void
     {
-        $ref = new ReflectionClass(\App\Domains\Wallet\Jobs\ProcessWalletJob::class);
+        $ref = new ReflectionClass(ProcessWalletJob::class);
         self::assertTrue($ref->isFinal(), 'ProcessWalletJob must be final');
     }
 
     /* ================================================================== */
-    /*  Layer 9 — Filament                                                 */
+    /*  Layer 9 — Filament */
     /* ================================================================== */
 
     #[Test]
     public function layer9_filament_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Filament');
-        self::assertDirectoryExists(self::BASE . '/Filament/Resources');
+        self::assertDirectoryExists(self::BASE.'/Filament');
+        self::assertDirectoryExists(self::BASE.'/Filament/Resources');
     }
 
     #[Test]
     public function layer9_filament_resource_exists(): void
     {
-        self::assertFileExists(self::BASE . '/Filament/Resources/WalletResource.php');
+        self::assertFileExists(self::BASE.'/Filament/Resources/WalletResource.php');
     }
 
     #[Test]
@@ -313,74 +318,74 @@ final class WalletStructureTest extends TestCase
 
         foreach ($pages as $page) {
             self::assertFileExists(
-                self::BASE . "/Filament/Resources/WalletResource/Pages/{$page}",
+                self::BASE."/Filament/Resources/WalletResource/Pages/{$page}",
                 "Filament page {$page} must exist",
             );
         }
     }
 
     /* ================================================================== */
-    /*  Mandatory extras: Enums, Exceptions, Controllers, Policies         */
+    /*  Mandatory extras: Enums, Exceptions, Controllers, Policies */
     /* ================================================================== */
 
     #[Test]
     public function enums_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Enums');
+        self::assertDirectoryExists(self::BASE.'/Enums');
     }
 
     #[Test]
     public function enums_files_exist(): void
     {
-        self::assertFileExists(self::BASE . '/Enums/BalanceTransactionType.php');
+        self::assertFileExists(self::BASE.'/Enums/BalanceTransactionType.php');
     }
 
     #[Test]
     public function exceptions_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Exceptions');
+        self::assertDirectoryExists(self::BASE.'/Exceptions');
     }
 
     #[Test]
     public function exceptions_files_exist(): void
     {
-        self::assertFileExists(self::BASE . '/Exceptions/InsufficientBalanceException.php');
-        self::assertFileExists(self::BASE . '/Exceptions/WalletOperationException.php');
+        self::assertFileExists(self::BASE.'/Exceptions/InsufficientBalanceException.php');
+        self::assertFileExists(self::BASE.'/Exceptions/WalletOperationException.php');
     }
 
     #[Test]
     public function controllers_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Controllers');
+        self::assertDirectoryExists(self::BASE.'/Controllers');
     }
 
     #[Test]
     public function controllers_files_exist(): void
     {
-        self::assertFileExists(self::BASE . '/Controllers/WalletController.php');
+        self::assertFileExists(self::BASE.'/Controllers/WalletController.php');
     }
 
     #[Test]
     public function controller_is_final(): void
     {
-        $ref = new ReflectionClass(\App\Domains\Wallet\Controllers\WalletController::class);
+        $ref = new ReflectionClass(WalletController::class);
         self::assertTrue($ref->isFinal(), 'WalletController must be final');
     }
 
     #[Test]
     public function policies_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Policies');
+        self::assertDirectoryExists(self::BASE.'/Policies');
     }
 
     #[Test]
     public function policies_files_exist(): void
     {
-        self::assertFileExists(self::BASE . '/Policies/WalletPolicy.php');
+        self::assertFileExists(self::BASE.'/Policies/WalletPolicy.php');
     }
 
     /* ================================================================== */
-    /*  CANON: strict_types in EVERY file                                  */
+    /*  CANON: strict_types in EVERY file */
     /* ================================================================== */
 
     #[Test]
@@ -392,16 +397,16 @@ final class WalletStructureTest extends TestCase
         $violations = [];
         foreach ($files as $file) {
             $content = (string) file_get_contents($file);
-            if (!str_contains($content, 'declare(strict_types=1)')) {
+            if (! str_contains($content, 'declare(strict_types=1)')) {
                 $violations[] = basename($file);
             }
         }
 
-        self::assertEmpty($violations, 'Files missing strict_types: ' . implode(', ', $violations));
+        self::assertEmpty($violations, 'Files missing strict_types: '.implode(', ', $violations));
     }
 
     /* ================================================================== */
-    /*  CANON: NO facades anywhere                                         */
+    /*  CANON: NO facades anywhere */
     /* ================================================================== */
 
     #[Test]
@@ -417,18 +422,18 @@ final class WalletStructureTest extends TestCase
             }
         }
 
-        self::assertEmpty($violations, 'Files importing facades: ' . implode(', ', $violations));
+        self::assertEmpty($violations, 'Files importing facades: '.implode(', ', $violations));
     }
 
     /* ================================================================== */
-    /*  CANON: correlation_id in services                                   */
+    /*  CANON: correlation_id in services */
     /* ================================================================== */
 
     #[Test]
     public function all_services_reference_correlation_id(): void
     {
-        $serviceFiles = glob(self::BASE . '/Services/*.php') ?: [];
-        $aiFiles      = glob(self::BASE . '/Services/AI/*.php') ?: [];
+        $serviceFiles = glob(self::BASE.'/Services/*.php') ?: [];
+        $aiFiles      = glob(self::BASE.'/Services/AI/*.php') ?: [];
         $all          = array_merge($serviceFiles, $aiFiles);
 
         self::assertNotEmpty($all);
@@ -436,36 +441,36 @@ final class WalletStructureTest extends TestCase
         $violations = [];
         foreach ($all as $file) {
             $content = (string) file_get_contents($file);
-            if (!str_contains($content, 'correlation_id') && !str_contains($content, 'correlationId')) {
+            if (! str_contains($content, 'correlation_id') && ! str_contains($content, 'correlationId')) {
                 $violations[] = basename($file);
             }
         }
 
-        self::assertEmpty($violations, 'Services missing correlation_id: ' . implode(', ', $violations));
+        self::assertEmpty($violations, 'Services missing correlation_id: '.implode(', ', $violations));
     }
 
     /* ================================================================== */
-    /*  9-Layer Summary                                                    */
+    /*  9-Layer Summary */
     /* ================================================================== */
 
     #[Test]
     public function nine_layer_compliance_summary(): void
     {
         $layers = [
-            '1-Models'      => is_dir(self::BASE . '/Models'),
-            '2-DTOs'        => is_dir(self::BASE . '/DTOs'),
-            '3-Services'    => is_dir(self::BASE . '/Services'),
-            '3-AI'          => is_dir(self::BASE . '/Services/AI'),
-            '4-Requests'    => is_dir(self::BASE . '/Http/Requests'),
-            '5-Resources'   => is_dir(self::BASE . '/Resources'),
-            '6-Events'      => is_dir(self::BASE . '/Events'),
-            '7-Listeners'   => is_dir(self::BASE . '/Listeners'),
-            '8-Jobs'        => is_dir(self::BASE . '/Jobs'),
-            '9-Filament'    => is_dir(self::BASE . '/Filament'),
-            'Enums'         => is_dir(self::BASE . '/Enums'),
-            'Exceptions'    => is_dir(self::BASE . '/Exceptions'),
-            'Controllers'   => is_dir(self::BASE . '/Controllers'),
-            'Policies'      => is_dir(self::BASE . '/Policies'),
+            '1-Models'      => is_dir(self::BASE.'/Models'),
+            '2-DTOs'        => is_dir(self::BASE.'/DTOs'),
+            '3-Services'    => is_dir(self::BASE.'/Services'),
+            '3-AI'          => is_dir(self::BASE.'/Services/AI'),
+            '4-Requests'    => is_dir(self::BASE.'/Http/Requests'),
+            '5-Resources'   => is_dir(self::BASE.'/Resources'),
+            '6-Events'      => is_dir(self::BASE.'/Events'),
+            '7-Listeners'   => is_dir(self::BASE.'/Listeners'),
+            '8-Jobs'        => is_dir(self::BASE.'/Jobs'),
+            '9-Filament'    => is_dir(self::BASE.'/Filament'),
+            'Enums'         => is_dir(self::BASE.'/Enums'),
+            'Exceptions'    => is_dir(self::BASE.'/Exceptions'),
+            'Controllers'   => is_dir(self::BASE.'/Controllers'),
+            'Policies'      => is_dir(self::BASE.'/Policies'),
         ];
 
         foreach ($layers as $layer => $exists) {
@@ -474,7 +479,7 @@ final class WalletStructureTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Helpers                                                            */
+    /*  Helpers */
     /* ================================================================== */
 
     /** @return list<string> */

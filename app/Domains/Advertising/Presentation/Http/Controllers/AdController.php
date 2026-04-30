@@ -15,8 +15,6 @@ use Illuminate\Support\Str;
  *
  * Uses ShowAdUseCase to select best ad for the user.
  * Constructor injection, correlation_id tracing.
- *
- * @package App\Domains\Advertising\Presentation\Http\Controllers
  */
 final class AdController extends Controller
 {
@@ -51,7 +49,7 @@ final class AdController extends Controller
                 $correlationId,
             );
 
-            if (!$ad) {
+            if (! $ad) {
                 return new JsonResponse(
                     ['message' => 'No ad available', 'correlation_id' => $correlationId],
                     204,

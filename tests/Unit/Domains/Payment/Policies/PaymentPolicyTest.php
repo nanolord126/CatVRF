@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Payment\Policies;
 
-use App\Domains\Payment\Enums\PaymentStatus;
 use App\Domains\Payment\Models\PaymentRecord;
 use App\Domains\Payment\Policies\PaymentRecordPolicy;
 use App\Models\User;
@@ -17,12 +16,6 @@ use PHPUnit\Framework\TestCase;
 final class PaymentPolicyTest extends TestCase
 {
     private PaymentRecordPolicy $policy;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->policy = new PaymentRecordPolicy();
-    }
 
     // ─── viewAny ─────────────────────────────────────────────────
 
@@ -131,6 +124,12 @@ final class PaymentPolicyTest extends TestCase
     {
         $ref = new \ReflectionClass(PaymentRecordPolicy::class);
         $this->assertTrue($ref->isFinal());
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->policy = new PaymentRecordPolicy();
     }
 
     // ─── Helpers ─────────────────────────────────────────────────

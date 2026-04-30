@@ -1,21 +1,25 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Medical\MedicalHealthcare\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Medical\MedicalHealthcare\DTOs\AIDiagnosticResultDto;
 use App\Domains\Medical\Models\Doctor;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Cache\CacheManager;
+use App\Domains\Medical\Models\MedicalAppointment;
 
 final class DoctorRecommendationService
 {
     public function __construct(
-        private FraudControlService $fraud,
-    ) {
-    }
+        private readonly FraudControlService $fraud,
+        private readonly CacheManager $cache,
+    ) {}
 
-    public function recommendDoctors(AIDiagnosticResultDto $diagnostic, int $userId, bool $isB2B = false, callable $calculatePrice, callable $calculateMatchScore): array
+    public function recommendDoctors(AIDiagnosticResultDto $diagnostic, int $userId, bool $isB2B, callable $calculatePrice, callable $calculateMatchScore): array
     {
         $this->fraud->check(
             userId: $userId,
@@ -24,9 +28,9 @@ final class DoctorRecommendationService
             correlationId: $diagnostic->correlationId,
         );
 
-        $cacheKey = "healthcare:recommendations:{$userId}:" . md5(json_encode($diagnostic->recommendedSpecialties));
+        $cacheKey = "healthcare:recommendations:{$userId}:".md5(json_encode($diagnostic->recommendedSpecialties));
 
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
             return json_decode($cached, true);
         }
@@ -66,14 +70,14 @@ final class DoctorRecommendationService
                     'is_flash_discount_available' => $this->isFlashDiscountAvailable($doctor->clinic_id),
                 ];
             })
-            ->sortByDesc('match_score')
-            ->take(5)
-            ->values();
+                ->sortByDesc('match_score')
+                ->take(5)
+                ->values();
 
             $recommendations[$specialty] = $scoredDoctors->toArray();
         }
 
-        Cache::put($cacheKey, json_encode($recommendations), 1800);
+        $this->cache->put($cacheKey, json_encode($recommendations), 1800);
 
         return $recommendations;
     }
@@ -86,12 +90,12 @@ final class DoctorRecommendationService
         for ($hour = 9; $hour <= 18; $hour++) {
             $slotTime = $today->setHour($hour)->setMinute(0)->format('Y-m-d H:i:s');
 
-            $isBooked = \App\Domains\Medical\Models\MedicalAppointment::where('doctor_id', $doctorId)
+            $isBooked = MedicalAppointment::where('doctor_id', $doctorId)
                 ->where('appointment_datetime', $slotTime)
                 ->whereIn('status', ['confirmed', 'checked_in'])
                 ->exists();
 
-            if (!$isBooked) {
+            if (! $isBooked) {
                 $slots[] = $slotTime;
             }
         }
@@ -103,12 +107,12 @@ final class DoctorRecommendationService
     {
         $loadFactor = $this->getClinicLoadFactor($clinicId);
 
-        return $loadFactor < 0.3 && now()->hour >= 14 && now()->hour <= 17;
+        return $loadFactor < 0.3 && CarbonImmutable::now()->hour >= 14 && CarbonImmutable::now()->hour <= 17;
     }
 
     private function getClinicLoadFactor(int $clinicId): float
     {
-        $todayAppointments = \App\Domains\Medical\Models\MedicalAppointment::where('clinic_id', $clinicId)
+        $todayAppointments = MedicalAppointment::where('clinic_id', $clinicId)
             ->whereDate('appointment_datetime', today())
             ->count();
 

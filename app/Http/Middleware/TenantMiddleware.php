@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
@@ -39,6 +39,7 @@ final class TenantMiddleware
     private const SIGNATURE_ALGORITHM = 'sha256';
 
     public function __construct(
+        private readonly LogManager $log,
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}

@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Факт применения промокода (alias App\Domains\PromoCampaigns\Models\PromoUse)
- *
- * @package App\Models
  */
 final class PromoUse extends Model
 {
-
     protected $table = 'promo_uses';
 
     protected $fillable = [

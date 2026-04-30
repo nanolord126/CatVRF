@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Livewire\Food\B2C;
 
+use Illuminate\Routing\Redirector;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Illuminate\Support\Collection;
+
 use App\Domains\Food\Application\B2C\DataTransferObjects\CartDto;
 use App\Domains\Food\Application\B2C\DataTransferObjects\CartItemDto;
 use App\Domains\Food\Application\B2C\UseCases\PlaceOrderUseCase;
 use App\Domains\Food\Infrastructure\Persistence\Eloquent\Models\DishModel;
 use Illuminate\Contracts\View\View;
-
 use Livewire\Component;
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
@@ -17,18 +22,22 @@ use Illuminate\Contracts\Auth\Guard;
 
 final class ShoppingCart extends Component
 {
-    public function __construct(
-        private readonly LogManager $logger,
-        private readonly Guard $guard,
-    ) {}
-
-    private array $items = [];
-    private ?string $restaurantId = null;
-    private float $subtotal = 0.0;
-    private float $deliveryFee = 5.0; // Example fee
-    private float $total = 0.0;
-
     protected $listeners = ['addToCart' => 'addItem'];
+
+    private readonly array $items = [];
+
+    private readonly ?string $restaurantId = null;
+
+    private readonly float $subtotal = 0.0;
+
+    private readonly float $deliveryFee = 5.0; // Example fee
+
+    private readonly float $total = 0.0;
+
+    public function __construct(private readonly Redirector $redirector,
+        private readonly ViewFactory $viewFactory,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,) {}
 
     public function mount(?string $restaurantId = null): void
     {
@@ -39,13 +48,14 @@ final class ShoppingCart extends Component
 
     public function addItem(string $dishId, int $quantity = 1): void
     {
-        if (!$this->restaurantId) {
+        if (! $this->restaurantId) {
             $this->dispatch('error', 'Please select a restaurant first.');
+
             return;
         }
 
         $dish = DishModel::find($dishId);
-        if (!$dish) {
+        if (! $dish) {
             return;
         }
 
@@ -98,6 +108,7 @@ final class ShoppingCart extends Component
     {
         if (empty($this->items)) {
             $this->dispatch('error', 'Your cart is empty.');
+
             return;
         }
 
@@ -113,7 +124,7 @@ final class ShoppingCart extends Component
 
             $cartDto = new CartDto(
                 restaurantId: Str::uuid($this->restaurantId),
-                items: collect($cartItems)
+                items: new Collection($cartItems)
             );
 
             // This assumes the user is authenticated and we can get their ID.
@@ -125,7 +136,7 @@ final class ShoppingCart extends Component
             $this->clearCart();
             $this->dispatch('orderPlaced', $orderResult->id->toString());
             // Redirect to order confirmation page
-            // return redirect()->route('food.order.confirmation', ['orderId' => $orderResult->id->toString()]);
+            // return $this->redirector->to()->route('food.order.confirmation', ['orderId' => $orderResult->id->toString()]);
 
         } catch (\Exception $e) {
             $this->logger->channel('audit')->error('Failed to place order', [
@@ -138,7 +149,7 @@ final class ShoppingCart extends Component
 
     public function render(): View
     {
-        return view('livewire.food.b2c.shopping-cart');
+        return $this->viewFactory->make('livewire.food.b2c.shopping-cart');
     }
 
     private function calculateTotals(): void
@@ -161,7 +172,7 @@ final class ShoppingCart extends Component
     private function loadCart(): void
     {
         $cart = session('food_cart', []);
-        if (!empty($cart) && $cart['restaurant_id'] === $this->restaurantId) {
+        if (! empty($cart) && $cart['restaurant_id'] === $this->restaurantId) {
             $this->items = $cart['items'];
         }
     }

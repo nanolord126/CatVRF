@@ -1,14 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\DemandForecast\Models;
-
-use Illuminate\Http\Request;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Models\Tenant;
+use Carbon\Carbon;
 
 /**
  * Class DemandForecast
@@ -28,13 +30,13 @@ use Illuminate\Support\Str;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\DemandForecast\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class DemandForecast extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $table = 'demand_forecasts';
 
@@ -55,15 +57,20 @@ final class DemandForecast extends Model
         'metadata' => 'json',
     ];
 
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query): void {
+        self::addGlobalScope('tenant', function ($query): void {
             if (function_exists('tenant') && tenant()->id) {
                 $query->where('tenant_id', tenant()->id);
             }
         });
 
-        static::creating(function (self $model): void {
+        self::creating(function (self $model): void {
             if (empty($model->uuid)) {
                 $model->uuid = (string) Str::uuid();
             }
@@ -71,10 +78,5 @@ final class DemandForecast extends Model
                 $model->correlation_id = $this->request->header('X-Correlation-ID', (string) Str::uuid());
             }
         });
-    }
-
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(\App\Models\Tenant::class);
     }
 }

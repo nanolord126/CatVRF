@@ -23,15 +23,8 @@ final class ConstructionAndRepairVerticalFeatureTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private string $correlationId;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->user          = User::factory()->create();
-        $this->correlationId = Str::uuid()->toString();
-    }
 
     /** @test */
     public function correlation_id_is_required_in_all_responses(): void
@@ -72,7 +65,7 @@ final class ConstructionAndRepairVerticalFeatureTest extends TestCase
     {
         $aiClass = 'App\Domains\ConstructionAndRepair\Services\AI\ConstructionProjectConstructorService';
 
-        if (!class_exists($aiClass)) {
+        if (! class_exists($aiClass)) {
             $this->markTestSkipped("Класс $aiClass не найден");
         }
 
@@ -89,7 +82,7 @@ final class ConstructionAndRepairVerticalFeatureTest extends TestCase
     {
         $aiClass = 'App\Domains\ConstructionAndRepair\Services\AI\ConstructionProjectConstructorService';
 
-        if (!class_exists($aiClass)) {
+        if (! class_exists($aiClass)) {
             $this->markTestSkipped("Класс $aiClass не найден");
         }
 
@@ -126,6 +119,7 @@ final class ConstructionAndRepairVerticalFeatureTest extends TestCase
         $response = $this->getJson('/api/ConstructionAndRepair');
         $this->assertContains($response->status(), [401, 403, 404], 'Неавторизованный запрос должен быть отклонён');
     }
+
     /** @test */
     public function b2b_mode_is_detected_correctly(): void
     {
@@ -146,7 +140,7 @@ final class ConstructionAndRepairVerticalFeatureTest extends TestCase
     {
         $serviceClass = 'App\Domains\ConstructionAndRepair\Services\ConstructionService';
 
-        if (!class_exists($serviceClass)) {
+        if (! class_exists($serviceClass)) {
             $this->markTestSkipped("Класс $aiClass не найден");
         }
 
@@ -154,7 +148,7 @@ final class ConstructionAndRepairVerticalFeatureTest extends TestCase
         $constructor  = $reflection->getConstructor();
 
         if ($constructor === null) {
-            $this->markTestSkipped(" не имеет конструктора");
+            $this->markTestSkipped(' не имеет конструктора');
         }
 
         // Проверяем, что сервис использует constructor injection (не статику)
@@ -163,5 +157,13 @@ final class ConstructionAndRepairVerticalFeatureTest extends TestCase
             $constructor->getNumberOfParameters(),
             "$serviceClass должен использовать constructor injection"
         );
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user          = User::factory()->create();
+        $this->correlationId = Str::uuid()->toString();
     }
 }

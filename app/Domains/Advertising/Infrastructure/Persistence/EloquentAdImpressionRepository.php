@@ -9,14 +9,14 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/eloquentadimpressionrepository
  */
-
 
 namespace App\Domains\Advertising\Infrastructure\Persistence;
 
@@ -36,8 +36,6 @@ use App\Models\Advertising\AdImpression as AdImpressionModel;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Advertising\Infrastructure\Persistence
  */
 final class EloquentAdImpressionRepository implements AdImpressionRepositoryInterface
 {

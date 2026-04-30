@@ -14,36 +14,14 @@ use Illuminate\Redis\Connections\Connection as RedisConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Illuminate\Support\Str;
-use Illuminate\Parallel\Concurrency;
 
 final class SportsBookingStressTest extends TestCase
 {
     use RefreshDatabase;
 
     private SportsRealTimeBookingService $service;
+
     private RedisConnection $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->fraud->method('check')->willReturn(null);
-
-        $this->audit = $this->createMock(AuditService::class);
-        $this->db = $this->app->make(DatabaseManager::class);
-        $this->cache = $this->app->make(Cache::class);
-        $this->redis = $this->app->make('redis')->connection();
-
-        $this->service = new SportsRealTimeBookingService(
-            fraud: $this->fraud,
-            audit: $this->audit,
-            db: $this->db,
-            cache: $this->cache,
-            logger: $this->app->make('log'),
-            redis: $this->redis,
-        );
-    }
 
     public function test_concurrent_slot_holds_100_requests(): void
     {
@@ -85,7 +63,7 @@ final class SportsBookingStressTest extends TestCase
 
         $this->assertEquals(1, $successfulHolds, 'Only one hold should succeed for the same slot');
         $this->assertEquals(99, $failedHolds, '99 holds should fail');
-        $this->assertLessThan(5, count(array_filter($results, fn($r) => isset($r['error']))), 'Should have minimal errors');
+        $this->assertLessThan(5, count(array_filter($results, fn ($r) => isset($r['error']))), 'Should have minimal errors');
 
         $slotKey = "sports:slot:hold:1::{$slotStart}";
         $this->redis->del($slotKey);
@@ -138,7 +116,7 @@ final class SportsBookingStressTest extends TestCase
 
         for ($i = 0; $i < $iterations; $i++) {
             $startTime = microtime(true);
-            
+
             try {
                 $result = $this->service->getAvailableSlots(1, null, now()->toDateString());
                 $responseTime = (microtime(true) - $startTime) * 1000;
@@ -158,7 +136,7 @@ final class SportsBookingStressTest extends TestCase
         }
 
         $avgResponseTime = $avgResponseTime / $iterations;
-        $successCount = count(array_filter($results, fn($r) => $r['success']));
+        $successCount = count(array_filter($results, fn ($r) => $r['success']));
 
         $this->assertEquals($iterations, $successCount, 'All queries should succeed');
         $this->assertLessThan(100, $avgResponseTime, 'Average response time should be <100ms');
@@ -171,7 +149,7 @@ final class SportsBookingStressTest extends TestCase
     public function test_memory_leak_prevention(): void
     {
         $initialMemory = memory_get_usage(true);
-        
+
         for ($i = 0; $i < 1000; $i++) {
             $dto = new RealTimeBookingDto(
                 userId: 1,
@@ -214,12 +192,12 @@ final class SportsBookingStressTest extends TestCase
 
         for ($i = 0; $i < $concurrentOperations; $i++) {
             $key = "test:stress:{$i}";
-            
+
             try {
                 $this->redis->setex($key, 60, json_encode(['test' => $i]));
                 $value = $this->redis->get($key);
                 $this->redis->del($key);
-                
+
                 $results[] = [
                     'success' => true,
                     'value_matches' => json_decode($value, true)['test'] === $i,
@@ -232,8 +210,8 @@ final class SportsBookingStressTest extends TestCase
             }
         }
 
-        $successCount = count(array_filter($results, fn($r) => $r['success']));
-        $valueMatchCount = count(array_filter($results, fn($r) => $r['value_matches'] ?? false));
+        $successCount = count(array_filter($results, fn ($r) => $r['success']));
+        $valueMatchCount = count(array_filter($results, fn ($r) => $r['value_matches'] ?? false));
 
         $this->assertEquals($concurrentOperations, $successCount, 'All Redis operations should succeed');
         $this->assertEquals($concurrentOperations, $valueMatchCount, 'All values should match');
@@ -253,7 +231,7 @@ final class SportsBookingStressTest extends TestCase
             ];
 
             $startTime = microtime(true);
-            $hash = hash('sha256', json_encode($biometricData) . 'sports_biometric_salt_2026');
+            $hash = hash('sha256', json_encode($biometricData).'sports_biometric_salt_2026');
             $totalTime += (microtime(true) - $startTime);
             $hashes[] = $hash;
         }
@@ -273,7 +251,7 @@ final class SportsBookingStressTest extends TestCase
         for ($i = 0; $i < $iterations; $i++) {
             $key = "sports:test:cache:{$i}";
             $value = ['data' => $i, 'timestamp' => now()->toIso8601String()];
-            
+
             $this->cache->put($key, $value, 300);
             $cacheKeys[] = $key;
         }
@@ -290,10 +268,33 @@ final class SportsBookingStressTest extends TestCase
         $this->assertEquals(0, $remainingKeys, 'All cached values should be invalidated');
     }
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->fraud->method('check')->willReturn(null);
+
+        $this->audit = $this->createMock(AuditService::class);
+        $this->db = $this->app->make(DatabaseManager::class);
+        $this->cache = $this->app->make(Cache::class);
+        $this->redis = $this->app->make('redis')->connection();
+
+        $this->service = new SportsRealTimeBookingService(
+            fraud: $this->fraud,
+            audit: $this->audit,
+            db: $this->db,
+            cache: $this->cache,
+            logger: $this->app->make('log'),
+            redis: $this->redis,
+        );
+    }
+
     private function calculatePercentile(array $data, int $percentile): float
     {
         sort($data);
         $index = ceil(($percentile / 100) * count($data)) - 1;
+
         return $data[$index] ?? 0;
     }
 }

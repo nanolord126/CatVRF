@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 final class TaxiWebrtcCall extends Model
 {
     use HasFactory;
+    use TenantScoped;
 
     protected $table = 'taxi_webrtc_calls';
 
@@ -59,7 +63,7 @@ final class TaxiWebrtcCall extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
+        self::addGlobalScope('tenant', function ($query) {
             if (tenant()) {
                 $query->where('tenant_id', tenant()->id);
             }

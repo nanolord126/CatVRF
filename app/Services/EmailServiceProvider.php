@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\C:\opt\kotvrf\CatVRF\App\Services;
+namespace App\Services;
 
 // Class EmailService was incorrectly placed here.
 // It has been moved to its correct file: EmailService.php

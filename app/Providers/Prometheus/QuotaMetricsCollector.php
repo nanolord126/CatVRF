@@ -4,7 +4,7 @@ namespace App\Providers\Prometheus;
 
 use Spatie\Prometheus\CollectorInterface;
 use Spatie\Prometheus\Facades\Prometheus;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Redis\RedisManager;
 
 /**
  * QuotaMetricsCollector — Quota metrics collector for Prometheus
@@ -19,6 +19,10 @@ use Illuminate\Support\Facades\Redis;
  */
 final class QuotaMetricsCollector implements CollectorInterface
 {
+    public function __construct(
+        private readonly RedisManager $redis,
+    ) {
+    }
     private const QUOTA_PREFIX = 'tenant:quota:';
 
     public function register(): void
@@ -47,11 +51,11 @@ final class QuotaMetricsCollector implements CollectorInterface
         foreach ($resourceTypes as $resourceType) {
             // Sum usage across all tenants for aggregate metrics
             $pattern = self::QUOTA_PREFIX . $resourceType . ':*';
-            $keys = Redis::connection()->keys($pattern);
+            $keys = $this->redis->connection()->keys($pattern);
             
             $totalUsage = 0.0;
             foreach ($keys as $key) {
-                $value = Redis::connection()->get($key);
+                $value = $this->redis->connection()->get($key);
                 if ($value !== null) {
                     $totalUsage += (float) $value;
                 }

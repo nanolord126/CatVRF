@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Domains\Auto\DTOs;
 
 use Illuminate\Http\Request;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use Illuminate\Support\Str;
 
 /**
  * Class CreateServiceBookingDto
@@ -19,20 +22,20 @@ use Illuminate\Http\Request;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\Auto\DTOs
+ * @see FraudControlService
+ * @see AuditService
  */
 final readonly class CreateServiceBookingDto
 {
     public function __construct(
-        private readonly int     $tenantId,
-        private readonly ?int    $businessGroupId,
-        private readonly int     $userId,
-        private readonly string  $correlationId,
-        private readonly array   $data,
-        private ?string $idempotencyKey = null,
-        private bool $isB2B = false) {}
+        private readonly int $tenantId,
+        private readonly ?int $businessGroupId,
+        private readonly int $userId,
+        private readonly string $correlationId,
+        private readonly array $data,
+        private readonly ?string $idempotencyKey = null,
+        private readonly bool $isB2B = false
+    ) {}
 
     public static function from(Request $request): self
     {
@@ -40,7 +43,7 @@ final readonly class CreateServiceBookingDto
             tenantId:        (int) tenant()?->id,
             businessGroupId: $request->input('business_group_id') ? (int) $request->input('business_group_id') : null,
             userId:          (int) $request->user()?->id,
-            correlationId:   $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            correlationId:   $request->header('X-Correlation-ID', Str::uuid()->toString()),
             data:            $request->validated(),
             idempotencyKey:  $request->header('Idempotency-Key'),
             isB2B:           $request->has('inn') && $request->has('business_card_id'),

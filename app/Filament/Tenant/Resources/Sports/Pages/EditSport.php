@@ -1,28 +1,27 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Sports\Pages;
 
+use Psr\Log\LoggerInterface;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
-use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Filament\Tenant\Resources\Sports\SportsResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 final class EditSport extends EditRecord
 {
-    public function __construct(
-        private readonly DatabaseManager $db,
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = SportsResource::class;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     protected function getHeaderActions(): array
     {
@@ -39,7 +38,7 @@ final class EditSport extends EditRecord
             $data['correlation_id'] = Str::uuid()->toString();
             $data['tenant_id'] = filament()->getTenant()->id;
 
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Sports updated', [
+            $this->log->channel('audit')->$this->logger->info('Sports updated', [
                 'user_id' => auth()->id(),
                 'correlation_id' => $data['correlation_id'],
                 'tenant_id' => $data['tenant_id'],
@@ -52,10 +51,10 @@ final class EditSport extends EditRecord
 
     protected function afterSave(): void
     {
-        \Illuminate\Support\Facades\Log::channel('audit')->info('Sports edit page saved', [
+        $this->log->channel('audit')->$this->logger->info('Sports edit page saved', [
             'record_id' => $this->record->id,
             'user_id' => auth()->id(),
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ]);
     }
 }

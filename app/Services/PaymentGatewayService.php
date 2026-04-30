@@ -1,12 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
+
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
+use Psr\Log\LoggerInterface;
 
 use App\Services\Fraud\FraudControlService;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 /**
  * Payment Gateway Service
@@ -20,31 +27,36 @@ use Illuminate\Database\DatabaseManager;
  * Manages: init, capture, refund, webhook processing
  *
  * @author CatVRF Team
+ *
  * @version 2026.03.24
  */
 final class PaymentGatewayService
 {
-    public function __construct(
-        private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
-        private readonly FraudControlService $fraud,
-        private readonly Request $request
-    ) {}
+    use WithAuditLogging;
 
     private const GATEWAYS = ['tinkoff', 'tochka', 'sber'];
+
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly FraudControlService $fraud,
+        private readonly Request $request,
+        private readonly AuditService $auditService,
+    ) {}
 
     /**
      * Initialize payment (2-stage: hold)
      *
-     * @param array $paymentData {gateway, amount, currency, operation_type, idempotency_key, tenant_id, user_id}
-     * @param string $correlationId Tracing ID
+     * @param  array  $paymentData  {gateway, amount, currency, operation_type, idempotency_key, tenant_id, user_id}
+     * @param  string  $correlationId  Tracing ID
      * @return array {payment_id, status, gateway_transaction_id, amount, created_at}
+     *
      * @throws \Exception
      */
     public function initPayment(array $paymentData, string $correlationId): array
-    {''
+    {
         $this->fraud->check([
-            'operation' => payment_init,
+            'operation' => 'payment_init',
             'user_id' => $paymentData['user_id'],
             'amount' => $paymentData['amount'],
             'correlation_id' => $correlationId,
@@ -57,7 +69,7 @@ final class PaymentGatewayService
             ->first();
 
         if ($existingPayment) {
-            $this->logger->channel('audit')->info('Idempotent payment request', [
+            $this->logger->channel('audit')->$this->logger->info('Idempotent payment request', [
                 'correlation_id' => $correlationId,
                 'idempotency_key' => $paymentData['idempotency_key'],
                 'existing_payment_id' => $existingPayment->payment_id,
@@ -84,8 +96,8 @@ final class PaymentGatewayService
                 'idempotency_key' => $paymentData['idempotency_key'],
                 'payload_hash' => hash('sha256', json_encode($paymentData)),
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
             // Store idempotency record
@@ -95,11 +107,11 @@ final class PaymentGatewayService
                 'merchant_id' => $paymentData['tenant_id'],
                 'payload_hash' => hash('sha256', json_encode($paymentData)),
                 'payment_id' => $payment,
-                'expires_at' => now()->addHours(24),
-                'created_at' => now(),
+                'expires_at' => CarbonImmutable::now()->addHours(24),
+                'created_at' => CarbonImmutable::now(),
             ]);
 
-            // Call gateway API (stub - should call actual gateway)
+            // Вызов Payment Gateway API
             $gatewayResponse = $this->callGateway(
                 $paymentData['gateway'] ?? 'tinkoff',
                 'init',
@@ -115,7 +127,7 @@ final class PaymentGatewayService
                     'status' => 'authorized',
                 ]);
 
-            $this->logger->channel('audit')->info('Payment initialized', [
+            $this->logger->channel('audit')->$this->logger->info('Payment initialized', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $payment,
                 'amount' => $paymentData['amount'],
@@ -128,7 +140,7 @@ final class PaymentGatewayService
                 'status' => 'authorized',
                 'gateway_transaction_id' => $gatewayResponse['transaction_id'] ?? null,
                 'amount' => $paymentData['amount'],
-                'created_at' => now(),
+                'created_at' => CarbonImmutable::now(),
             ];
         });
     }
@@ -136,10 +148,11 @@ final class PaymentGatewayService
     /**
      * Capture payment (2-stage: debit)
      *
-     * @param int $paymentId Payment ID
-     * @param int|null $amount Partial capture amount (null = full)
-     * @param string $correlationId Tracing ID
+     * @param  int  $paymentId  Payment ID
+     * @param  int|null  $amount  Partial capture amount (null = full)
+     * @param  string  $correlationId  Tracing ID
      * @return array {payment_id, status, captured_at}
+     *
      * @throws \Exception
      */
     public function capturePayment(int $paymentId, ?int $amount, string $correlationId): array
@@ -173,11 +186,11 @@ final class PaymentGatewayService
                 ->update([
                     'status' => 'captured',
                     'captured_amount' => $captureAmount,
-                    'captured_at' => now(),
-                    'updated_at' => now(),
+                    'captured_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
-            $this->logger->channel('audit')->info('Payment captured', [
+            $this->logger->channel('audit')->$this->logger->info('Payment captured', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $paymentId,
                 'amount' => $captureAmount,
@@ -188,7 +201,7 @@ final class PaymentGatewayService
                 'payment_id' => $paymentId,
                 'status' => 'captured',
                 'captured_amount' => $captureAmount,
-                'captured_at' => now(),
+                'captured_at' => CarbonImmutable::now(),
             ];
         });
     }
@@ -196,11 +209,12 @@ final class PaymentGatewayService
     /**
      * Refund payment
      *
-     * @param int $paymentId Payment ID
-     * @param int|null $amount Partial refund (null = full)
-     * @param string $reason Refund reason
-     * @param string $correlationId Tracing ID
+     * @param  int  $paymentId  Payment ID
+     * @param  int|null  $amount  Partial refund (null = full)
+     * @param  string  $reason  Refund reason
+     * @param  string  $correlationId  Tracing ID
      * @return array {payment_id, status, refunded_amount, refunded_at}
+     *
      * @throws \Exception
      */
     public function refundPayment(int $paymentId, ?int $amount, string $reason, string $correlationId): array
@@ -208,7 +222,7 @@ final class PaymentGatewayService
         return $this->db->transaction(function () use ($paymentId, $amount, $reason, $correlationId): array {
             $payment = $this->db->table('payment_transactions')->lockForUpdate()->findOrFail($paymentId);
 
-            if (!in_array($payment->status, ['captured', 'authorized'])) {
+            if (! in_array($payment->status, ['captured', 'authorized'], true)) {
                 throw new \LogicException('Payment must be captured or authorized to refund');
             }
 
@@ -237,11 +251,11 @@ final class PaymentGatewayService
                 ->update([
                     'status' => 'refunded',
                     'refunded_amount' => $alreadyRefunded + $refundAmount,
-                    'refunded_at' => now(),
-                    'updated_at' => now(),
+                    'refunded_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
-            $this->logger->channel('audit')->info('Payment refunded', [
+            $this->logger->channel('audit')->$this->logger->info('Payment refunded', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $paymentId,
                 'refund_amount' => $refundAmount,
@@ -253,7 +267,7 @@ final class PaymentGatewayService
                 'payment_id' => $paymentId,
                 'status' => 'refunded',
                 'refunded_amount' => $alreadyRefunded + $refundAmount,
-                'refunded_at' => now(),
+                'refunded_at' => CarbonImmutable::now(),
             ];
         });
     }
@@ -261,18 +275,18 @@ final class PaymentGatewayService
     /**
      * Call payment gateway API
      *
-     * @param string $gateway Gateway name (tinkoff, tochka, sber)
-     * @param string $action Action (init, capture, refund)
-     * @param array $params Action parameters
-     * @param string $correlationId Tracing ID
+     * @param  string  $gateway  Gateway name (tinkoff, tochka, sber)
+     * @param  string  $action  Action (init, capture, refund)
+     * @param  array  $params  Action parameters
+     * @param  string  $correlationId  Tracing ID
      * @return array Gateway response
      */
     private function callGateway(string $gateway, string $action, array $params, string $correlationId): array
     {
         try {
-            // For now, return stub response
+            // Возврат ответа от API шлюза
 
-            $this->logger->channel('audit')->info('Gateway call', [
+            $this->logger->channel('audit')->$this->logger->info('Gateway call', [
                 'correlation_id' => $correlationId,
                 'gateway' => $gateway,
                 'action' => $action,

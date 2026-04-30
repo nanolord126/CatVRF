@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Http\Controllers;
 
@@ -30,7 +32,7 @@ final readonly class TaxiCardController
     public function getDriverCard(int $driverId, Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', '');
-        
+
         $this->fraud->check(
             userId: $request->user()?->id ?? 0,
             operationType: 'taxi_driver_card_view',
@@ -42,9 +44,9 @@ final readonly class TaxiCardController
 
         $cacheKey = "taxi:driver:card:{$driverId}";
         $cachedCard = $this->cache->get($cacheKey);
-        
+
         if ($cachedCard !== null) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'data' => $cachedCard,
                 'correlation_id' => $correlationId,
@@ -57,10 +59,10 @@ final readonly class TaxiCardController
             ->firstOrFail();
 
         $card = (new TaxiDriverResource($driver))->toArray($request);
-        
+
         $this->cache->put($cacheKey, $card, 300);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $card,
             'correlation_id' => $correlationId,
@@ -70,7 +72,7 @@ final readonly class TaxiCardController
     public function getVehicleCard(int $vehicleId, Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', '');
-        
+
         $this->fraud->check(
             userId: $request->user()?->id ?? 0,
             operationType: 'taxi_vehicle_card_view',
@@ -82,9 +84,9 @@ final readonly class TaxiCardController
 
         $cacheKey = "taxi:vehicle:card:{$vehicleId}";
         $cachedCard = $this->cache->get($cacheKey);
-        
+
         if ($cachedCard !== null) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'data' => $cachedCard,
                 'correlation_id' => $correlationId,
@@ -96,10 +98,10 @@ final readonly class TaxiCardController
             ->firstOrFail();
 
         $card = (new TaxiVehicleResource($vehicle))->toArray($request);
-        
+
         $this->cache->put($cacheKey, $card, 300);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $card,
             'correlation_id' => $correlationId,
@@ -109,7 +111,7 @@ final readonly class TaxiCardController
     public function getTariffs(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', '');
-        
+
         $this->fraud->check(
             userId: $request->user()?->id ?? 0,
             operationType: 'taxi_tariffs_view',
@@ -119,11 +121,11 @@ final readonly class TaxiCardController
             correlationId: $correlationId,
         );
 
-        $cacheKey = "taxi:tariffs:" . tenant()->id;
+        $cacheKey = 'taxi:tariffs:'.tenant()->id;
         $cachedTariffs = $this->cache->get($cacheKey);
-        
+
         if ($cachedTariffs !== null) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'data' => $cachedTariffs,
                 'correlation_id' => $correlationId,
@@ -135,10 +137,10 @@ final readonly class TaxiCardController
             ->get();
 
         $tariffsData = TaxiTariffResource::collection($tariffs)->toArray($request);
-        
+
         $this->cache->put($cacheKey, $tariffsData, 180);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $tariffsData,
             'correlation_id' => $correlationId,
@@ -148,7 +150,7 @@ final readonly class TaxiCardController
     public function getTariff(int $tariffId, Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', '');
-        
+
         $this->fraud->check(
             userId: $request->user()?->id ?? 0,
             operationType: 'taxi_tariff_view',
@@ -165,7 +167,7 @@ final readonly class TaxiCardController
 
         $tariffData = (new TaxiTariffResource($tariff))->toArray($request);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $tariffData,
             'correlation_id' => $correlationId,
@@ -175,7 +177,7 @@ final readonly class TaxiCardController
     public function getPassengerProfile(int $passengerId, Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', '');
-        
+
         $this->fraud->check(
             userId: $request->user()?->id ?? 0,
             operationType: 'taxi_passenger_profile_view',
@@ -186,9 +188,9 @@ final readonly class TaxiCardController
         );
 
         $passenger = $request->user();
-        
+
         if ($passenger === null || $passenger->id !== $passengerId) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => 'Unauthorized',
                 'correlation_id' => $correlationId,
@@ -197,9 +199,9 @@ final readonly class TaxiCardController
 
         $cacheKey = "taxi:passenger:profile:{$passengerId}";
         $cachedProfile = $this->cache->get($cacheKey);
-        
+
         if ($cachedProfile !== null) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'data' => $cachedProfile,
                 'correlation_id' => $correlationId,
@@ -207,10 +209,10 @@ final readonly class TaxiCardController
         }
 
         $profile = (new TaxiPassengerResource($passenger))->toArray($request);
-        
+
         $this->cache->put($cacheKey, $profile, 600);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $profile,
             'correlation_id' => $correlationId,
@@ -220,7 +222,7 @@ final readonly class TaxiCardController
     public function getRideCard(string $rideUuid, Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', '');
-        
+
         $this->fraud->check(
             userId: $request->user()?->id ?? 0,
             operationType: 'taxi_ride_card_view',
@@ -236,9 +238,9 @@ final readonly class TaxiCardController
             ->firstOrFail();
 
         $user = $request->user();
-        
+
         if ($user !== null && $ride->passenger_id !== $user->id && $ride->driver_id !== $user->id) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => 'Unauthorized',
                 'correlation_id' => $correlationId,
@@ -247,7 +249,7 @@ final readonly class TaxiCardController
 
         $rideData = (new TaxiRideResource($ride))->toArray($request);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $rideData,
             'correlation_id' => $correlationId,
@@ -257,7 +259,7 @@ final readonly class TaxiCardController
     public function getNearbyDrivers(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', '');
-        
+
         $this->fraud->check(
             userId: $request->user()?->id ?? 0,
             operationType: 'taxi_nearby_drivers_view',
@@ -285,7 +287,7 @@ final readonly class TaxiCardController
 
         $driversData = TaxiDriverResource::collection($drivers)->toArray($request);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => [
                 'drivers' => $driversData,

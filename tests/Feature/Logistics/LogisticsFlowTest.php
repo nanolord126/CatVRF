@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Logistics;
 
@@ -18,12 +20,6 @@ use Tests\TestCase;
 final class LogisticsFlowTest extends TestCase
 {
     use RefreshDatabase;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        // В реальности: установка tenant() через TenantHelper
-    }
 
     /**
      * @test
@@ -67,7 +63,7 @@ final class LogisticsFlowTest extends TestCase
         $this->assertDatabaseHas('delivery_orders', [
             'uuid' => $order->uuid,
             'status' => 'pending',
-            'correlation_id' => $correlationId
+            'correlation_id' => $correlationId,
         ]);
 
         // Присвоение курьера
@@ -77,5 +73,11 @@ final class LogisticsFlowTest extends TestCase
         $this->assertEquals($courier->id, $order->fresh()->courier_id);
         $this->assertEquals('assigned', $order->fresh()->status);
         $this->assertEquals('busy', $courier->fresh()->status);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // В реальности: установка tenant() через TenantHelper
     }
 }
