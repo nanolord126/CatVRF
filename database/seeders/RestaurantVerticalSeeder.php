@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Tenant;
-use Illuminate\Support\Str;
 
 /**
  * Ресторанная вертикаль (НЕ ЗАПУСКАТЬ В PRODUCTION).
@@ -19,7 +18,7 @@ final class RestaurantVerticalSeeder extends Seeder
         $tenantId = 'resto-deluxe';
         $tenant = Tenant::find($tenantId);
 
-        if (!$tenant) {
+        if (! $tenant) {
             $tenant = Tenant::create([
                 'id' => $tenantId,
                 'name' => 'Resto Deluxe & Grill',
@@ -32,7 +31,7 @@ final class RestaurantVerticalSeeder extends Seeder
 
         // 2. Создание главного менеджера ресторана
         $manager = User::where('email', 'manager@resto.local')->first();
-        if (!$manager) {
+        if (! $manager) {
             $manager = User::create([
                 'name' => 'Ivan Restoman',
                 'email' => 'manager@resto.local',
@@ -69,7 +68,7 @@ final class RestaurantVerticalSeeder extends Seeder
                 }
             }
         }
-        
+
         if (Schema::hasTable('restaurant_tables')) {
             DB::table('restaurant_tables')->insert([
                 'number' => '1',

@@ -7,9 +7,9 @@ namespace App\Domains\Electronics\DTOs;
 final readonly class FilterConfigDto
 {
     /**
-     * @param array<int, array<string, mixed>> $primaryFilters
-     * @param array<int, array<string, mixed>> $secondaryFilters
-     * @param array<int, array<string, string>> $sortOptions
+     * @param  array<int, array<string, mixed>>  $primaryFilters
+     * @param  array<int, array<string, mixed>>  $secondaryFilters
+     * @param  array<int, array<string, string>>  $sortOptions
      */
     public function __construct(
         public string $type,
@@ -18,8 +18,7 @@ final readonly class FilterConfigDto
         public array $primaryFilters,
         public array $secondaryFilters,
         public array $sortOptions,
-    ) {
-    }
+    ) {}
 
     public function toArray(): array
     {

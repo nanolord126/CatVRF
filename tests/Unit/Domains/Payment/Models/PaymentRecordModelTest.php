@@ -123,14 +123,14 @@ final class PaymentRecordModelTest extends TestCase
 
     public function test_model_has_strict_types(): void
     {
-        $src = file_get_contents(__DIR__ . '/../../../../../app/Domains/Payment/Models/PaymentRecord.php');
+        $src = file_get_contents(__DIR__.'/../../../../../app/Domains/Payment/Models/PaymentRecord.php');
         $this->assertIsString($src);
         $this->assertStringContainsString('declare(strict_types=1);', $src);
     }
 
     public function test_model_no_facades(): void
     {
-        $src = file_get_contents(__DIR__ . '/../../../../../app/Domains/Payment/Models/PaymentRecord.php');
+        $src = file_get_contents(__DIR__.'/../../../../../app/Domains/Payment/Models/PaymentRecord.php');
         $this->assertIsString($src);
         $this->assertStringNotContainsString('use Illuminate\\Support\\Facades\\', $src);
     }

@@ -9,24 +9,19 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/component
  */
-
 
 namespace App\Domains\RealEstate\Domain\Enums;
 
 enum ViewingStatusEnum: string
 {
-    case Pending   = 'pending';
-    case Confirmed = 'confirmed';
-    case Completed = 'completed';
-    case Cancelled = 'cancelled';
-
     public function label(): string
     {
         return match ($this) {
@@ -69,4 +64,8 @@ enum ViewingStatusEnum: string
             array_map(static fn (self $e) => $e->label(), self::cases()),
         );
     }
+    case Pending   = 'pending';
+    case Confirmed = 'confirmed';
+    case Completed = 'completed';
+    case Cancelled = 'cancelled';
 }

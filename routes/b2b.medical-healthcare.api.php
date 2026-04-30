@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use App\Domains\Medical\MedicalHealthcare\Http\Controllers\B2BMedicalController;

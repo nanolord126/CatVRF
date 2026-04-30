@@ -1,9 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Webhook;
 
-
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
+
 /**
  * Class WebhookSignatureValidator
  *
@@ -13,8 +15,6 @@ use Illuminate\Contracts\Config\Repository as ConfigRepository;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Services\Webhook
  */
 final readonly class WebhookSignatureValidator
 {
@@ -23,42 +23,46 @@ final readonly class WebhookSignatureValidator
     ) {}
 
     // Dependencies injected via constructor
-        // Add private readonly properties here
-        public function validate(string $provider, string $payload, string $signature): bool
-        {
-            return match($provider) {
-                'sber' => $this->validateSber($payload, $signature),
-                'tochka' => $this->validateTochka($payload, $signature),
-                'sbp' => $this->validateSbp($payload, $signature),
-                default => false,
-            };
-        }
+    // Add private readonly properties here
+    public function validate(string $provider, string $payload, string $signature): bool
+    {
+        return match($provider) {
+            'sber' => $this->validateSber($payload, $signature),
+            'tochka' => $this->validateTochka($payload, $signature),
+            'sbp' => $this->validateSbp($payload, $signature),
+            default => false,
+        };
+    }
 
-        private function validateTinkoff(string $payload, string $signature): bool
-        {
-            $secret = $this->config->get('security.webhook_secrets.tinkoff');
-            $expected = hash_hmac('sha256', $payload, $secret);
-            return hash_equals($expected, $signature);
-        }
+    private function validateTinkoff(string $payload, string $signature): bool
+    {
+        $secret = $this->config->get('security.webhook_secrets.tinkoff');
+        $expected = hash_hmac('sha256', $payload, $secret);
 
-        private function validateSber(string $payload, string $signature): bool
-        {
-            $secret = $this->config->get('security.webhook_secrets.sber');
-            $expected = hash_hmac('sha256', $payload, $secret);
-            return hash_equals($expected, $signature);
-        }
+        return hash_equals($expected, $signature);
+    }
 
-        private function validateTochka(string $payload, string $signature): bool
-        {
-            $secret = $this->config->get('security.webhook_secrets.tochka');
-            $expected = hash_hmac('sha256', $payload, $secret);
-            return hash_equals($expected, $signature);
-        }
+    private function validateSber(string $payload, string $signature): bool
+    {
+        $secret = $this->config->get('security.webhook_secrets.sber');
+        $expected = hash_hmac('sha256', $payload, $secret);
 
-        private function validateSbp(string $payload, string $signature): bool
-        {
-            $secret = $this->config->get('security.webhook_secrets.sbp');
-            $expected = hash_hmac('sha256', $payload, $secret);
-            return hash_equals($expected, $signature);
-        }
+        return hash_equals($expected, $signature);
+    }
+
+    private function validateTochka(string $payload, string $signature): bool
+    {
+        $secret = $this->config->get('security.webhook_secrets.tochka');
+        $expected = hash_hmac('sha256', $payload, $secret);
+
+        return hash_equals($expected, $signature);
+    }
+
+    private function validateSbp(string $payload, string $signature): bool
+    {
+        $secret = $this->config->get('security.webhook_secrets.sbp');
+        $expected = hash_hmac('sha256', $payload, $secret);
+
+        return hash_equals($expected, $signature);
+    }
 }

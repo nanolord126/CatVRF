@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature;
 
@@ -15,12 +17,6 @@ use Tests\TestCase;
 final class PsychologyVerticalTest extends TestCase
 {
     use RefreshDatabase;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        // В 2026 тут должен быть сетап тенанта
-    }
 
     public function test_can_register_psychologist(): void
     {
@@ -46,5 +42,11 @@ final class PsychologyVerticalTest extends TestCase
         $this->assertInstanceOf(Psychologist::class, $psychologist);
         $this->assertEquals('Dr. Freud', $psychologist->full_name);
         $this->assertDatabaseHas('psychologists', ['full_name' => 'Dr. Freud']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // В 2026 тут должен быть сетап тенанта
     }
 }

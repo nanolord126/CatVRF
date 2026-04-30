@@ -1,13 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ML;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
-
-
+use App\Models\User;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * NewUserColdStartService — персонализация для новых пользователей.
@@ -24,20 +29,24 @@ use Illuminate\Database\DatabaseManager;
  */
 final readonly class NewUserColdStartService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private AnonymizationService     $anonymizer,
-        private readonly LogManager $logger,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly AnonymizationService $anonymizer,
+        private readonly LogManager $log,
         private readonly DatabaseManager $db,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
      * Генерировать рекомендации для нового пользователя.
      *
      * @param  array  $behaviorPattern  — паттерн из UserBehaviorAnalyzerService::getNewUserPattern()
-     * @param  string $vertical         — вертикаль (beauty, food, furniture и т.д.)
-     * @return array                    — обезличенные рекомендации
+     * @param  string  $vertical  — вертикаль (beauty, food, furniture и т.д.)
+     * @return array — обезличенные рекомендации
      */
     public function generate(array $behaviorPattern, string $vertical): array
     {
@@ -47,12 +56,12 @@ final readonly class NewUserColdStartService
 
         $deviceType = $behaviorPattern['device_type'] ?? 'unknown';
 
-        $this->logger->channel('audit')->info('NewUserColdStart recommendations generated', [
+        $this->logger->channel('audit')->$this->logger->info('NewUserColdStart recommendations generated', [
             'vertical'    => $vertical,
             'device_type' => $deviceType,
             'count'       => count($popular),
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
-            ]);
+            'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+        ]);
 
         return [
             'strategy'       => 'cold_start',
@@ -68,8 +77,8 @@ final readonly class NewUserColdStartService
      */
     public function calculateEngagementScore(int $userId): float
     {
-        $user           = \App\Models\User::findOrFail($userId);
-        $hoursOld       = now()->diffInHours($user->created_at);
+        $user           = User::findOrFail($userId);
+        $hoursOld       = CarbonImmutable::now()->diffInHours($user->created_at);
         $hasOrder       = $user->orders()->exists();
         $hasAiUsage     = $this->db->table('user_ai_designs')->where('user_id', $userId)->exists();
         $pagesVisited   = $this->db->table('user_sessions')
@@ -105,7 +114,7 @@ final readonly class NewUserColdStartService
         return $this->db->table('orders')
             ->join('order_items', 'orders.id', '=', 'order_items.order_id')
             ->where('orders.vertical', $vertical)
-            ->where('orders.created_at', '>=', now()->subDays(7))
+            ->where('orders.created_at', '>=', CarbonImmutable::now()->subDays(7))
             ->whereIn('orders.status', ['completed', 'delivered'])
             ->select('order_items.product_id', $this->db->raw('count(*) as popularity'))
             ->groupBy('order_items.product_id')

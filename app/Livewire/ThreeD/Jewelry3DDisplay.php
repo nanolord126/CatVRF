@@ -1,18 +1,32 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\ThreeD;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Livewire\Component;
 
 final class Jewelry3DDisplay extends Component
 {
-    private int $jewelryId;
-    private array $jewelryData = [];
-    private float $rotationX = 0;
-    private float $rotationY = 0;
-    private float $zoom = 1.0;
-    private string $selectedMaterial = 'gold';
-    private string $selectedSize = 'medium';
+    private readonly int $jewelryId;
+
+    private readonly array $jewelryData = [];
+
+    private readonly float $rotationX = 0;
+
+    private readonly float $rotationY = 0;
+
+    private readonly float $zoom = 1.0;
+
+    private readonly string $selectedMaterial = 'gold';
+
+    private readonly string $selectedSize = 'medium';
+
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
     public function mount(int $jewelryId): void
     {
@@ -66,6 +80,6 @@ final class Jewelry3DDisplay extends Component
 
     public function render()
     {
-        return view('livewire.three-d.jewelry-3d-display');
+        return $this->viewFactory->make('livewire.three-d.jewelry-3d-display');
     }
 }

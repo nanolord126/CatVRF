@@ -1,13 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Taxi;
 
-use App\Domains\Taxi\Http\Controllers\TaxiOrderController;
-use App\Services\FraudControlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
+use App\Models\User;
+use Illuminate\Cache\RateLimiting\Limit;
 
 final class TaxiSpamTest extends TestCase
 {
@@ -16,9 +18,9 @@ final class TaxiSpamTest extends TestCase
     public function test_multiple_orders_from_same_ip_gets_rate_limited(): void
     {
         $ipAddress = '192.168.1.100';
-        
+
         RateLimiter::for('taxi-order-create', function () {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(5);
+            return Limit::perMinute(5);
         });
 
         for ($i = 0; $i < 6; $i++) {
@@ -62,7 +64,7 @@ final class TaxiSpamTest extends TestCase
     public function test_suspicious_device_fingerprint_gets_flagged(): void
     {
         $suspiciousFingerprint = 'suspicious-known-fraud-device';
-        
+
         Cache::put("fraud:device:{$suspiciousFingerprint}", true, 3600);
 
         $response = $this->postJson('/api/v1/taxi/orders', [
@@ -90,10 +92,10 @@ final class TaxiSpamTest extends TestCase
     public function test_user_with_high_cancellation_rate_gets_flagged(): void
     {
         $userId = 999;
-        
+
         Cache::put("taxi:user:{$userId}:cancellation_rate", 0.85, 3600);
 
-        $response = $this->actingAs(\App\Models\User::factory()->create(['id' => $userId]))
+        $response = $this->actingAs(User::factory()->create(['id' => $userId]))
             ->postJson('/api/v1/taxi/orders', [
                 'pickup_address' => 'Moscow, Red Square',
                 'pickup_lat' => 55.75396,
@@ -113,7 +115,7 @@ final class TaxiSpamTest extends TestCase
 
     public function test_bulk_order_creation_from_same_user_gets_blocked(): void
     {
-        $user = \App\Models\User::factory()->create();
+        $user = User::factory()->create();
 
         for ($i = 0; $i < 11; $i++) {
             $response = $this->actingAs($user)
@@ -180,7 +182,7 @@ final class TaxiSpamTest extends TestCase
 
         $this->assertEquals(201, $response1->status());
         $this->assertEquals(200, $response2->status());
-        
+
         $this->assertEquals($response1->json('data.uuid'), $response2->json('data.uuid'));
     }
 }

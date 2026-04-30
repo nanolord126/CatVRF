@@ -20,7 +20,7 @@ final class StaffSeeder extends Seeder
     {
         // Get or create 5 workers
         $workers = User::where('is_active', true)->limit(5)->get();
-        
+
         if ($workers->count() < 5) {
             $workers = User::factory()->count(5)->create(['is_active' => true]);
         }
@@ -33,7 +33,7 @@ final class StaffSeeder extends Seeder
             // Create shifts for 5 days
             for ($i = 0; $i < 5; $i++) {
                 $date = $nextWeek->copy()->addDays($i);
-                
+
                 StaffSchedule::updateOrCreate(
                     [
                         'user_id' => $worker->id,
@@ -51,7 +51,7 @@ final class StaffSeeder extends Seeder
             StaffTask::create([
                 'user_id' => $worker->id,
                 'title' => "Weekly Report for {$worker->name}",
-                'description' => "Prepare and submit the weekly progress report.",
+                'description' => 'Prepare and submit the weekly progress report.',
                 'status' => 'TODO',
                 'priority' => 'medium',
                 'taskable_id' => $worker->id,

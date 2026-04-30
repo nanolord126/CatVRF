@@ -20,31 +20,23 @@ use Filament\Actions;
  *   — Быстрый поиск по имени, категории и SKU.
  *   — Фильтры: статус, B2B, наличие, активность.
  *   — Кнопка «Создать товар» в header.
- *
- * @package App\Domains\VerticalName\Filament\Tenant\Pages
  */
 final class ListVerticalItems extends ListRecords
 {
     /**
      * Связанный Filament-ресурс.
-     *
-     * @var string
      */
     protected static string $resource = VerticalItemResource::class;
 
     /**
      * Заголовок страницы, отображаемый в навигации и хлебных крошках.
-     *
-     * @var string|null
      */
-    protected ?string $heading = 'Товары VerticalName';
+    protected readonly ?string $heading = 'Товары VerticalName';
 
     /**
      * Подзаголовок с кратким описанием страницы.
-     *
-     * @var string|null
      */
-    protected ?string $subheading = 'Управление товарами и каталогом вашего бизнеса.';
+    protected readonly ?string $subheading = 'Управление товарами и каталогом вашего бизнеса.';
 
     /**
      * Actions в header страницы.

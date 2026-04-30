@@ -1,90 +1,92 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Party;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Carbon\CarbonImmutable;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 final class PartyTheme extends Model
 {
+    protected $table = 'party_themes';
 
-        protected $table = 'party_themes';
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'party_store_id',
+        'name',
+        'slug',
+        'description',
+        'color_palette',
+        'metadata',
+        'is_seasonal',
+        'season_start',
+        'season_end',
+        'is_active',
+        'correlation_id',
+        'tags',
+    ];
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'party_store_id',
-            'name',
-            'slug',
-            'description',
-            'color_palette',
-            'metadata',
-            'is_seasonal',
-            'season_start',
-            'season_end',
-            'is_active',
-            'correlation_id',
-            'tags',
-        ];
+    protected $casts = [
+        'color_palette' => 'json',
+        'metadata' => 'json',
+        'tags' => 'json',
+        'is_active' => 'boolean',
+        'is_seasonal' => 'boolean',
+    ];
 
-        protected $casts = [
-            'color_palette' => 'json',
-            'metadata' => 'json',
-            'tags' => 'json',
-            'is_active' => 'boolean',
-            'is_seasonal' => 'boolean',
-        ];
+    /**
+     * Relationship: Theme products.
+     */
+    public function products(): HasMany
+    {
+        return $this->hasMany(PartyProduct::class, 'party_theme_id');
+    }
 
-        /**
-         * Boot logic for automatic UUID and tenant scoping.
-         */
-        protected static function booted(): void
-        {
-            static::creating(function (self $model) {
-                $model->uuid = $model->uuid ?? (string) Str::uuid();
-            });
+    /**
+     * Relationship: Owning store.
+     */
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(PartyStore::class, 'party_store_id');
+    }
 
-            static::addGlobalScope('tenant', function ($builder) {
-                if (function_exists('tenant') && tenant()) {
-                    $builder->where('tenant_id', tenant()->id);
-                }
-            });
+    /**
+     * Checker: If the current date is within the season range.
+     */
+    public function isCurrentSeason(): bool
+    {
+        if (! $this->is_seasonal) {
+            return true;
         }
 
-        /**
-         * Relationship: Theme products.
-         */
-        public function products(): HasMany
-        {
-            return $this->hasMany(PartyProduct::class, 'party_theme_id');
+        if (! $this->season_start || ! $this->season_end) {
+            return false;
         }
 
-        /**
-         * Relationship: Owning store.
-         */
-        public function store(): BelongsTo
-        {
-            return $this->belongsTo(PartyStore::class, 'party_store_id');
-        }
+        $now = CarbonImmutable::now();
 
-        /**
-         * Checker: If the current date is within the season range.
-         */
-        public function isCurrentSeason(): bool
-        {
-            if (!$this->is_seasonal) {
-                return true;
+        return $now->isBetween($this->season_start, $this->season_end);
+    }
+
+    /**
+     * Boot logic for automatic UUID and tenant scoping.
+     */
+    protected static function booted(): void
+    {
+        self::creating(function (self $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+        });
+
+        self::addGlobalScope('tenant', function ($builder) {
+            if (function_exists('tenant') && tenant()) {
+                $builder->where('tenant_id', tenant()->id);
             }
-
-            if (!$this->season_start || !$this->season_end) {
-                return false;
-            }
-
-            $now = now();
-            return $now->isBetween($this->season_start, $this->season_end);
-        }
+        });
+    }
 }

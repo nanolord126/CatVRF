@@ -1,13 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Marketplace;
 
-
-
-
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Models\Marketplace;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
@@ -24,21 +22,22 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class MarketplaceResource extends Resource
 {
+    protected static ?string $model = Marketplace::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-window';
+
+    protected static ?string $navigationGroup = 'Вертикали';
+
+    protected static ?int $navigationSort = 25;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model = Marketplace::class;
-    protected static ?string $navigationIcon = 'heroicon-o-window';
-    protected static ?string $navigationGroup = 'Вертикали';
-    protected static ?int $navigationSort = 25;
 
     public static function form(Form $form): Form
     {
@@ -47,7 +46,7 @@ final class MarketplaceResource extends Resource
                 TextInput::make('marketplace_code')->label('Код')->required()->hidden(),
                 TextInput::make('marketplace_name')->label('Название маркетплейса')->required(),
                 Select::make('marketplace_type')->label('Тип')->options([
-                    'general' => 'Общий','vertical' => 'Вертикальный','niche' => 'Ниша','regional' => 'Региональный',
+                    'general' => 'Общий', 'vertical' => 'Вертикальный', 'niche' => 'Ниша', 'regional' => 'Региональный',
                 ])->required(),
                 TextInput::make('phone')->label('Телефон')->tel()->required(),
                 TextInput::make('email')->label('Email')->email()->required(),
@@ -94,8 +93,8 @@ final class MarketplaceResource extends Resource
                 TextInput::make('buyer_satisfaction_percent')->label('Удовл. покупателей %')->numeric(),
             ]),
             Section::make('Скрытые поля')->hidden()->schema([
-                TextInput::make('tenant_id')->default(fn()=>filament()->getTenant()->id),
-                TextInput::make('correlation_id')->default(fn()=>Str::uuid()->toString()),
+                TextInput::make('tenant_id')->default(fn () => filament()->getTenant()->id),
+                TextInput::make('correlation_id')->default(fn () => Str::uuid()->toString()),
             ]),
         ]);
     }
@@ -114,17 +113,18 @@ final class MarketplaceResource extends Resource
         ])->defaultSort('marketplace_name');
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        $this->db->transaction(function()use(&$data){
-            $data['correlation_id'] = Str::uuid()->toString();
-            $this->logger->info('Marketplace action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
-        });
-        return $data;
-    }
-
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->db->transaction(function () use (&$data) {
+            $data['correlation_id'] = Str::uuid()->toString();
+            $this->logger->$this->logger->info('Marketplace action', ['user' => $this->guard->id(), 'correlation_id' => $data['correlation_id']]);
+        });
+
+        return $data;
     }
 }

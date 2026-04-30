@@ -1,18 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Foundation\Bus\DispatchesJobs;
-use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Routing\Controller;
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use Illuminate\Http\JsonResponse;
 
 /**
  * BaseApiController — Базовый контроллер для всех API-контроллеров
@@ -28,20 +28,16 @@ use Illuminate\Contracts\Routing\ResponseFactory;
  * PRODUCTION-READY 2026 CANON
  *
  * @author CatVRF Team
+ *
  * @version 2026.03.27
  */
 abstract class BaseApiController extends Controller
 {
-
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly LogManager $logger,
         private readonly Guard $guard,
-        private readonly ResponseFactory $response,
-    )
-    {
-
-    }
+        private readonly ResponseFactory $response,) {}
 
     /**
      * Получить correlation_id для запроса
@@ -50,7 +46,7 @@ abstract class BaseApiController extends Controller
     {
         return $this->request->get('correlation_id')
             ?? $this->request->header('X-Correlation-ID')
-            ?? \Illuminate\Support\Str::uuid()->toString();
+            ?? Str::uuid()->toString();
     }
 
     /**
@@ -68,7 +64,7 @@ abstract class BaseApiController extends Controller
 
     protected function getModeType(): string
     {
-        return (string)$this->request->get('mode_type', 'b2c');
+        return (string) $this->request->get('mode_type', 'b2c');
     }
 
     /**
@@ -76,7 +72,7 @@ abstract class BaseApiController extends Controller
      */
     protected function auditLog(string $action, array $data = []): void
     {
-        $this->logger->channel('audit')->info($action, array_merge([
+        $this->logger->channel('audit')->$this->logger->info($action, array_merge([
             'correlation_id' => $this->getCorrelationId(),
             'user_id' => $this->guard->id(),
             'ip_address' => $this->request->ip(),
@@ -84,10 +80,11 @@ abstract class BaseApiController extends Controller
             'mode' => $this->getModeType(),
         ], $data));
     }
+
     /**
      * Ответ успеха с correlation_id
      */
-    protected function successResponse(mixed $data, string $message = 'Success', int $code = 200): \Illuminate\Http\JsonResponse
+    protected function successResponse(mixed $data, string $message = 'Success', int $code = 200): JsonResponse
     {
         return $this->response->json([
             'success' => true,
@@ -96,10 +93,11 @@ abstract class BaseApiController extends Controller
             'correlation_id' => $this->getCorrelationId(),
         ], $code);
     }
+
     /**
      * Ответ ошибки с correlation_id
      */
-    protected function errorResponse(string $message, int $code = 400, array $errors = []): \Illuminate\Http\JsonResponse
+    protected function errorResponse(string $message, int $code = 400, array $errors = []): JsonResponse
     {
         return $this->response->json([
             'success' => false,
@@ -108,6 +106,7 @@ abstract class BaseApiController extends Controller
             'correlation_id' => $this->getCorrelationId(),
         ], $code);
     }
+
     /**
      * Лог фрода с full stack trace
      */

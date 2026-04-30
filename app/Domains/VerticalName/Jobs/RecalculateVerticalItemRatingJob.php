@@ -4,16 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\VerticalName\Jobs;
 
-
 use App\Domains\VerticalName\Models\VerticalItem;
 use App\Domains\VerticalName\Models\VerticalReview;
 use App\Services\AuditService;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -26,15 +20,10 @@ use Psr\Log\LoggerInterface;
  * Запускается:
  * - После создания/обновления/удаления отзыва
  * - По расписанию (cron) для consistency check
- *
- * @package App\Domains\VerticalName\Jobs
  */
 final class RecalculateVerticalItemRatingJob implements ShouldQueue
 {
-
     public int $tries = 3;
-
-    public int $backoff = 60;
 
     public function __construct(
         private readonly int $itemId,
@@ -97,7 +86,7 @@ final class RecalculateVerticalItemRatingJob implements ShouldQueue
             correlationId: $this->correlationId,
         );
 
-        $logger->info('VerticalName item rating recalculated', [
+        $logger->$this->logger->info('VerticalName item rating recalculated', [
             'item_id' => $this->itemId,
             'old_rating' => $oldRating,
             'new_rating' => $newRating,
@@ -112,6 +101,6 @@ final class RecalculateVerticalItemRatingJob implements ShouldQueue
      */
     public function uniqueId(): string
     {
-        return 'vertical_name_rating:' . $this->itemId . ':' . $this->tenantId;
+        return 'vertical_name_rating:'.$this->itemId.':'.$this->tenantId;
     }
 }

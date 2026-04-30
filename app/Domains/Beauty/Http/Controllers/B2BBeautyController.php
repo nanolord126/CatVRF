@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
@@ -9,6 +10,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
 
 final class B2BBeautyController extends Controller
 {
@@ -26,7 +28,7 @@ final class B2BBeautyController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        $this->logger->info('B2B storefronts listed', ['correlation_id' => $correlationId, 'count' => $storefronts->total()]);
+        $this->logger->$this->logger->info('B2B storefronts listed', ['correlation_id' => $correlationId, 'count' => $storefronts->total()]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -52,12 +54,12 @@ final class B2BBeautyController extends Controller
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
                 'status' => 'pending',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]));
         });
 
-        $this->logger->info('B2B storefront created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('B2B storefront created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'B2B-витрина создана'], 201);
     }
@@ -81,12 +83,12 @@ final class B2BBeautyController extends Controller
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
                 'status' => 'pending',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
         });
 
-        $this->logger->info('B2B order created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('B2B order created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'B2B-заказ создан'], 201);
     }
@@ -115,10 +117,10 @@ final class B2BBeautyController extends Controller
             $this->db->table('b2b_beauty_orders')
                 ->where('id', $id)
                 ->where('tenant_id', $request->get('tenant_id'))
-                ->update(['status' => 'approved', 'updated_at' => now()]);
+                ->update(['status' => 'approved', 'updated_at' => CarbonImmutable::now()]);
         });
 
-        $this->logger->info('B2B order approved', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('B2B order approved', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Заказ одобрен']);
     }
@@ -131,10 +133,10 @@ final class B2BBeautyController extends Controller
             $this->db->table('b2b_beauty_orders')
                 ->where('id', $id)
                 ->where('tenant_id', $request->get('tenant_id'))
-                ->update(['status' => 'rejected', 'updated_at' => now()]);
+                ->update(['status' => 'rejected', 'updated_at' => CarbonImmutable::now()]);
         });
 
-        $this->logger->info('B2B order rejected', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('B2B order rejected', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Заказ отклонён']);
     }
@@ -146,10 +148,10 @@ final class B2BBeautyController extends Controller
         $this->db->transaction(function () use ($id) {
             $this->db->table('b2b_beauty_storefronts')
                 ->where('id', $id)
-                ->update(['inn_verified' => true, 'status' => 'active', 'updated_at' => now()]);
+                ->update(['inn_verified' => true, 'status' => 'active', 'updated_at' => CarbonImmutable::now()]);
         });
 
-        $this->logger->info('B2B INN verified', ['correlation_id' => $correlationId, 'storefront_id' => $id]);
+        $this->logger->$this->logger->info('B2B INN verified', ['correlation_id' => $correlationId, 'storefront_id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'ИНН верифицирован']);
     }

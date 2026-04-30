@@ -15,7 +15,8 @@ final class SearchPropertiesUseCase
 {
     public function __construct(
         private readonly PropertySearchServiceInterface $searchService,
-        private readonly LoggerInterface               $logger) {}
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * @return array{items: Collection<int, PropertyDTO>, total: int, page: int, per_page: int}
@@ -24,7 +25,7 @@ final class SearchPropertiesUseCase
     {
         $correlationId = (string) Str::uuid();
 
-        $this->logger->info('RealEstate.SearchProperties started', [
+        $this->logger->$this->logger->info('RealEstate.SearchProperties started', [
             'correlation_id' => $correlationId,
             'tenant_id'      => $tenantId,
             'query'          => $dto->query,
@@ -66,7 +67,7 @@ final class SearchPropertiesUseCase
             static fn ($property): PropertyDTO => PropertyDTO::fromEntity($property)
         );
 
-        $this->logger->info('RealEstate.SearchProperties completed', [
+        $this->logger->$this->logger->info('RealEstate.SearchProperties completed', [
             'correlation_id' => $correlationId,
             'total_found'    => $total,
         ]);

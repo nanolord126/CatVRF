@@ -1,30 +1,42 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\RealEstate\Models\Property;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\Analytics\DemandForecastMLService;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Database\DatabaseManager;
 
 final readonly class RealEstateDynamicPricingService
 {
     private const CACHE_TTL_SECONDS = 3600;
+
     private const FLASH_DISCOUNT_THRESHOLD = 0.85;
+
     private const HIGH_DEMAND_THRESHOLD = 0.80;
+
     private const PRICE_INCREASE_PERCENTAGE = 0.05;
+
     private const FLASH_DISCOUNT_MAX_PERCENTAGE = 0.15;
+
     private const B2B_DISCOUNT_PERCENTAGE = 0.08;
+
     private const MIN_PRICE_VARIATION = 0.02;
+
     private const MAX_PRICE_VARIATION = 0.20;
 
     public function __construct(
-        private FraudControlService $fraudControl,
-        private AuditService $audit,
-        private DemandForecastMLService $demandForecast
+        private readonly FraudControlService $fraudControl,
+        private readonly AuditService $audit,
+        private readonly DemandForecastMLService $demandForecast,
+        private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
     ) {}
 
     public function calculateDynamicPrice(
@@ -44,17 +56,17 @@ final readonly class RealEstateDynamicPricingService
         );
 
         if ($idempotencyKey !== null) {
-            $cached = Cache::get("pricing:{$property->id}:{$idempotencyKey}");
+            $cached = $this->cache->get("pricing:{$property->id}:{$idempotencyKey}");
             if ($cached !== null) {
                 return json_decode($cached, true);
             }
         }
 
-        $result = DB::transaction(function () use ($property, $isB2B, $correlationId) {
+        $result = $this->db->transaction(function () use ($property, $isB2B, $correlationId) {
             $forecast = $this->demandForecast->forecastForItem(
                 $property->id,
-                now(),
-                now()->addDays(7),
+                CarbonImmutable::now(),
+                CarbonImmutable::now()->addDays(7),
                 ['vertical' => 'real_estate']
             );
             $demandScore = $forecast['confidence_score'] ?? 0.5;
@@ -78,8 +90,8 @@ final readonly class RealEstateDynamicPricingService
                 'is_flash_discount' => $isFlashDiscount,
                 'is_high_demand' => $isHighDemand,
                 'is_b2b' => $isB2B,
-                'valid_until' => now()->addHours(24)->toIso8601String(),
-                'calculated_at' => now()->toIso8601String(),
+                'valid_until' => CarbonImmutable::now()->addHours(24)->toIso8601String(),
+                'calculated_at' => CarbonImmutable::now()->toIso8601String(),
                 'correlation_id' => $correlationId,
             ];
 
@@ -100,7 +112,7 @@ final readonly class RealEstateDynamicPricingService
         });
 
         if ($idempotencyKey !== null) {
-            Cache::put("pricing:{$property->id}:{$idempotencyKey}", json_encode($result), self::CACHE_TTL_SECONDS);
+            $this->cache->put("pricing:{$property->id}:{$idempotencyKey}", json_encode($result), self::CACHE_TTL_SECONDS);
         }
 
         return $result;
@@ -148,7 +160,7 @@ final readonly class RealEstateDynamicPricingService
         return [
             'property_pricing' => $pricingResults,
             'total_properties' => count($pricingResults),
-            'calculated_at' => now()->toIso8601String(),
+            'calculated_at' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 
@@ -168,12 +180,12 @@ final readonly class RealEstateDynamicPricingService
         );
 
         if ($discountPercentage < 0 || $discountPercentage > self::FLASH_DISCOUNT_MAX_PERCENTAGE * 100) {
-            throw new \InvalidArgumentException('Discount percentage must be between 0 and ' . (self::FLASH_DISCOUNT_MAX_PERCENTAGE * 100));
+            throw new \InvalidArgumentException('Discount percentage must be between 0 and '.(self::FLASH_DISCOUNT_MAX_PERCENTAGE * 100));
         }
 
         $property = Property::findOrFail($propertyId);
 
-        $result = DB::transaction(function () use ($property, $discountPercentage, $correlationId) {
+        $result = $this->db->transaction(function () use ($property, $discountPercentage, $correlationId) {
             $discountMultiplier = 1 - ($discountPercentage / 100);
             $discountedPrice = $property->price * $discountMultiplier;
 
@@ -181,7 +193,7 @@ final readonly class RealEstateDynamicPricingService
                 'metadata->flash_discount_active' => true,
                 'metadata->flash_discount_percentage' => $discountPercentage,
                 'metadata->flash_discount_price' => $discountedPrice,
-                'metadata->flash_discount_until' => now()->addHours(48)->toIso8601String(),
+                'metadata->flash_discount_until' => CarbonImmutable::now()->addHours(48)->toIso8601String(),
             ]);
 
             $flashDiscountData = [
@@ -191,7 +203,7 @@ final readonly class RealEstateDynamicPricingService
                 'discount_percentage' => $discountPercentage,
                 'discount_amount' => $property->price - $discountedPrice,
                 'valid_until' => $property->metadata['flash_discount_until'],
-                'applied_at' => now()->toIso8601String(),
+                'applied_at' => CarbonImmutable::now()->toIso8601String(),
                 'correlation_id' => $correlationId,
             ];
 
@@ -232,7 +244,7 @@ final readonly class RealEstateDynamicPricingService
         $priceHistory = [];
 
         for ($i = 0; $i < $days; $i++) {
-            $date = now()->subDays($i);
+            $date = CarbonImmutable::now()->subDays($i);
             $mockDemandScore = 0.5 + (sin($i * 0.5) * 0.3);
             $mockMultiplier = $this->calculatePriceMultiplier($mockDemandScore, false);
             $mockPrice = $property->price * $mockMultiplier;

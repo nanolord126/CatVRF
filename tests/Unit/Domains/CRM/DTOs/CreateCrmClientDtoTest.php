@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\CRM\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\CRM\DTOs\CreateCrmClientDto;
 
 /**
  * Unit tests for CreateCrmClientDto.
@@ -14,7 +17,7 @@ final class CreateCrmClientDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\CRM\DTOs\CreateCrmClientDto::class
+            CreateCrmClientDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'CreateCrmClientDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'CreateCrmClientDto must be readonly');
@@ -23,11 +26,11 @@ final class CreateCrmClientDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\CRM\DTOs\CreateCrmClientDto::class
+            CreateCrmClientDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('tenantId', $params, 'Constructor must have tenantId');
         $this->assertContains('businessGroupId', $params, 'Constructor must have businessGroupId');
         $this->assertContains('userId', $params, 'Constructor must have userId');
@@ -54,7 +57,7 @@ final class CreateCrmClientDtoTest extends TestCase
         $this->assertContains('tags', $params, 'Constructor must have tags');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -64,6 +67,6 @@ final class CreateCrmClientDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\CRM\DTOs\CreateCrmClientDto::class;
+        return CreateCrmClientDto::class;
     }
 }

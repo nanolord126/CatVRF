@@ -4,8 +4,8 @@ namespace App\Providers\Prometheus;
 
 use Spatie\Prometheus\CollectorInterface;
 use Spatie\Prometheus\Facades\Prometheus;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Redis\RedisManager;
+use Illuminate\Cache\CacheManager;
 
 /**
  * FeatureDriftMetricsCollector — Feature drift metrics collector for Prometheus
@@ -22,6 +22,12 @@ use Illuminate\Support\Facades\Redis;
 final class FeatureDriftMetricsCollector implements CollectorInterface
 {
     private const CACHE_PREFIX = 'ml:feature_drift:reference:';
+
+    public function __construct(
+        private readonly RedisManager $redis,
+        private readonly CacheManager $cache,
+    ) {
+    }
 
     public function register(): void
     {
@@ -109,7 +115,7 @@ final class FeatureDriftMetricsCollector implements CollectorInterface
     private function getDriftScore(string $vertical, string $feature, string $metricType): ?float
     {
         $key = self::CACHE_PREFIX . $vertical . ':' . $feature . ':' . $metricType;
-        $value = Redis::connection()->get($key);
+        $value = $this->redis->connection()->get($key);
         
         return $value !== null ? (float) $value : null;
     }

@@ -1,28 +1,39 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Tenancy\Traits;
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Redis\Connection;
 
 /**
  * Tenant Aware Cache Trait
- * 
+ *
  * Automatically prefixes cache keys with tenant:{tenant_id}:
  * to prevent cache collisions between tenants
- * 
+ *
  * Usage:
  * class MyService {
  *     use TenantAwareCache;
- *     
+ *
  *     public function myMethod() {
  *         $key = $this->tenantCacheKey('my_key');
- *         Cache::put($key, $value, 3600);
+ *         $this->cacheManager->put($key, $value, 3600);
  *     }
  * }
  */
 trait TenantAwareCache
 {
+    /**
+     * Get the cache manager instance. Implement in the using class.
+     */
+    abstract protected function tenantCacheManager(): CacheManager;
+
+    /**
+     * Get the Redis connection instance. Implement in the using class.
+     */
+    abstract protected function tenantRedisConnection(): Connection;
     /**
      * Get tenant-prefixed cache key
      */
@@ -48,9 +59,9 @@ trait TenantAwareCache
     /**
      * Cache data with tenant prefix
      */
-    protected function tenantCache(string $key, $value, int $ttl = null): bool
+    protected function tenantCache(string $key, $value, ?int $ttl = null): bool
     {
-        return Cache::put($this->tenantCacheKey($key), $value, $ttl ?? 3600);
+        return $this->tenantCacheManager()->put($this->tenantCacheKey($key), $value, $ttl ?? 3600);
     }
 
     /**
@@ -58,7 +69,7 @@ trait TenantAwareCache
      */
     protected function tenantCacheGet(string $key, mixed $default = null): mixed
     {
-        return Cache::get($this->tenantCacheKey($key), $default);
+        return $this->tenantCacheManager()->get($this->tenantCacheKey($key), $default);
     }
 
     /**
@@ -66,32 +77,32 @@ trait TenantAwareCache
      */
     protected function tenantCacheForget(string $key): bool
     {
-        return Cache::forget($this->tenantCacheKey($key));
+        return $this->tenantCacheManager()->forget($this->tenantCacheKey($key));
     }
 
     /**
      * Cache with tags (tenant-aware)
      */
-    protected function tenantCacheWithTags(string $key, $value, array $tags, int $ttl = null): bool
+    protected function tenantCacheWithTags(string $key, $value, array $tags, ?int $ttl = null): bool
     {
         $tenantId = $this->getTenantId();
-        $prefixedTags = $tenantId ? array_map(fn($tag) => "tenant:{$tenantId}:{$tag}", $tags) : $tags;
+        $prefixedTags = $tenantId ? array_map(fn ($tag) => "tenant:{$tenantId}:{$tag}", $tags) : $tags;
 
-        return Cache::tags($prefixedTags)->put($this->tenantCacheKey($key), $value, $ttl ?? 3600);
+        return $this->tenantCacheManager()->tags($prefixedTags)->put($this->tenantCacheKey($key), $value, $ttl ?? 3600);
     }
 
     /**
      * Redis operation with tenant prefix
      */
-    protected function tenantRedisSet(string $key, $value, int $ttl = null): bool
+    protected function tenantRedisSet(string $key, $value, ?int $ttl = null): bool
     {
         $redisKey = $this->tenantRedisKey($key);
 
         if ($ttl) {
-            return (bool) Redis::setex($redisKey, $ttl, $value);
+            return (bool) $this->tenantRedisConnection()->setex($redisKey, $ttl, $value);
         }
 
-        return (bool) Redis::set($redisKey, $value);
+        return (bool) $this->tenantRedisConnection()->set($redisKey, $value);
     }
 
     /**
@@ -99,7 +110,7 @@ trait TenantAwareCache
      */
     protected function tenantRedisGet(string $key): mixed
     {
-        return Redis::get($this->tenantRedisKey($key));
+        return $this->tenantRedisConnection()->get($this->tenantRedisKey($key));
     }
 
     /**
@@ -107,7 +118,7 @@ trait TenantAwareCache
      */
     protected function tenantRedisDel(string $key): int
     {
-        return Redis::del($this->tenantRedisKey($key));
+        return $this->tenantRedisConnection()->del($this->tenantRedisKey($key));
     }
 
     /**
@@ -142,12 +153,12 @@ trait TenantAwareCache
     {
         $tenantId = $this->getTenantId();
 
-        if (!$tenantId) {
+        if (! $tenantId) {
             return false;
         }
 
         // Use cache tags if available
-        Cache::tags(["tenant:{$tenantId}"])->flush();
+        $this->tenantCacheManager()->tags(["tenant:{$tenantId}"])->flush();
 
         return true;
     }

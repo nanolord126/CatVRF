@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreateRecordBook — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createrecordbook
  * @see https://catvrf.ru/docs/createrecordbook
  * @see https://catvrf.ru/docs/createrecordbook
@@ -31,14 +34,14 @@
  * @see https://catvrf.ru/docs/createrecordbook
  */
 
-
 namespace App\Filament\Tenant\Resources\Book\Pages;
+
+use Carbon\CarbonImmutable;
 
 use Filament\Resources\Pages\CreateRecord;
 
 final class CreateRecordBook extends CreateRecord
 {
-
     protected static string $resource = BookResource::class;
 
     /**
@@ -48,7 +51,7 @@ final class CreateRecordBook extends CreateRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -59,8 +62,8 @@ final class CreateRecordBook extends CreateRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

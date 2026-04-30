@@ -14,12 +14,6 @@ final class FashionCrossVerticalRecommendationServiceTest extends TestCase
 
     private FashionCrossVerticalRecommendationService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(FashionCrossVerticalRecommendationService::class);
-    }
-
     public function test_get_beauty_to_fashion_recommendations(): void
     {
         $result = $this->service->getBeautyToFashionRecommendations(1, 1, 10);
@@ -93,5 +87,11 @@ final class FashionCrossVerticalRecommendationServiceTest extends TestCase
 
         $this->assertIsArray($result);
         $this->assertNotEmpty($result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(FashionCrossVerticalRecommendationService::class);
     }
 }

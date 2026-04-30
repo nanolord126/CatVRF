@@ -21,12 +21,13 @@ use RuntimeException;
 final class CreateContractUseCase
 {
     public function __construct(
-        private readonly ContractRepositoryInterface  $contractRepository,
-        private readonly PropertyRepositoryInterface  $propertyRepository,
-        private readonly AgentRepositoryInterface     $agentRepository,
-        private readonly FraudControlService          $fraud,
-        private readonly ConnectionInterface          $db,
-        private readonly LoggerInterface              $logger) {}
+        private readonly ContractRepositoryInterface $contractRepository,
+        private readonly PropertyRepositoryInterface $propertyRepository,
+        private readonly AgentRepositoryInterface $agentRepository,
+        private readonly FraudControlService $fraud,
+        private readonly ConnectionInterface $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Creates a pending real-estate contract (not yet signed).
@@ -44,7 +45,7 @@ final class CreateContractUseCase
             correlationId: $dto->correlationId,
         );
 
-        $this->logger->info('RealEstate.CreateContract started', [
+        $this->logger->$this->logger->info('RealEstate.CreateContract started', [
             'correlation_id' => $dto->correlationId,
             'tenant_id'      => $dto->tenantId,
             'property_id'    => $dto->propertyId,
@@ -91,7 +92,7 @@ final class CreateContractUseCase
             $this->contractRepository->save($contract);
         });
 
-        $this->logger->info('RealEstate.CreateContract completed', [
+        $this->logger->$this->logger->info('RealEstate.CreateContract completed', [
             'correlation_id' => $dto->correlationId,
             'contract_id'    => $contractId->getValue(),
             'property_id'    => $dto->propertyId,

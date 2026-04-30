@@ -2,21 +2,22 @@
 
 namespace App\Filament\Tenant\Resources\Travel\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+
+
+
+use Illuminate\Log\LogManager;
 use App\Filament\Tenant\Resources\Travel\TravelResource;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 final class ListTravel extends ListRecords
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     protected static string $resource = TravelResource::class;
 
@@ -35,9 +36,8 @@ final class ListTravel extends ListRecords
         $userId = auth()->id();
         $correlationId = Str::uuid()->toString();
 
-        \Illuminate\Support\Facades\Log::channel('audit')->info('Travel ListRecords accessed', [
+        $this->log->channel('audit')->$this->logger->info('Travel ListRecords accessed', [
             'tenant_id' => $tenantId,
-        $_hi->lgr
             'correlation_id' => $correlationId,
         ]);
 
@@ -58,7 +58,7 @@ final class ListTravel extends ListRecords
     }
 
     public function render(): \Illuminate\Contracts\View\View {
-        $this->logger->info('ListTravel page rendered', [
+        $this->log->$this->logger->info('ListTravel page rendered', [
             'user_id' => auth()->id(),
             'tenant_id' => filament()->getTenant()->id,
         ]);

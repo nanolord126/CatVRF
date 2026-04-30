@@ -1,14 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\AI\Policies;
 
 use App\Models\User;
 use App\Domains\AI\Models\AIModel;
+
 final class AIModelPolicy
 {
-    /**
-     * Determine whether the user can view any models.
-     */
     public function viewAny(User $user): bool
     {
         return $user->tenant_id !== null;

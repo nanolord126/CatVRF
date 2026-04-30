@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\HouseholdGoods;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for HouseholdGoodsService.
- *
- * @covers \App\Domains\HouseholdGoods\Domain\Services\HouseholdGoodsService
- */
-final class HouseholdGoodsServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\HouseholdGoods\Domain\Services\HouseholdGoodsService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'HouseholdGoodsService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\HouseholdGoods\Domain\Services\HouseholdGoodsService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'HouseholdGoodsService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('HouseholdGoods');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\HouseholdGoods\Domain\Services\HouseholdGoodsService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'HouseholdGoodsService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('HouseholdGoodsService exists and is instantiable', function () {
+    $this->assertServiceExists('HouseholdGoodsService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HouseholdGoods\Domain\Services\HouseholdGoodsService::class, 'create'),
-            'HouseholdGoodsService must implement create()'
-        );
-    }
+test('HouseholdGoodsService follows clean architecture', function () {
+    $this->assertCleanArchitecture('HouseholdGoodsService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HouseholdGoods\Domain\Services\HouseholdGoodsService::class, 'update'),
-            'HouseholdGoodsService must implement update()'
-        );
-    }
+test('HouseholdGoodsService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('HouseholdGoodsService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HouseholdGoods\Domain\Services\HouseholdGoodsService::class, 'delete'),
-            'HouseholdGoodsService must implement delete()'
-        );
-    }
+test('HouseholdGoodsService enforces quota limits', function () {
+    $this->testServiceWithQuota('HouseholdGoodsService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HouseholdGoods\Domain\Services\HouseholdGoodsService::class, 'list'),
-            'HouseholdGoodsService must implement list()'
-        );
-    }
+test('HouseholdGoodsService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('HouseholdGoodsService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HouseholdGoods\Domain\Services\HouseholdGoodsService::class, 'getById'),
-            'HouseholdGoodsService must implement getById()'
-        );
-    }
+test('HouseholdGoodsService has proper caching', function () {
+    $cacheKey = 'householdgoods:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('HouseholdGoodsService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('HouseholdGoodsService dispatches proper events', function () {
+    $eventClass = "App\Domains\HouseholdGoods\Events\HouseholdGoodsProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('HouseholdGoodsService'));
+        $service->process([]);
+    });
+});
+
+test('HouseholdGoodsService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\HouseholdGoods\Jobs\ProcessHouseholdGoodsJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('HouseholdGoodsService'));
+        $service->processAsync([]);
+    });
+});
+
+test('HouseholdGoodsService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('HouseholdGoodsService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('HouseholdGoodsService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('HouseholdGoodsService'));
+        $service->process([]);
+    }, 'HouseholdGoodsService processed');
+});
+
+test('HouseholdGoodsService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

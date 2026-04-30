@@ -1,18 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Mail\Mailer;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use App\Mail\NewsletterMail;
+use Carbon\CarbonImmutable;
 
 /**
  * NewsletterBatchJob — отправка пакета рассылки.
@@ -22,19 +25,23 @@ use Illuminate\Database\DatabaseManager;
  */
 final class NewsletterBatchJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $tries   = 3;
+
     public int $timeout = 60;
 
-    public function __construct(
-        private readonly int    $newsletterId,
-        private readonly array  $userIds,
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly int $newsletterId,
+        private readonly array $userIds,
         private readonly string $channel,
         private readonly string $correlationId,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-    ) {}
+        private readonly Mailer $mailer,) {}
 
     public function handle(): void
     {
@@ -45,6 +52,7 @@ final class NewsletterBatchJob implements ShouldQueue
                 'newsletter_id'  => $this->newsletterId,
                 'correlation_id' => $this->correlationId,
             ]);
+
             return;
         }
 
@@ -71,9 +79,9 @@ final class NewsletterBatchJob implements ShouldQueue
         // Обновляем счётчик отправленных
         $this->db->table('newsletter_campaigns')
             ->where('id', $this->newsletterId)
-            ->increment('sent_count', $sent, ['updated_at' => now()]);
+            ->increment('sent_count', $sent, ['updated_at' => CarbonImmutable::now()]);
 
-        $this->logger->channel('audit')->info('NewsletterBatchJob completed', [
+        $this->logger->channel('audit')->$this->logger->info('NewsletterBatchJob completed', [
             'newsletter_id'  => $this->newsletterId,
             'sent'           => $sent,
             'total_in_batch' => count($this->userIds),
@@ -98,8 +106,8 @@ final class NewsletterBatchJob implements ShouldQueue
         }
 
         // Используем Laravel Mail → Mailgun / SendGrid (настраивается через MAIL_MAILER)
-        Mail::to($user->email)->queue(
-            new \App\Mail\NewsletterMail($newsletter->subject, (int) $newsletter->template_id, (string) $this->correlationId)
+        $this->mailer->to($user->email)->queue(
+            new NewsletterMail($newsletter->subject, (int) $newsletter->template_id, (string) $this->correlationId)
         );
     }
 
@@ -142,9 +150,8 @@ final class NewsletterBatchJob implements ShouldQueue
             'title'          => $newsletter->subject,
             'is_read'        => false,
             'correlation_id' => $this->correlationId,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'created_at'     => CarbonImmutable::now(),
+            'updated_at'     => CarbonImmutable::now(),
         ]);
     }
 }
-

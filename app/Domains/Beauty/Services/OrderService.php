@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
@@ -6,7 +8,6 @@ use App\Services\FraudControlService;
 use App\Services\Payment\WalletService;
 use App\Services\CommissionService;
 use App\Services\NotificationService;
-use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
 
 final readonly class OrderService
@@ -23,31 +24,32 @@ final readonly class OrderService
     {
         // Beauty vertical: 14% for B2C, 12% for B2B
         $rate = $isB2B ? 0.12 : 0.14;
+
         return (int) ($total * $rate);
     }
 
     public function validateOrder(array $data, string $correlationId): array
     {
         $fraudScore = $this->fraudService->check($data, $correlationId);
-        
+
         if ($fraudScore > 80) {
             $this->logger->warning('Beauty order rejected due to high fraud score', [
                 'fraud_score' => $fraudScore,
                 'correlation_id' => $correlationId,
             ]);
-            
+
             return ['valid' => false, 'reason' => 'high_fraud_risk', 'fraud_score' => $fraudScore];
         }
 
         // Check inventory for product-based vertical
         if (isset($data['items']) && is_array($data['items'])) {
             $inventoryCheck = $this->checkInventory($data['items']);
-            if (!$inventoryCheck['available']) {
+            if (! $inventoryCheck['available']) {
                 $this->logger->warning('Beauty order rejected due to insufficient inventory', [
                     'items' => $inventoryCheck['unavailable_items'],
                     'correlation_id' => $correlationId,
                 ]);
-                
+
                 return ['valid' => false, 'reason' => 'insufficient_inventory', 'unavailable_items' => $inventoryCheck['unavailable_items']];
             }
         }
@@ -58,15 +60,15 @@ final readonly class OrderService
     public function checkInventory(array $items): array
     {
         $unavailableItems = [];
-        
+
         foreach ($items as $item) {
             $productId = $item['product_id'] ?? null;
             $quantity = $item['quantity'] ?? 1;
-            
-            if (!$productId) {
+
+            if (! $productId) {
                 continue;
             }
-            
+
             // TODO: Implement actual inventory check against database
             // For now, assume all items are available
             // $product = Product::find($productId);
@@ -74,7 +76,7 @@ final readonly class OrderService
             //     $unavailableItems[] = $productId;
             // }
         }
-        
+
         return [
             'available' => empty($unavailableItems),
             'unavailable_items' => $unavailableItems,

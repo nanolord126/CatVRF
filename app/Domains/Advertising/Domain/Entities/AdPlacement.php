@@ -11,8 +11,6 @@ use Carbon\Carbon;
  *
  * Represents an ad placement within a campaign.
  * Immutable value object with public readonly properties.
- *
- * @package App\Domains\Advertising\Domain\Entities
  */
 final class AdPlacement
 {
@@ -70,8 +68,8 @@ final class AdPlacement
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new')
-            . ':zone=' . $this->placement_zone;
+        return self::class.'::'.($this->id ?? 'new')
+            .':zone='.$this->placement_zone;
     }
 
     /**
@@ -82,6 +80,6 @@ final class AdPlacement
         return $this->campaign_id > 0
             && $this->placement_zone !== ''
             && $this->content_type !== ''
-            && !empty($this->content);
+            && ! empty($this->content);
     }
 }

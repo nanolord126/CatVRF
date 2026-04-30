@@ -1,12 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Traits;
+
+use Carbon\CarbonImmutable;
 
 trait CanBeBanned
 {
     public function ban(): void
     {
-        $this->banned_at = now();
+        $this->banned_at = CarbonImmutable::now();
         $this->save();
     }
 

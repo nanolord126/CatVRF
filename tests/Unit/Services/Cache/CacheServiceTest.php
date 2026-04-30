@@ -1,11 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\Cache;
 
 use App\Services\Cache\CacheService;
 use App\Services\Tenancy\TenantCacheService;
 use Illuminate\Cache\CacheManager;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Mockery;
@@ -24,37 +25,14 @@ use Tests\TestCase;
  * - Embeddings caching
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.18
  */
 final class CacheServiceTest extends TestCase
 {
     private CacheService $cacheService;
+
     private TenantCacheService $tenantCache;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenantCache = $this->app->make(TenantCacheService::class);
-
-        // Mock CacheMetricsService to avoid Horizon dependency
-        $metricsMock = Mockery::mock('App\Services\Cache\CacheMetricsService');
-        $metricsMock->shouldReceive('recordCacheHit')->andReturnNull();
-        $metricsMock->shouldReceive('recordCacheMiss')->andReturnNull();
-        $metricsMock->shouldReceive('recordCacheWriteLatency')->andReturnNull();
-        $metricsMock->shouldReceive('recordCacheInvalidation')->andReturnNull();
-        $metricsMock->shouldReceive('recordCacheError')->andReturnNull();
-        $metricsMock->shouldReceive('recordCacheLockTimeout')->andReturnNull();
-
-        $this->cacheService = new CacheService(
-            $this->tenantCache,
-            $this->app->make(CacheManager::class),
-            Log::channel(),
-            $metricsMock,
-        );
-
-        Cache::flush();
-    }
 
     public function test_remember_with_tags_caches_value(): void
     {
@@ -123,7 +101,7 @@ final class CacheServiceTest extends TestCase
     {
         $tenantId = 1;
         $userId = 123;
-        $tags = ['user:' . $userId, 'test'];
+        $tags = ['user:'.$userId, 'test'];
 
         $result = $this->cacheService->invalidateUser($tenantId, $userId);
         $this->assertTrue($result);
@@ -306,5 +284,30 @@ final class CacheServiceTest extends TestCase
 
         $result = $this->cacheService->invalidateDynamicPrice($tenantId, $entityType, $entityId);
         $this->assertTrue($result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenantCache = $this->app->make(TenantCacheService::class);
+
+        // Mock CacheMetricsService to avoid Horizon dependency
+        $metricsMock = Mockery::mock('App\Services\Cache\CacheMetricsService');
+        $metricsMock->shouldReceive('recordCacheHit')->andReturnNull();
+        $metricsMock->shouldReceive('recordCacheMiss')->andReturnNull();
+        $metricsMock->shouldReceive('recordCacheWriteLatency')->andReturnNull();
+        $metricsMock->shouldReceive('recordCacheInvalidation')->andReturnNull();
+        $metricsMock->shouldReceive('recordCacheError')->andReturnNull();
+        $metricsMock->shouldReceive('recordCacheLockTimeout')->andReturnNull();
+
+        $this->cacheService = new CacheService(
+            $this->tenantCache,
+            $this->app->make(CacheManager::class),
+            Log::channel(),
+            $metricsMock,
+        );
+
+        Cache::flush();
     }
 }

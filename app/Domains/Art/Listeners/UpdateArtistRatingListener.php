@@ -1,12 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Art\Listeners;
-
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Art\Events\ReviewRecorded;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Services\AuditService;
+use Illuminate\Support\Str;
+
 /**
  * Class UpdateArtistRatingListener
  *
@@ -16,13 +19,13 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  * Event listener handling domain event side effects.
  * Runs asynchronously via queue when ShouldQueue is implemented.
  * All listeners maintain correlation_id chain.
- *
- * @package App\Domains\Art\Listeners
  */
 final class UpdateArtistRatingListener implements ShouldQueue
 {
     public function __construct(
-        private readonly \App\Services\AuditService $audit, private readonly LoggerInterface $logger) {}
+        private readonly AuditService $audit,
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Handle handle operation.
@@ -31,7 +34,7 @@ final class UpdateArtistRatingListener implements ShouldQueue
      */
     public function handle(ReviewRecorded $event): void
     {
-        $this->logger->info('UpdateArtistRatingListener handled', [
+        $this->logger->$this->logger->info('UpdateArtistRatingListener handled', [
             'event' => 'ReviewRecorded',
             'correlation_id' => $event->correlationId ?? 'N/A',
         ]);
@@ -47,7 +50,7 @@ final class UpdateArtistRatingListener implements ShouldQueue
         $this->logger->error('UpdateArtistRatingListener failed', [
             'event' => 'ReviewRecorded',
             'error' => $exception->getMessage(),
-            'correlation_id' => $event->correlationId ?? \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => $event->correlationId ?? Str::uuid()->toString(),
         ]);
     }
 }

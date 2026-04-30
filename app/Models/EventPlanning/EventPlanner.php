@@ -1,9 +1,9 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\EventPlanning;
 
-
-use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,7 +12,8 @@ use Illuminate\Support\Str;
 
 final class EventPlanner extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $table = 'event_planners';
 
@@ -45,33 +46,6 @@ final class EventPlanner extends Model
     ];
 
     /**
-     * Logic: Tenant Scoping + UUID Boot (Canon Rule 2026).
-     */
-    protected static function booted(): void
-    {
-        static::creating(function (EventPlanner $model) {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) Str::uuid();
-            }
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = (string) Str::uuid();
-            }
-
-            if (empty($model->tenant_id)) {
-                $model->tenant_id = $this->guard->user()?->tenant_id
-                    ?? (function_exists('tenant') ? tenant()?->id : 1); // Fallback to 1 for local
-            }
-        });
-
-        // Global Tenant Scoping
-        static::addGlobalScope('tenant', function ($query) {
-            if ($this->guard->check()) {
-                $query->where('tenant_id', $this->guard->user()?->tenant_id);
-            }
-        });
-    }
-
-    /**
      * Relations with Services.
      */
     public function services(): HasMany
@@ -101,5 +75,32 @@ final class EventPlanner extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(EventReview::class, 'planner_id');
+    }
+
+    /**
+     * Logic: Tenant Scoping + UUID Boot (Canon Rule 2026).
+     */
+    protected static function booted(): void
+    {
+        self::creating(function (EventPlanner $model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = (string) Str::uuid();
+            }
+
+            if (empty($model->tenant_id)) {
+                $model->tenant_id = $this->guard->user()?->tenant_id
+                    ?? (function_exists('tenant') ? tenant()?->id : 1); // Fallback to 1 for local
+            }
+        });
+
+        // Global Tenant Scoping
+        self::addGlobalScope('tenant', function ($query) {
+            if ($this->guard->check()) {
+                $query->where('tenant_id', $this->guard->user()?->tenant_id);
+            }
+        });
     }
 }

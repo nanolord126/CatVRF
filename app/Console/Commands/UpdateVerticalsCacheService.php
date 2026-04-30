@@ -1,9 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Services\Fraud\FraudControlService;
+
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
+use Illuminate\Filesystem\Filesystem;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
@@ -21,14 +26,16 @@ use Illuminate\Support\Str;
  * 5. Generates observers for vertical models
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.18
  */
 final class UpdateVerticalsCacheService extends Command
 {
-    protected $signature = 'cache:update-verticals {--vertical= : Specific vertical to update (e.g., beauty, food)} {--dry-run : Show changes without applying them}';
-
-    protected $description = 'Update all vertical services to use CacheService instead of Cache facade';
-
+    public function __construct(private readonly FraudControlService $fraudControlService,
+        private readonly Filesystem $files,
+        private readonly LogManager $log,) {
+        parent::__construct();
+    }
     private const VERTICALS = [
         'medical', 'beauty', 'food', 'fashion', 'travel', 'auto', 'hotels',
         'electronics', 'fitness', 'sports', 'luxury', 'insurance', 'legal',
@@ -45,8 +52,13 @@ final class UpdateVerticalsCacheService extends Command
         'vegan_products', 'art',
     ];
 
+    protected $signature = 'cache:update-verticals {--vertical= : Specific vertical to update (e.g., beauty, food)} {--dry-run : Show changes without applying them}';
+
+    protected $description = 'Update all vertical services to use CacheService instead of Cache facade';
+
     public function handle(): int
     {
+        $this->fraudControlService->check('handle', ['context' => __CLASS__]);
         $vertical = $this->option('vertical');
         $dryRun = $this->option('dry-run');
 
@@ -70,15 +82,16 @@ final class UpdateVerticalsCacheService extends Command
         $this->info("Processing vertical: {$verticalName}");
 
         $servicePath = $this->findVerticalServicePath($verticalName);
-        
-        if (!$servicePath) {
+
+        if (! $servicePath) {
             $this->warn("  Service not found for vertical: {$verticalName}");
+
             return;
         }
 
         $this->info("  Found service: {$servicePath}");
 
-        $content = File::get($servicePath);
+        $content = $this->files->get($servicePath);
         $originalContent = $content;
 
         // Replace Cache::remember with cacheService->rememberWithTags
@@ -96,13 +109,13 @@ final class UpdateVerticalsCacheService extends Command
         if ($content !== $originalContent) {
             if ($dryRun) {
                 $this->warn("  [DRY RUN] Would update: {$servicePath}");
-                $this->warn("  Changes detected but not applied");
+                $this->warn('  Changes detected but not applied');
             } else {
-                File::put($servicePath, $content);
+                $this->files->put($servicePath, $content);
                 $this->info("  ✅ Updated: {$servicePath}");
             }
         } else {
-            $this->info("  No changes needed");
+            $this->info('  No changes needed');
         }
 
         // Generate observer for vertical models
@@ -119,7 +132,7 @@ final class UpdateVerticalsCacheService extends Command
 
         foreach ($possiblePaths as $path) {
             if (is_dir($path)) {
-                $files = File::files($path);
+                $files = $this->files->files($path);
                 foreach ($files as $file) {
                     if (str_ends_with($file->getFilename(), 'Service.php')) {
                         return $file->getPathname();
@@ -137,11 +150,11 @@ final class UpdateVerticalsCacheService extends Command
     {
         // Pattern: Cache::remember('key', $ttl, function() { ... })
         $pattern = '/Cache::remember\([\'"]([^\'"]+)[\'"],\s*(\d+|[^,]+),\s*function\s*\(\s*\)/';
-        
+
         return preg_replace_callback($pattern, function ($matches) use ($verticalName) {
             $key = $matches[1];
             $ttl = $matches[2];
-            
+
             return "\$this->cacheService->rememberWithTags(\n                    tenant()?->id,\n                    '{$key}',\n                    {$ttl},\n                    ['{$verticalName}'],\n                    function()";
         }, $content);
     }
@@ -150,10 +163,10 @@ final class UpdateVerticalsCacheService extends Command
     {
         // Pattern: Cache::forget('key')
         $pattern = '/Cache::forget\([\'"]([^\'"]+)[\'"]\)/';
-        
+
         return preg_replace_callback($pattern, function ($matches) use ($verticalName) {
             $key = $matches[1];
-            
+
             return "\$this->cacheService->invalidate(tenant()?->id, ['{$verticalName}', '{$key}'])";
         }, $content);
     }
@@ -162,10 +175,10 @@ final class UpdateVerticalsCacheService extends Command
     {
         // Pattern: Cache::tags([...])->flush()
         $pattern = '/Cache::tags\(\[([^\]]+)\]\)->flush\(\)/';
-        
+
         return preg_replace_callback($pattern, function ($matches) use ($verticalName) {
             $tags = $matches[1];
-            
+
             return "\$this->cacheService->invalidate(tenant()?->id, [{$tags}, '{$verticalName}'])";
         }, $content);
     }
@@ -179,12 +192,12 @@ final class UpdateVerticalsCacheService extends Command
 
         // Find constructor and add CacheService parameter
         $pattern = '/public function __construct\(([^)]*)\)/';
-        
+
         return preg_replace_callback($pattern, function ($matches) {
             $params = $matches[1];
-            $newParam = $params ? $params . ', ' : '';
+            $newParam = $params ? $params.', ' : '';
             $newParam .= 'private readonly CacheService $cacheService';
-            
+
             return "public function __construct({$newParam})";
         }, $content);
     }
@@ -192,21 +205,22 @@ final class UpdateVerticalsCacheService extends Command
     private function generateObserverForVertical(string $verticalName, bool $dryRun): void
     {
         $observerPath = app_path("Observers/{$this->toPascalCase($verticalName)}Observer.php");
-        
-        if (File::exists($observerPath)) {
+
+        if ($this->files->exists($observerPath)) {
             $this->info("  Observer already exists: {$observerPath}");
+
             return;
         }
 
         $modelClass = "App\\Domains\\{$this->toPascalCase($verticalName)}\\Models\\{$this->toPascalCase($verticalName)}";
-        
+
         $observerTemplate = $this->getObserverTemplate($verticalName, $modelClass);
 
         if ($dryRun) {
             $this->warn("  [DRY RUN] Would create observer: {$observerPath}");
         } else {
-            File::ensureDirectoryExists(dirname($observerPath));
-            File::put($observerPath, $observerTemplate);
+            $this->files->ensureDirectoryExists(dirname($observerPath));
+            $this->files->put($observerPath, $observerTemplate);
             $this->info("  ✅ Created observer: {$observerPath}");
         }
     }
@@ -214,7 +228,7 @@ final class UpdateVerticalsCacheService extends Command
     private function getObserverTemplate(string $verticalName, string $modelClass): string
     {
         $pascalVertical = $this->toPascalCase($verticalName);
-        
+
         return <<<PHP
 <?php declare(strict_types=1);
 
@@ -245,6 +259,7 @@ final readonly class {$pascalVertical}Observer
      */
     public function created({$pascalVertical} \$entity): void
     {
+        $this->fraudControlService->check('create', ['context' => __CLASS__]);
         \$this->invalidateRelatedCache(\$entity);
     }
 
@@ -253,6 +268,7 @@ final readonly class {$pascalVertical}Observer
      */
     public function updated({$pascalVertical} \$entity): void
     {
+        $this->fraudControlService->check('update', ['context' => __CLASS__]);
         \$this->invalidateRelatedCache(\$entity);
     }
 
@@ -261,6 +277,7 @@ final readonly class {$pascalVertical}Observer
      */
     public function deleted({$pascalVertical} \$entity): void
     {
+        $this->fraudControlService->check('delete', ['context' => __CLASS__]);
         \$this->invalidateRelatedCache(\$entity);
     }
 
@@ -274,12 +291,12 @@ final readonly class {$pascalVertical}Observer
         try {
             \$this->cache->invalidateVertical(\$tenantId, '{$verticalName}');
             
-            Log::info('{$pascalVertical} cache invalidated', [
+            $this->log->info('{$pascalVertical} cache invalidated', [
                 'tenant_id' => \$tenantId,
                 'entity_id' => \$entity->id,
             ]);
         } catch (\Exception \$e) {
-            Log::error('Failed to invalidate {$pascalVertical} cache', [
+            $this->log->error('Failed to invalidate {$pascalVertical} cache', [
                 'tenant_id' => \$tenantId,
                 'entity_id' => \$entity->id,
                 'error' => \$e->getMessage(),

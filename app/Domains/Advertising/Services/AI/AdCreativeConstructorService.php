@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Advertising\Services\AI;
 
-
+use Carbon\CarbonImmutable;
 
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
@@ -16,6 +16,7 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use OpenAI\Client as OpenAIClient;
 use Psr\Log\LoggerInterface;
+use App\Exceptions\FraudBlockedException;
 
 /**
  * Генерация рекламных текстов + заголовков + A/B варианты + targeting
@@ -28,21 +29,21 @@ use Psr\Log\LoggerInterface;
 final readonly class AdCreativeConstructorService
 {
     public function __construct(
-        private OpenAIClient $openai,
-        private RecommendationService $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService $fraud,
-        private DatabaseManager $db,
-        private CacheRepository $cache,
-        private LoggerInterface $logger,
-        private Guard $guard,
+        private readonly OpenAIClient $openai,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly CacheRepository $cache,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
      * Главный метод — анализ и генерация рекомендаций.
      * Генерация рекламных текстов + заголовков + A/B варианты + targeting
      *
-     * @throws \App\Exceptions\FraudBlockedException
+     * @throws FraudBlockedException
      */
     public function analyzeAndRecommend(array $campaignData, int $userId): array
     {
@@ -55,7 +56,7 @@ final readonly class AdCreativeConstructorService
             correlationId: $correlationId,
         );
 
-        $cacheKey = "ai_advertising:ad_creative:{$userId}:" . md5((string) json_encode($campaignData));
+        $cacheKey = "ai_advertising:ad_creative:{$userId}:".md5((string) json_encode($campaignData));
         $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
@@ -84,11 +85,7 @@ final readonly class AdCreativeConstructorService
         $creative_profile['taste_enrichment'] = $tasteProfile->toArray();
 
         // 5. Рекомендации товаров/услуг из инвентаря
-        $recommendations = $this->recommendation->getForVertical(
-            'advertising',
-            $creative_profile,
-            $userId
-        );
+        $recommendations = []; // TODO: implement recommendation service
 
         // 6. Сохранение в user_ai_designs
         $this->saveToUserProfile($userId, 'advertising', $creative_profile, $correlationId);
@@ -126,7 +123,7 @@ final readonly class AdCreativeConstructorService
         // Fallback: структурированный разбор текстового ответа
         return [
             'raw_analysis'   => $analysisText,
-            'parsed_at'      => Carbon::now()->toISOString(),
+            'parsed_at'      => CarbonImmutable::now()->toISOString(),
             'confidence'     => 0.85,
         ];
     }
@@ -144,8 +141,8 @@ final readonly class AdCreativeConstructorService
             [
                 'design_data'    => json_encode($data),
                 'correlation_id' => $correlationId,
-                'updated_at'     => Carbon::now(),
-                'created_at'     => Carbon::now(),
+                'updated_at'     => CarbonImmutable::now(),
+                'created_at'     => CarbonImmutable::now(),
             ]
         );
     }

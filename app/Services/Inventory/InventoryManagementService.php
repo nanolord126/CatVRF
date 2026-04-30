@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Inventory;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\InventoryItem;
@@ -11,6 +14,8 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Сервис управления запасами и инвентаризацией
@@ -25,13 +30,17 @@ use Illuminate\Support\Str;
  */
 final readonly class InventoryManagementService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly ConnectionInterface $db,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
-        private readonly LogManager $logger,
+        private readonly AuditService $auditService,
     ) {}
+
     /**
      * Получить текущий доступный остаток (с учётом холда)
      */
@@ -109,7 +118,7 @@ final readonly class InventoryManagementService
                 ]);
 
                 // 3. AUDIT LOG
-                $this->logger->channel('audit')->info('Inventory: Stock reserved', [
+                $this->logger->channel('audit')->$this->logger->info('Inventory: Stock reserved', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'quantity' => $quantity,
@@ -174,7 +183,7 @@ final readonly class InventoryManagementService
                 ]);
 
                 // 3. AUDIT LOG
-                $this->logger->channel('audit')->info('Inventory: Stock released', [
+                $this->logger->channel('audit')->$this->logger->info('Inventory: Stock released', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'quantity' => $quantity,
@@ -268,7 +277,7 @@ final readonly class InventoryManagementService
                 }
 
                 // 3. AUDIT LOG
-                $this->logger->channel('audit')->info('Inventory: Stock deducted', [
+                $this->logger->channel('audit')->$this->logger->info('Inventory: Stock deducted', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'quantity' => $quantity,
@@ -337,7 +346,7 @@ final readonly class InventoryManagementService
                 ]);
 
                 // 3. AUDIT LOG
-                $this->logger->channel('audit')->info('Inventory: Stock added', [
+                $this->logger->channel('audit')->$this->logger->info('Inventory: Stock added', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'quantity' => $quantity,

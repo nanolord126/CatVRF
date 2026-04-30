@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Pharmacy\Models;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Pharmacy\Models\Medication;
 
 /**
  * Unit tests for Medication model.
@@ -14,27 +17,27 @@ final class MedicationTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Pharmacy\Models\Medication::class
+            Medication::class
         );
         $this->assertTrue($reflection->isFinal(), 'Medication must be final');
     }
 
     public function test_has_fillable_properties(): void
     {
-        $model = new \App\Domains\Pharmacy\Models\Medication();
+        $model = new Medication();
         $this->assertNotEmpty($model->getFillable(), 'Medication must have fillable');
         $this->assertContains('correlation_id', $model->getFillable(), 'Must have correlation_id');
     }
 
     public function test_has_casts(): void
     {
-        $model = new \App\Domains\Pharmacy\Models\Medication();
+        $model = new Medication();
         $this->assertNotEmpty($model->getCasts(), 'Medication must have casts');
     }
 
     public function test_has_tenant_id_in_fillable(): void
     {
-        $model = new \App\Domains\Pharmacy\Models\Medication();
+        $model = new Medication();
         $this->assertContains('tenant_id', $model->getFillable(), 'Must have tenant_id');
     }
 }

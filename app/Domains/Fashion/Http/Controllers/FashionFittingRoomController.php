@@ -1,20 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Http\Controllers;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Fashion\Services\BodyMeasurementsService;
 use App\Services\SuspiciousBehaviorDetector;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 final class FashionFittingRoomController
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly SuspiciousBehaviorDetector $behaviorDetector,
         private readonly BodyMeasurementsService $measurementsService,
-    ) {}
+        private readonly LogManager $log,) {}
 
     /**
      * Проверка доступа к примерочной нижнего белья
@@ -22,7 +26,7 @@ final class FashionFittingRoomController
     public function checkLingerieAccess(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-        
+
         $validated = $request->validate([
             'user_id' => 'required|integer',
             'user_gender' => 'required|string',
@@ -34,14 +38,14 @@ final class FashionFittingRoomController
             $correlationId
         );
 
-        Log::channel('audit')->info('Lingerie fitting access check', [
+        $this->log->channel('audit')->$this->logger->info('Lingerie fitting access check', [
             'user_id' => $validated['user_id'],
             'user_gender' => $validated['user_gender'],
             'allowed' => $result['allowed'],
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $result,
             'correlation_id' => $correlationId,
@@ -57,7 +61,7 @@ final class FashionFittingRoomController
         $userId = $request->user()?->id ?? 0;
 
         if ($userId === 0) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => 'Authentication required',
                 'correlation_id' => $correlationId,
@@ -84,11 +88,11 @@ final class FashionFittingRoomController
         ]);
 
         $measurements = $validated['measurements'];
-        
+
         // Валидация параметров
         $errors = $this->measurementsService->validateMeasurements($measurements);
-        if (!empty($errors)) {
-            return response()->json([
+        if (! empty($errors)) {
+            return new JsonResponse([
                 'success' => false,
                 'error' => 'Invalid measurements',
                 'errors' => $errors,
@@ -99,13 +103,13 @@ final class FashionFittingRoomController
         // Получение рекомендаций
         $recommendations = $this->measurementsService->getFullSizeRecommendations($measurements);
 
-        Log::channel('audit')->info('Fitting room recommendations generated', [
+        $this->log->channel('audit')->$this->logger->info('Fitting room recommendations generated', [
             'user_id' => $userId,
             'figure_type' => $recommendations['figure_type'],
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => [
                 'recommendations' => $recommendations,
@@ -124,7 +128,7 @@ final class FashionFittingRoomController
         $userId = $request->user()?->id ?? 0;
 
         if ($userId === 0) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => 'Authentication required',
                 'correlation_id' => $correlationId,
@@ -150,11 +154,11 @@ final class FashionFittingRoomController
         ]);
 
         $measurements = $validated['measurements'];
-        
+
         // Валидация параметров
         $errors = $this->measurementsService->validateMeasurements($measurements);
-        if (!empty($errors)) {
-            return response()->json([
+        if (! empty($errors)) {
+            return new JsonResponse([
                 'success' => false,
                 'error' => 'Invalid measurements',
                 'errors' => $errors,
@@ -165,12 +169,12 @@ final class FashionFittingRoomController
         // Сохранение в базу данных (здесь должна быть логика сохранения)
         // $user->bodyMeasurements()->updateOrCreate([], $measurements);
 
-        Log::channel('audit')->info('Body measurements saved', [
+        $this->log->channel('audit')->$this->logger->info('Body measurements saved', [
             'user_id' => $userId,
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'message' => 'Measurements saved successfully',
             'data' => $this->measurementsService->getFullSizeRecommendations($measurements),
@@ -187,7 +191,7 @@ final class FashionFittingRoomController
         $userId = $request->user()?->id ?? 0;
 
         if ($userId === 0) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => 'Authentication required',
                 'correlation_id' => $correlationId,
@@ -196,7 +200,7 @@ final class FashionFittingRoomController
 
         // Проверка прав администратора
         // if (!$request->user()->hasRole('admin')) {
-        //     return response()->json([
+        //     return new JsonResponse([
         //         'success' => false,
         //         'error' => 'Admin access required',
         //         'correlation_id' => $correlationId,
@@ -209,13 +213,13 @@ final class FashionFittingRoomController
 
         $stats = $this->behaviorDetector->getUserSuspicionStats((int) $validated['target_user_id']);
 
-        Log::channel('audit')->info('Suspicion stats accessed', [
+        $this->log->channel('audit')->$this->logger->info('Suspicion stats accessed', [
             'admin_user_id' => $userId,
             'target_user_id' => $validated['target_user_id'],
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => $stats,
             'correlation_id' => $correlationId,
@@ -231,7 +235,7 @@ final class FashionFittingRoomController
         $userId = $request->user()?->id ?? 0;
 
         if ($userId === 0) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => 'Authentication required',
                 'correlation_id' => $correlationId,
@@ -248,7 +252,7 @@ final class FashionFittingRoomController
             $validated['admin_reason']
         );
 
-        Log::channel('audit')->info('User unblocked', [
+        $this->log->channel('audit')->$this->logger->info('User unblocked', [
             'admin_user_id' => $userId,
             'target_user_id' => $validated['target_user_id'],
             'admin_reason' => $validated['admin_reason'],
@@ -256,7 +260,7 @@ final class FashionFittingRoomController
             'correlation_id' => $correlationId,
         ]);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => $unblocked,
             'message' => $unblocked ? 'User unblocked successfully' : 'User was not blocked',
             'correlation_id' => $correlationId,
@@ -270,7 +274,7 @@ final class FashionFittingRoomController
     {
         // Здесь должна быть логика получения товаров из базы данных
         // с учетом параметров и предпочтений стиля
-        
+
         $recommendations = [];
         $figureType = $this->measurementsService->calculateFigureType($measurements);
         $recommendedSize = $this->measurementsService->calculateTopSize($measurements);

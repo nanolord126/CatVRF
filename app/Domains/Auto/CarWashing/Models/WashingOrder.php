@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\CarWashing\Models;
 
@@ -7,6 +9,7 @@ use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
 
 /**
  * Class WashingOrder
@@ -26,13 +29,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Auto\CarWashing\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class WashingOrder extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes, TenantScoped;
+    use HasFactory;
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
 
     protected $table = 'washing_orders';
 
@@ -60,6 +65,6 @@ final class WashingOrder extends Model
 
     protected static function booted()
     {
-        static::addGlobalScope('tenant', fn($q) => $q->where('washing_orders.tenant_id', tenant()->id));
+        self::addGlobalScope('tenant', fn ($q) => $q->where('washing_orders.tenant_id', tenant()->id));
     }
 }

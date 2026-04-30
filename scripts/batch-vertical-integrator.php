@@ -1,17 +1,18 @@
 <?php
+
+declare(strict_types=1);
 /**
  * Batch Vertical Integrator
- * 
+ *
  * Automated script to integrate new payment services into remaining verticals.
  * This script generates the necessary code changes for each vertical.
- * 
+ *
  * Usage: php scripts/batch-vertical-integrator.php
  */
-
 $verticalsToProcess = [
     // Priority 2 - High
     'RealEstate', 'Fashion', 'Travel', 'Auto', 'Hotels', 'Electronics', 'Fitness',
-    // Priority 3 - Medium  
+    // Priority 3 - Medium
     'Sports', 'Luxury', 'Insurance', 'Legal', 'Logistics', 'Education', 'CRM',
     // Priority 4 - Standard
     'Delivery', 'Analytics', 'Consulting', 'Content', 'Freelance', 'EventPlanning',
@@ -96,7 +97,7 @@ PHP,
 ];
 
 echo "=== Batch Vertical Integrator ===\n\n";
-echo "Verticals to process: " . count($verticalsToProcess) . "\n\n";
+echo 'Verticals to process: '.count($verticalsToProcess)."\n\n";
 
 foreach ($verticalsToProcess as $vertical) {
     echo "Processing: {$vertical}\n";

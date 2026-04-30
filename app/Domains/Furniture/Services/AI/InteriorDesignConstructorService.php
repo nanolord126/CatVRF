@@ -1,11 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Furniture\Services\AI;
 
+use Illuminate\Support\Collection;
+
+use Carbon\CarbonImmutable;
+
 use Carbon\Carbon;
-
-
-
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use App\Services\FraudControlService;
@@ -15,6 +18,8 @@ use App\Domains\Inventory\Services\InventoryService;
 use App\Services\AuditService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
+use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * AI-конструктор интерьера для вертикали Furniture.
@@ -25,23 +30,27 @@ use Illuminate\Support\Str;
  */
 final readonly class InteriorDesignConstructorService
 {
-    public function __construct(private FraudControlService      $fraud,
-        private RecommendationService    $recommendation,
-        private InventoryService         $inventory,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private AuditService             $audit,
-        private \Illuminate\Contracts\Cache\Repository $cache,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly RecommendationService $recommendation,
+        private readonly InventoryService $inventory,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly AuditService $audit,
+        private readonly Repository $cache,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Каноничный вход для всех вертикалей.
      *
-     * @param array{photo: UploadedFile, style?: string, budget?: int} $payload
+     * @param  array{photo: UploadedFile, style?: string, budget?: int}  $payload
      */
     public function analyzeAndRecommend(array $payload, int $userId): array
     {
         $photo = $payload['photo'] ?? null;
-        if (!$photo instanceof UploadedFile) {
+        if (! $photo instanceof UploadedFile) {
             throw new \InvalidArgumentException('Поле photo обязательно и должно быть UploadedFile');
         }
 
@@ -56,18 +65,18 @@ final readonly class InteriorDesignConstructorService
      */
     public function analyzeRoomAndDesign(
         UploadedFile $roomPhoto,
-        string       $desiredStyle,
-        int          $budget,
-        int          $userId,
-        string       $correlationId = ''
+        string $desiredStyle,
+        int $budget,
+        int $userId,
+        string $correlationId = ''
     ): array {
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'furniture_ai_constructor', amount: 0, correlationId: $correlationId ?? '');
 
-        $cacheKey = "user_ai_designs:furniture:{$userId}:" . md5($roomPhoto->getClientOriginalName() . $desiredStyle . $budget);
+        $cacheKey = "user_ai_designs:furniture:{$userId}:".md5($roomPhoto->getClientOriginalName().$desiredStyle.$budget);
 
-        return $this->cache->remember($cacheKey, Carbon::now()->addHour(), function () use ($roomPhoto, $desiredStyle, $budget, $userId, $correlationId) {
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHour(), function () use ($roomPhoto, $desiredStyle, $budget, $userId, $correlationId) {
             return $this->db->transaction(function () use ($roomPhoto, $desiredStyle, $budget, $userId, $correlationId) {
 
                 // 1. Vision API — анализ комнаты
@@ -81,11 +90,11 @@ final readonly class InteriorDesignConstructorService
                 ]);
 
                 // 3. Рекомендации мебели
-                $recommendations = collect($this->recommendation->getForUser(
+                $recommendations = new Collection($this->recommendation->getForUser(
                     userId: $userId,
                     vertical: 'furniture',
                     context: $fullProfile
-    ))->toArray();
+                ))->toArray();
 
                 // 4. Проверка наличия товаров
                 $totalCost = 0;
@@ -99,7 +108,7 @@ final readonly class InteriorDesignConstructorService
                 unset($item);
 
                 // 5. Генерация URL на 3D-визуализацию (Blender / внешний сервис)
-                $visualizationUrl = url('/furniture/3d-preview/' . $userId . '/' . Str::uuid());
+                $visualizationUrl = url('/furniture/3d-preview/'.$userId.'/'.Str::uuid());
 
                 // 6. Расчёт стоимости
                 $costBreakdown = $this->calculateCost($recommendations, $budget);
@@ -116,7 +125,7 @@ final readonly class InteriorDesignConstructorService
                     correlationId: $correlationId
                 );
 
-                $this->logger->info('Furniture AI constructor completed', [
+                $this->logger->$this->logger->info('Furniture AI constructor completed', [
                     'user_id'          => $userId,
                     'style'            => $desiredStyle,
                     'budget'           => $budget,
@@ -144,7 +153,7 @@ final readonly class InteriorDesignConstructorService
     private function analyzeRoom(UploadedFile $photo, string $correlationId): array
     {
         // Production: OpenAI GPT-4o Vision
-        $this->logger->info('Furniture vision API called', [
+        $this->logger->$this->logger->info('Furniture vision API called', [
             'filename'       => $photo->getClientOriginalName(),
             'correlation_id' => $correlationId,
         ]);
@@ -204,8 +213,8 @@ final readonly class InteriorDesignConstructorService
                         'visualization_url' => $visualizationUrl,
                     ], JSON_UNESCAPED_UNICODE),
                     'correlation_id' => $correlationId,
-                    'updated_at'     => Carbon::now(),
-                    'created_at'     => Carbon::now(),
+                    'updated_at'     => CarbonImmutable::now(),
+                    'created_at'     => CarbonImmutable::now(),
                 ]
             );
         });

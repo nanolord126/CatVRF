@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 
@@ -27,7 +29,7 @@ Route::prefix('v1')
         'rate-limit',         // 6. Per-endpoint throttling (tenant-aware)
     ])
     ->group(function () {
-        
+
         // Include all vertical-specific route files
         require base_path('routes/beauty.api.php');
         require base_path('routes/food.api.php');
@@ -48,7 +50,7 @@ Route::prefix('v1')
 Route::prefix('webhooks')
     ->middleware(['webhook-signature'])
     ->group(function () {
-        
+
         // Tinkoff Payment Gateway webhooks
         Route::post('/tinkoff/payment-notification', function () {
             return response()->json(['status' => 'ok']);

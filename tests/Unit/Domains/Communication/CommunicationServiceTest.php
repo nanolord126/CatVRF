@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Communication;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for CommunicationService.
- *
- * @covers \App\Domains\Communication\Domain\Services\CommunicationService
- */
-final class CommunicationServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Communication\Domain\Services\CommunicationService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'CommunicationService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Communication\Domain\Services\CommunicationService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'CommunicationService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Communication');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Communication\Domain\Services\CommunicationService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'CommunicationService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('CommunicationService exists and is instantiable', function () {
+    $this->assertServiceExists('CommunicationService');
+});
 
-    public function test_send_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Communication\Domain\Services\CommunicationService::class, 'send'),
-            'CommunicationService must implement send()'
-        );
-    }
+test('CommunicationService follows clean architecture', function () {
+    $this->assertCleanArchitecture('CommunicationService');
+});
 
-    public function test_createChannel_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Communication\Domain\Services\CommunicationService::class, 'createChannel'),
-            'CommunicationService must implement createChannel()'
-        );
-    }
+test('CommunicationService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('CommunicationService', 'process', []);
+});
 
-    public function test_disableChannel_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Communication\Domain\Services\CommunicationService::class, 'disableChannel'),
-            'CommunicationService must implement disableChannel()'
-        );
-    }
+test('CommunicationService enforces quota limits', function () {
+    $this->testServiceWithQuota('CommunicationService', 'process', 1, 10, []);
+});
 
-    public function test_markDelivered_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Communication\Domain\Services\CommunicationService::class, 'markDelivered'),
-            'CommunicationService must implement markDelivered()'
-        );
-    }
+test('CommunicationService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('CommunicationService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_markRead_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Communication\Domain\Services\CommunicationService::class, 'markRead'),
-            'CommunicationService must implement markRead()'
-        );
-    }
+test('CommunicationService has proper caching', function () {
+    $cacheKey = 'communication:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('CommunicationService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('CommunicationService dispatches proper events', function () {
+    $eventClass = "App\Domains\Communication\Events\CommunicationProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('CommunicationService'));
+        $service->process([]);
+    });
+});
+
+test('CommunicationService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Communication\Jobs\ProcessCommunicationJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('CommunicationService'));
+        $service->processAsync([]);
+    });
+});
+
+test('CommunicationService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('CommunicationService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('CommunicationService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('CommunicationService'));
+        $service->process([]);
+    }, 'CommunicationService processed');
+});
+
+test('CommunicationService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

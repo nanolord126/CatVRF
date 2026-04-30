@@ -9,26 +9,27 @@ use App\Domains\RealEstate\Domain\Entities\Property;
 final readonly class PropertyDTO
 {
     public function __construct(
-        public string  $id,
-        public string  $title,
-        public string  $description,
-        public string  $address,
-        public float   $lat,
-        public float   $lon,
-        public string  $type,
-        public string  $typeLabel,
-        public string  $status,
-        public string  $statusLabel,
-        public int     $priceKopecks,
-        public float   $priceRubles,
-        public float   $areaSqm,
-        public int     $pricePerSqmKopecks,
-        public int     $rooms,
-        public int     $floor,
-        public int     $totalFloors,
-        public string  $agentId,
-        public array   $photos,
-        public array   $documents) {}
+        public string $id,
+        public string $title,
+        public string $description,
+        public string $address,
+        public float $lat,
+        public float $lon,
+        public string $type,
+        public string $typeLabel,
+        public string $status,
+        public string $statusLabel,
+        public int $priceKopecks,
+        public float $priceRubles,
+        public float $areaSqm,
+        public int $pricePerSqmKopecks,
+        public int $rooms,
+        public int $floor,
+        public int $totalFloors,
+        public string $agentId,
+        public array $photos,
+        public array $documents
+    ) {}
 
     public static function fromEntity(Property $property): self
     {

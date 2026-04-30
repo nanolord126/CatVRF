@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\Factory as HttpClientFactory;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -17,10 +17,10 @@ use Psr\Log\LoggerInterface;
  * Sends biometric verification request to external biometric service.
  * User must verify identity via face recognition or fingerprint before booking confirmation.
  */
-final readonly class SendBiometricVerificationJob implements ShouldQueue
+final class SendBiometricVerificationJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public array $backoff = [60, 300, 900];
     public int $tries = 3;
     public int $timeout = 30;
 
@@ -31,11 +31,16 @@ final readonly class SendBiometricVerificationJob implements ShouldQueue
         private readonly LoggerInterface $logger,
     ) {}
 
-    public function handle(): void
+    public function tags(): array
+    {
+        return ['travel', 'job'];
+    }
+
+    public function handle(HttpClientFactory $http): void
     {
         $booking = TourBooking::findOrFail($this->bookingId);
 
-        $response = Http::timeout(10)->post(config('services.biometric.endpoint'), [
+        $response = $http->timeout(10)->post(config('services.biometric.endpoint'), [
             'token' => $this->biometricToken,
             'user_id' => $booking->user_id,
             'booking_id' => $booking->id,

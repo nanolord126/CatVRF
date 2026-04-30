@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ThreeD;
+
+use Illuminate\Support\Collection;
 
 use Illuminate\Support\Str;
 
@@ -53,8 +57,8 @@ final class Room3DVisualizerService
             'desk' => ['scale' => 1.2, 'position' => [1, 0, 1]],
         ];
 
-        return collect($models)
-            ->filter(fn ($model, $key) => in_array($key, $roomData['furniture'] ?? []))
+        return new Collection($models)
+            ->filter(fn ($model, $key) => in_array($key, $roomData['furniture'] ?? [], true))
             ->all();
     }
 }

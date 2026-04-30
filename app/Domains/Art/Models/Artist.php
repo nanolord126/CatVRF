@@ -1,16 +1,18 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 final class Artist extends Model
 {
+    use TenantScoped;
 
     protected $table = 'artists';
 
@@ -38,21 +40,6 @@ final class Artist extends Model
         'rating' => 'float',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', static function (Builder $builder): void {
-            $builder->where('tenant_id', self::resolveTenantId());
-        });
-
-        static::creating(static function (Artist $artist): void {
-            $artist->uuid = $artist->uuid ?: (string) Str::uuid();
-            $artist->correlation_id = $artist->correlation_id ?: (string) Str::uuid();
-            $artist->tenant_id = $artist->tenant_id ?: self::resolveTenantId();
-            $artist->business_group_id = $artist->business_group_id ?? self::resolveBusinessGroupId();
-            $artist->is_active = $artist->is_active ?? true;
-        });
-    }
-
     public function artworks(): HasMany
     {
         return $this->hasMany(Artwork::class);
@@ -71,6 +58,21 @@ final class Artist extends Model
     public function portfolioItems(): HasMany
     {
         return $this->hasMany(PortfolioItem::class);
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', static function (Builder $builder): void {
+            $builder->where('tenant_id', self::resolveTenantId());
+        });
+
+        self::creating(static function (Artist $artist): void {
+            $artist->uuid = $artist->uuid ?: (string) Str::uuid();
+            $artist->correlation_id = $artist->correlation_id ?: (string) Str::uuid();
+            $artist->tenant_id = $artist->tenant_id ?: self::resolveTenantId();
+            $artist->business_group_id = $artist->business_group_id ?? self::resolveBusinessGroupId();
+            $artist->is_active = $artist->is_active ?? true;
+        });
     }
 
     private static function resolveTenantId(): int

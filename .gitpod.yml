@@ -1,0 +1,84 @@
+image:
+  file: .gitpod.Dockerfile
+
+ports:
+  - port: 80
+    onOpen: open-browser
+  - port: 5432
+    onOpen: ignore
+  - port: 6379
+    onOpen: ignore
+  - port: 3306
+    onOpen: ignore
+
+tasks:
+  - name: Setup CatVRF
+    init: |
+      # Install PHP extensions
+      sudo apt-get update
+      sudo apt-get install -y \
+          php8.3-pgsql \
+          php8.3-redis \
+          php8.3-mbstring \
+          php8.3-xml \
+          php8.3-curl \
+          php8.3-zip \
+          php8.3-bcmath \
+          php8.3-intl \
+          php8.3-gd \
+          php8.3-sqlite3 \
+          postgresql-client \
+          redis-tools
+      
+      # Install Node.js dependencies
+      npm install
+      
+      # Install PHP dependencies
+      composer install --no-interaction --prefer-dist --optimize-autoloader
+      
+      # Copy .env file
+      if [ ! -f ".env" ]; then
+        cp .env.example .env
+        php artisan key:generate
+      fi
+      
+      # Set up SQLite database for Gitpod
+      sed -i 's/DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
+      sed -i 's/DB_DATABASE=.*/DB_DATABASE=\/workspace\/database\/database.sqlite/' .env
+      touch database/database.sqlite
+      
+      # Run migrations
+      php artisan migrate --force
+      
+      # Create storage links
+      php artisan storage:link
+      
+      # Clear and cache
+      php artisan config:clear
+      php artisan cache:clear
+      php artisan route:clear
+      php artisan view:clear
+      php artisan config:cache
+      php artisan route:cache
+      php artisan view:cache
+      
+      echo "✅ Setup complete!"
+    
+    command: |
+      # Start Laravel development server
+      php artisan serve --host=0.0.0.0 --port=80
+
+vscode:
+  extensions:
+    - mikestead.dotenv
+    - felixfbecker.php-intellisense
+    - bmewburn.vscode-intelephense-client
+    - eamodio.gitlens
+    - GitHub.copilot
+    - GitHub.copilot-chat
+    - ms-azuretools.vscode-docker
+    - amiralizadeh94.laravel-extra-intellisense
+    - onecentlin.laravel-blade
+    - redhat.vscode-yaml
+    - dbaeumer.vscode-eslint
+    - esbenp.prettier-vscode

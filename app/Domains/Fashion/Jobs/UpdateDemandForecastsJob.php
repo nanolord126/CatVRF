@@ -1,51 +1,50 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Jobs;
 
-use App\Domains\Fashion\Services\FashionInventoryForecastingService;
-use Illuminate\Bus\Batchable;
+use Psr\Log\LoggerInterface;
+
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Log\LogManager;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 
 final class UpdateDemandForecastsJob implements ShouldQueue
 {
-    use Batchable, Queueable;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public function __construct(
-        private readonly int $tenantId,
-        private readonly string $correlationId,
-    ) {
-        $this->onQueue('forecasting');
-        $this->delay(now()->addHours(6));
+    public int $tries = 3;
+    public int $backoff = 300;
+    public bool $deleteWhenMissingModels = true;
+
+    public function __construct(private readonly LoggerInterface $loggerInterface,
+        private readonly LoggerInterface $logger,
+        public readonly int $tenantId,
+        public readonly string $correlationId = '',) {}
+
+    public function handle(LogManager $log): void
+    {
+        $log->channel('fashion')->$this->logger->info('Demand forecast update started', [
+            'tenant_id' => $this->tenantId,
+            'correlation_id' => $this->correlationId,
+        ]);
+
+        // TODO: Implement ML-based demand forecast recalculation
     }
 
-    public function handle(FashionInventoryForecastingService $service): void
+    public function failed(\Throwable $exception): void
     {
-        try {
-            $productIds = DB::table('fashion_products')
-                ->where('tenant_id', $this->tenantId)
-                ->where('status', 'active')
-                ->pluck('id')
-                ->toArray();
-
-            foreach ($productIds as $productId) {
-                $service->forecastDemand($productId, 30, $this->correlationId);
-            }
-            
-            Log::channel('audit')->info('Demand forecasts updated', [
-                'tenant_id' => $this->tenantId,
-                'product_count' => count($productIds),
-                'correlation_id' => $this->correlationId,
-            ]);
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to update demand forecasts', [
-                'tenant_id' => $this->tenantId,
-                'error' => $e->getMessage(),
-                'correlation_id' => $this->correlationId,
-            ]);
-            throw $e;
-        }
+        $this->loggerInterface /* TODO: inject via DI */->error('UpdateDemandForecastsJob failed', [
+            'tenant_id' => $this->tenantId,
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

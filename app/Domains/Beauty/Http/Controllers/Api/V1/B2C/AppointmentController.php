@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers\Api\V1\B2C;
@@ -20,13 +21,13 @@ final class AppointmentController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
         $dto = BookAppointmentDto::fromRequest($request, $correlationId);
-        
+
         $appointment = $this->appointmentService->book($dto);
-        
+
         return new JsonResponse([
             'success' => true,
             'data' => $appointment,
-            'correlation_id' => $correlationId
+            'correlation_id' => $correlationId,
         ], 201);
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
+use CrmSegmentationService;
+
 use App\Domains\CRM\Models\CrmSegment;
 use App\Filament\Tenant\Resources\CrmSegmentResource\Pages;
 use Filament\Forms;
@@ -12,6 +14,8 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use App\Domains\CRM\Services\CrmSegmentationService;
+use Illuminate\Support\Str;
 
 /**
  * CrmSegmentResource — управление сегментами CRM в Tenant Panel.
@@ -201,8 +205,8 @@ final class CrmSegmentResource extends Resource
                     ->color('warning')
                     ->requiresConfirmation()
                     ->action(function (CrmSegment $record): void {
-                        app(\App\Domains\CRM\Services\CrmSegmentationService::class)
-                            ->recalculateSegment($record, \Illuminate\Support\Str::uuid()->toString());
+                        $this->crmSegmentationService /* TODO: inject via constructor DI */ /* TODO: inject via DI */
+                            ->recalculateSegment($record, Str::uuid()->toString());
                     }),
             ])
             ->bulkActions([

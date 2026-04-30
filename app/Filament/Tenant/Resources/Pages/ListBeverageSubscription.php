@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -20,13 +22,6 @@ final class ListBeverageSubscription extends ListRecords
 {
     protected static string $resource = BeverageSubscriptionResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()->label('Создать подписку')->icon('heroicon-o-plus'),
-        ];
-    }
-
     public function table(Table $table): Table
     {
         return $table
@@ -44,9 +39,9 @@ final class ListBeverageSubscription extends ListRecords
                         default        => $state,
                     }),
                 TextColumn::make('price')->label('Цена')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 0, ',', ' ') . ' ₽')->sortable(),
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 0, ',', ' ').' ₽')->sortable(),
                 TextColumn::make('usage')->label('Использовано')
-                    ->getStateUsing(fn ($record) => $record->used_count . ' / ' . $record->limit_count),
+                    ->getStateUsing(fn ($record) => $record->used_count.' / '.$record->limit_count),
                 TextColumn::make('expires_at')->label('Истекает')->dateTime('d.m.Y H:i')->sortable(),
                 IconColumn::make('auto_renew')->label('Автопродление')->boolean()
                     ->trueIcon('heroicon-o-arrow-path')->falseIcon('heroicon-o-x-circle')
@@ -69,5 +64,12 @@ final class ListBeverageSubscription extends ListRecords
             ->actions([ViewAction::make(), EditAction::make(), DeleteAction::make()])
             ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
             ->defaultSort('created_at', 'desc')->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()->label('Создать подписку')->icon('heroicon-o-plus'),
+        ];
     }
 }

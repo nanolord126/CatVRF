@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Recommendation\DTOs;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Class UpdateRecommendationDto
@@ -17,7 +20,6 @@ use Illuminate\Http\Request;
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\Recommendation\DTOs
  */
 final readonly class UpdateRecommendationDto
 {
@@ -25,7 +27,8 @@ final readonly class UpdateRecommendationDto
         public ?string $name,
         public ?string $description,
         public ?string $status,
-        public string  $correlationId) {}
+        public string $correlationId
+    ) {}
 
     public static function from(Request $request): self
     {
@@ -33,7 +36,7 @@ final readonly class UpdateRecommendationDto
             name:          $request->string('name')->toString() ?: null,
             description:   $request->string('description')->toString() ?: null,
             status:        $request->string('status')->toString() ?: null,
-            correlationId: $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid()),
+            correlationId: $request->header('X-Correlation-ID', (string) Str::uuid()),
         );
     }
 
@@ -49,6 +52,6 @@ final readonly class UpdateRecommendationDto
             'description'    => $this->description,
             'status'         => $this->status,
             'correlation_id' => $this->correlationId,
-        ], fn($v) => $v !== null);
+        ], fn ($v) => $v !== null);
     }
 }

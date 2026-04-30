@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CartLimitExceededException — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/cartlimitexceededexception
  * @see https://catvrf.ru/docs/cartlimitexceededexception
  * @see https://catvrf.ru/docs/cartlimitexceededexception
@@ -19,7 +22,6 @@
  * @see https://catvrf.ru/docs/cartlimitexceededexception
  * @see https://catvrf.ru/docs/cartlimitexceededexception
  */
-
 
 namespace App\Exceptions;
 
@@ -32,30 +34,9 @@ namespace App\Exceptions;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Exceptions
  */
-final class CartLimitExceededException extends \RuntimeException {
-    /**
-     * Get the string representation of this object.
-     *
-     * @return string
-     */
-    public function __toString(): string
-    {
-        return static::class . '::' . ($this->id ?? 'new');
-    }
-
-    /**
-     * Determine if this instance is valid for the current context.
-     *
-     * @return bool
-     */
-    public function isValid(): bool
-    {
-        return true;
-    }
-
+final class CartLimitExceededException extends \RuntimeException
+{
     /**
      * Version identifier for this component.
      */
@@ -71,4 +52,19 @@ final class CartLimitExceededException extends \RuntimeException {
      */
     private const CACHE_TTL = 3600;
 
+    /**
+     * Get the string representation of this object.
+     */
+    public function __toString(): string
+    {
+        return self::class.'::'.($this->id ?? 'new');
+    }
+
+    /**
+     * Determine if this instance is valid for the current context.
+     */
+    public function isValid(): bool
+    {
+        return true;
+    }
 }

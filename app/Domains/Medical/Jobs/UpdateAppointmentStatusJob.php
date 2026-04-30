@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Medical\Jobs;
-
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Medical\Models\MedicalAppointment;
@@ -12,15 +12,21 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Throwable;
+use Carbon\CarbonImmutable;
 
 final class UpdateAppointmentStatusJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public function __construct(
         private readonly int $appointmentId,
         private readonly string $status,
-        private readonly string $correlationId, private readonly LoggerInterface $logger) {
+        private readonly string $correlationId,
+        private readonly LoggerInterface $logger
+    ) {
         $this->onQueue('default');
     }
 
@@ -39,14 +45,14 @@ final class UpdateAppointmentStatusJob implements ShouldQueue
             if ($this->status === 'in_progress') {
                 $updates['status'] = 'in_progress';
             } elseif ($this->status === 'completed') {
-                $updates['completed_at'] = now();
+                $updates['completed_at'] = CarbonImmutable::now();
             } elseif ($this->status === 'cancelled') {
-                $updates['cancelled_at'] = now();
+                $updates['cancelled_at'] = CarbonImmutable::now();
             }
 
             $appointment->update($updates);
 
-            $this->logger->info('Appointment status updated via job', [
+            $this->logger->$this->logger->info('Appointment status updated via job', [
                 'appointment_id' => $appointment->id,
                 'doctor_id' => $appointment->doctor_id,
                 'new_status' => $this->status,
@@ -64,10 +70,16 @@ final class UpdateAppointmentStatusJob implements ShouldQueue
             throw $e;
         }
     }
-    
+
     public function retryUntil(): \DateTime
     {
-        return now()->addHours(4)->toDateTime();
+        return CarbonImmutable::now()->addHours(4)->toDateTime();
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        $this->logger->error('medical job failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }
-

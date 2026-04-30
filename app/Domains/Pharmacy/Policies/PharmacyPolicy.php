@@ -1,14 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use App\Models\User;
 use App\Domains\Pharmacy\Models\Pharmacy;
+
 final class PharmacyPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return $user->tenant_id !== null;
@@ -17,7 +26,7 @@ final class PharmacyPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Pharmacy $pharmacy): bool
+    public function $this->viewFactory->make(User $user, Pharmacy $pharmacy): bool
     {
         return $user->tenant_id === $pharmacy->tenant_id;
     }

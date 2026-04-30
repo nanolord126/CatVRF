@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\B2B\B2BOrderController;
@@ -6,6 +8,9 @@ use App\Http\Controllers\B2B\B2BProductController;
 use App\Http\Controllers\B2B\B2BStockController;
 use App\Http\Controllers\B2B\B2BReportController;
 use App\Http\Controllers\B2B\B2BApiKeyController;
+use App\Http\Controllers\B2B\B2BCartController;
+use App\Http\Controllers\B2B\B2BDocumentController;
+use App\Http\Controllers\B2B\B2BCompanyController;
 
 /**
  * B2B API Routes — /api/b2b/v1/
@@ -51,4 +56,30 @@ Route::prefix('b2b/v1')
         Route::post('api-keys', [B2BApiKeyController::class, 'store'])->name('api-keys.store');
         Route::post('api-keys/{id}/rotate', [B2BApiKeyController::class, 'rotate'])->name('api-keys.rotate');
         Route::delete('api-keys/{id}', [B2BApiKeyController::class, 'revoke'])->name('api-keys.revoke');
+
+        // ─── Корзина ─────────────────────────────────────────────────
+        Route::get('cart', [B2BCartController::class, 'index'])->name('cart.index');
+        Route::post('cart/items', [B2BCartController::class, 'addItem'])->name('cart.add');
+        Route::put('cart/items/{id}', [B2BCartController::class, 'updateItem'])->name('cart.update');
+        Route::delete('cart/items/{id}', [B2BCartController::class, 'removeItem'])->name('cart.remove');
+        Route::delete('cart', [B2BCartController::class, 'clear'])->name('cart.clear');
+
+        // ─── Документы ────────────────────────────────────────────────
+        Route::get('documents', [B2BDocumentController::class, 'index'])->name('documents.index');
+        Route::post('documents', [B2BDocumentController::class, 'store'])->name('documents.store');
+        Route::get('documents/{id}', [B2BDocumentController::class, 'show'])->name('documents.show');
+        Route::post('documents/{id}/sign', [B2BDocumentController::class, 'sign'])->name('documents.sign');
+        Route::delete('documents/{id}', [B2BDocumentController::class, 'destroy'])->name('documents.destroy');
+
+        // ─── Компания ─────────────────────────────────────────────────
+        Route::get('company', [B2BCompanyController::class, 'show'])->name('company.show');
+        Route::put('company', [B2BCompanyController::class, 'update'])->name('company.update');
+        Route::get('company/branches', [B2BCompanyController::class, 'branches'])->name('company.branches');
+        Route::post('company/branches', [B2BCompanyController::class, 'createBranch'])->name('company.branches.create');
+        Route::put('company/branches/{id}', [B2BCompanyController::class, 'updateBranch'])->name('company.branches.update');
+        Route::delete('company/branches/{id}', [B2BCompanyController::class, 'deleteBranch'])->name('company.branches.delete');
+        Route::get('company/team', [B2BCompanyController::class, 'team'])->name('company.team');
+        Route::post('company/team', [B2BCompanyController::class, 'addTeamMember'])->name('company.team.add');
+        Route::put('company/team/{id}', [B2BCompanyController::class, 'updateTeamMember'])->name('company.team.update');
+        Route::delete('company/team/{id}', [B2BCompanyController::class, 'deleteTeamMember'])->name('company.team.delete');
     });

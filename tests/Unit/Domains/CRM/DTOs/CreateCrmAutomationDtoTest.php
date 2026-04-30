@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\CRM\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\CRM\DTOs\CreateCrmAutomationDto;
 
 /**
  * Unit tests for CreateCrmAutomationDto.
@@ -14,7 +17,7 @@ final class CreateCrmAutomationDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\CRM\DTOs\CreateCrmAutomationDto::class
+            CreateCrmAutomationDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'CreateCrmAutomationDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'CreateCrmAutomationDto must be readonly');
@@ -23,11 +26,11 @@ final class CreateCrmAutomationDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\CRM\DTOs\CreateCrmAutomationDto::class
+            CreateCrmAutomationDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('tenantId', $params, 'Constructor must have tenantId');
         $this->assertContains('name', $params, 'Constructor must have name');
         $this->assertContains('description', $params, 'Constructor must have description');
@@ -43,7 +46,7 @@ final class CreateCrmAutomationDtoTest extends TestCase
         $this->assertContains('tags', $params, 'Constructor must have tags');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -53,6 +56,6 @@ final class CreateCrmAutomationDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\CRM\DTOs\CreateCrmAutomationDto::class;
+        return CreateCrmAutomationDto::class;
     }
 }

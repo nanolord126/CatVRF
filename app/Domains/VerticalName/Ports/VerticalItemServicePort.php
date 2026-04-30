@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\VerticalName\Ports;
 
+use Illuminate\Database\DatabaseManager;
+
 use App\Domains\VerticalName\DTOs\CreateVerticalItemDto;
 use App\Domains\VerticalName\DTOs\SearchVerticalItemDto;
 use App\Domains\VerticalName\DTOs\UpdateVerticalItemDto;
@@ -19,11 +21,9 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  *
  * Все методы обязаны:
  * - FraudControlService::check() перед мутациями
- * - DB::transaction() для мутаций
+ * - $this->db->transaction() для мутаций
  * - AuditService::record() после мутаций
  * - correlation_id в каждом вызове
- *
- * @package App\Domains\VerticalName\Ports
  */
 interface VerticalItemServicePort
 {
@@ -32,6 +32,10 @@ interface VerticalItemServicePort
      *
      * Включает: fraud check, DB transaction, audit log, event dispatch.
      */
+    public function __construct(
+        private readonly DatabaseManager $db,
+    ) {}
+
     public function createItem(CreateVerticalItemDto $dto): VerticalItem;
 
     /**

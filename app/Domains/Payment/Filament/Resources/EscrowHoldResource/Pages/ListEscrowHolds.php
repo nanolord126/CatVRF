@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Payment\Filament\Resources\EscrowHoldResource\Pages;
+
+use App\Domains\Payment\Filament\Resources\EscrowHoldResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
+
+class ListEscrowHolds extends ListRecords
+{
+    protected static string $resource = EscrowHoldResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
+}

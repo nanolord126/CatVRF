@@ -1,0 +1,65 @@
+# Kubernetes ConfigMap for Redis Cluster Configuration
+# Production 2026 - CatVRF (28 Verticals WebSocket Scaling)
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-cluster-config
+  namespace: catvrf-prod
+data:
+  redis.conf: |
+    # Cluster Configuration
+    cluster-enabled yes
+    cluster-config-file nodes.conf
+    cluster-node-timeout 5000
+    cluster-require-full-coverage no
+    cluster-migration-barrier 1
+
+    # Persistence
+    appendonly yes
+    appendfsync everysec
+    appendfilename "appendonly.aof"
+    save 900 1
+    save 300 10
+    save 60 10000
+
+    # Memory
+    maxmemory 4gb
+    maxmemory-policy allkeys-lru
+
+    # PubSub / WebSocket Optimization (28 Verticals)
+    client-output-buffer-limit pubsub 64mb 128mb 60
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit replica 256mb 256mb 60
+
+    # Security
+    protected-mode no
+    requirepass ${REDIS_PASSWORD}
+    masterauth ${REDIS_PASSWORD}
+
+    # Logging
+    loglevel notice
+    logfile ""
+
+    # Timeout
+    timeout 0
+    tcp-keepalive 300
+
+    # Performance
+    tcp-backlog 511
+    databases 16
+    hash-max-ziplist-entries 512
+    hash-max-ziplist-value 64
+    list-max-ziplist-size -2
+    list-compress-depth 0
+    set-max-intset-entries 512
+    zset-max-ziplist-entries 128
+    zset-max-ziplist-value 64
+    hll-sparse-max-bytes 3000
+    stream-node-max-bytes 4096
+    stream-node-max-entries 100
+    activerehashing yes
+    hz 10
+    dynamic-hz yes
+    aof-rewrite-incremental-fsync yes
+    rdb-save-incremental-fsync yes

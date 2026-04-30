@@ -59,12 +59,12 @@ final class ViewAppointment extends ViewRecord
 
                     TextEntry::make('price_kopecks')
                         ->label('Цена')
-                        ->formatStateUsing(fn ($state) => number_format((int) $state / 100, 2, '.', ' ') . ' ₽'),
+                        ->formatStateUsing(fn ($state) => number_format((int) $state / 100, 2, '.', ' ').' ₽'),
 
                     TextEntry::make('final_price_kopecks')
                         ->label('Итоговая цена')
                         ->formatStateUsing(fn ($state) => $state
-                            ? number_format((int) $state / 100, 2, '.', ' ') . ' ₽'
+                            ? number_format((int) $state / 100, 2, '.', ' ').' ₽'
                             : '—'),
                 ]),
 
@@ -84,7 +84,7 @@ final class ViewAppointment extends ViewRecord
                     TextEntry::make('cancellation_penalty_kopecks')
                         ->label('Штраф за отмену')
                         ->visible(fn ($record) => $record->status === Appointment::STATUS_CANCELLED && $record->cancellation_penalty_kopecks > 0)
-                        ->formatStateUsing(fn ($state) => number_format((int) $state / 100, 2, '.', ' ') . ' ₽'),
+                        ->formatStateUsing(fn ($state) => number_format((int) $state / 100, 2, '.', ' ').' ₽'),
                 ]),
 
             Section::make('Системная информация')

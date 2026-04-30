@@ -1,18 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Carbon\CarbonImmutable;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 
 /**
  * Personal Shopper AI Service для Fashion.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * AI-персональный шопер: анализ предпочтений,
         рекомендации товаров, составление списков покупок,
         уведомления о скидках, стильный советник.
@@ -20,12 +23,13 @@ use Illuminate\Support\Str;
 final readonly class FashionPersonalShopperService
 {
     private const MAX_RECOMMENDATIONS = 20;
+
     private const WISHLIST_MAX_ITEMS = 100;
 
     public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
     ) {}
 
     /**
@@ -60,7 +64,7 @@ final readonly class FashionPersonalShopperService
 
         if ($category !== null) {
             $query->whereExists(function ($q) use ($category, $tenantId) {
-                $q->select(DB::raw(1))
+                $q->select($this->db->raw(1))
                     ->from('fashion_product_categories')
                     ->whereColumn('fashion_product_categories.product_id', 'fp.id')
                     ->where('fashion_product_categories.tenant_id', $tenantId)
@@ -76,11 +80,11 @@ final readonly class FashionPersonalShopperService
             $query->where('fp.price_b2c', '<=', $budgetMax);
         }
 
-        if (!empty($userPreferences['brands'])) {
+        if (! empty($userPreferences['brands'])) {
             $query->whereIn('fp.brand', $userPreferences['brands']);
         }
 
-        if (!empty($userPreferences['colors'])) {
+        if (! empty($userPreferences['colors'])) {
             $query->whereIn('fp.color', $userPreferences['colors']);
         }
 
@@ -91,7 +95,7 @@ final readonly class FashionPersonalShopperService
             ->toArray();
 
         $scoredProducts = $this->scoreProducts($products, $userPreferences, $userBehavior);
-        usort($scoredProducts, fn($a, $b) => $b['score'] <=> $a['score']);
+        usort($scoredProducts, fn ($a, $b) => $b['score'] <=> $a['score']);
 
         return [
             'user_id' => $userId,
@@ -130,7 +134,7 @@ final readonly class FashionPersonalShopperService
                 ->where('status', 'active')
                 ->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 throw new \InvalidArgumentException('Product not found', 404);
             }
         }
@@ -143,8 +147,8 @@ final readonly class FashionPersonalShopperService
             'budget' => $budget,
             'status' => 'active',
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         foreach ($productIds as $productId) {
@@ -219,8 +223,8 @@ final readonly class FashionPersonalShopperService
             'price_added' => $this->getProductPrice($productId, $tenantId),
             'is_available' => true,
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         return [
@@ -331,11 +335,11 @@ final readonly class FashionPersonalShopperService
         foreach ($products as &$product) {
             $score = 0.5;
 
-            if (in_array($product['brand'], $preferences['brands'] ?? [])) {
+            if (in_array($product['brand'], $preferences['brands'] ?? [], true)) {
                 $score += 0.2;
             }
 
-            if (in_array(strtolower($product['color']), array_map('strtolower', $preferences['colors'] ?? []))) {
+            if (in_array(strtolower($product['color']), array_map('strtolower', $preferences['colors'] ?? []), true)) {
                 $score += 0.15;
             }
 
@@ -367,7 +371,7 @@ final readonly class FashionPersonalShopperService
 
         if (str_contains($queryLower, 'color')) {
             $colors = $preferences['colors'] ?? [];
-            if (!empty($colors)) {
+            if (! empty($colors)) {
                 $advice[] = sprintf('Based on your preferences, consider colors: %s', implode(', ', $colors));
             } else {
                 $advice[] = 'Start with neutral colors (black, white, gray) as a base';
@@ -376,7 +380,7 @@ final readonly class FashionPersonalShopperService
 
         if (str_contains($queryLower, 'style')) {
             $categories = $preferences['categories'] ?? [];
-            if (!empty($categories)) {
+            if (! empty($categories)) {
                 $advice[] = sprintf('Your preferred styles include: %s', implode(', ', $categories));
             } else {
                 $advice[] = 'Start with classic pieces that never go out of style';

@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Listeners;
-
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Electronics\Events\WarrantyClaimSubmitted;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Services\AuditService;
+
 /**
  * Class ProcessWarrantyClaimListener
  *
@@ -16,13 +18,11 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  * Event listener handling domain event side effects.
  * Runs asynchronously via queue when ShouldQueue is implemented.
  * All listeners maintain correlation_id chain.
- *
- * @package App\Domains\Electronics\Listeners
  */
 final class ProcessWarrantyClaimListener implements ShouldQueue
 {
     public function __construct(
-        private readonly \App\Services\AuditService $audit,
+        private readonly AuditService $audit,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -33,7 +33,7 @@ final class ProcessWarrantyClaimListener implements ShouldQueue
      */
     public function handle(WarrantyClaimSubmitted $event): void
     {
-        $this->logger->info('ProcessWarrantyClaimListener handled', [
+        $this->logger->$this->logger->info('ProcessWarrantyClaimListener handled', [
             'event' => 'WarrantyClaimSubmitted',
             'correlation_id' => $event->correlationId ?? 'N/A',
         ]);

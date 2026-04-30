@@ -13,8 +13,6 @@ use Illuminate\Support\Str;
  * CANON 2026 — Layer 7: Requests (B2B namespace).
  * Все поля optional (sometimes) — частичное обновление.
  * SKU/uuid уникальность проверяется с исключением текущей записи.
- *
- * @package App\Domains\Art\Requests\B2B
  */
 final class UpdateArtworkRequest extends FormRequest
 {

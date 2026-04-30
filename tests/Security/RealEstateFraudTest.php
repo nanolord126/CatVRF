@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Security;
 
@@ -15,40 +17,17 @@ final class RealEstateFraudTest extends SecurityTestCase
     use RefreshDatabase;
 
     private User $user;
+
     private User $attacker;
+
     private Tenant $tenant;
+
     private Property $property;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->attacker = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->property = Property::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'type' => 'apartment',
-            'area_sqm' => 75.5,
-            'price' => 10000000.00,
-            'metadata' => [
-                'title_clear' => true,
-                'no_liens' => true,
-                'blockchain_verified' => true,
-            ],
-        ]);
-
-        DB::table('user_profiles')->insert([
-            'user_id' => $this->user->id,
-            'estimated_income' => 500000.00,
-            'existing_debt' => 50000.00,
-        ]);
-    }
 
     public function test_property_price_manipulation_blocked(): void
     {
         $originalPrice = $this->property->price;
-        
+
         $response = $this->actingAs($this->attacker)
             ->putJson("/api/real-estate/properties/{$this->property->id}", [
                 'price' => 100000.00,
@@ -231,7 +210,7 @@ final class RealEstateFraudTest extends SecurityTestCase
         $forgedDocument = [
             'property_id' => $this->property->id,
             'document_type' => 'title_deed',
-            'document_hash' => '0x' . str_repeat('0', 64),
+            'document_hash' => '0x'.str_repeat('0', 64),
             'forged' => true,
         ];
 
@@ -294,6 +273,32 @@ final class RealEstateFraudTest extends SecurityTestCase
         } else {
             $this->assertContains($response->status(), [403, 422], 'Price inflation should be blocked');
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $this->attacker = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $this->property = Property::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'type' => 'apartment',
+            'area_sqm' => 75.5,
+            'price' => 10000000.00,
+            'metadata' => [
+                'title_clear' => true,
+                'no_liens' => true,
+                'blockchain_verified' => true,
+            ],
+        ]);
+
+        DB::table('user_profiles')->insert([
+            'user_id' => $this->user->id,
+            'estimated_income' => 500000.00,
+            'existing_debt' => 50000.00,
+        ]);
     }
 
     protected function assertHasFraudScore($response): void

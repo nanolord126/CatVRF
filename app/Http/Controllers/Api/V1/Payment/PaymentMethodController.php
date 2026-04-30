@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Payment;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use App\Services\FraudControlService;
@@ -17,13 +23,12 @@ use Illuminate\Support\Str;
  */
 final class PaymentMethodController extends Controller
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly FraudControlService $fraudService,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
-        private readonly ResponseFactory $response,
-    ) {}
+        private readonly ResponseFactory $response,) {}
 
     /**
      * POST /payment-methods/bind-card — привязка карты.
@@ -65,11 +70,11 @@ final class PaymentMethodController extends Controller
                     'is_default' => $this->db->table('payment_methods')->where('user_id', auth()->id())->count() === 0,
                     'status' => 'pending_3ds',
                     'correlation_id' => $correlationId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
-                $this->logger->channel('audit')->info('Card bind initiated', [
+                $this->logger->channel('audit')->$this->logger->info('Card bind initiated', [
                     'correlation_id' => $correlationId,
                     'method_id' => $methodId,
                     'user_id' => auth()->id(),
@@ -107,7 +112,7 @@ final class PaymentMethodController extends Controller
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
         try {
-            return $this->db->transaction(function () use ($id, $request, $correlationId): JsonResponse {
+            return $this->db->transaction(function () use ($id, $correlationId): JsonResponse {
                 $method = $this->db->table('payment_methods')
                     ->where('id', $id)
                     ->where('user_id', auth()->id())
@@ -134,10 +139,10 @@ final class PaymentMethodController extends Controller
                     ->update([
                         'status' => 'active',
                         'correlation_id' => $correlationId,
-                        'updated_at' => now(),
+                        'updated_at' => CarbonImmutable::now(),
                     ]);
 
-                $this->logger->channel('audit')->info('Card 3DS verified', [
+                $this->logger->channel('audit')->$this->logger->info('Card 3DS verified', [
                     'correlation_id' => $correlationId,
                     'method_id' => $id,
                     'user_id' => auth()->id(),
@@ -185,7 +190,7 @@ final class PaymentMethodController extends Controller
                     ], 404);
                 }
 
-                $this->logger->channel('audit')->info('Payment method removed', [
+                $this->logger->channel('audit')->$this->logger->info('Payment method removed', [
                     'correlation_id' => $correlationId,
                     'method_id' => $id,
                     'user_id' => auth()->id(),

@@ -1,0 +1,21 @@
+# StorageClass for Redis Cluster (SSD Performance)
+# Production 2026 - CatVRF
+# Note: Adjust based on your cloud provider
+# AWS: gp3, Azure: premium-rwo, GCP: pd-ssd, Bare-metal: local-ssd
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ssd
+  namespace: catvrf-prod
+provisioner: kubernetes.io/aws-ebs  # Change for your provider
+parameters:
+  type: gp3  # AWS gp3 (recommended)
+  iops: "3000"
+  throughput: "125"
+  encrypted: "true"
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+mountOptions:
+  - debug

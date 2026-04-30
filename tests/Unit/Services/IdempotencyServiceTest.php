@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
 use PHPUnit\Framework\TestCase;
+use App\Services\Security\IdempotencyService;
 
 /**
  * Unit tests for IdempotencyService.
@@ -13,14 +16,14 @@ final class IdempotencyServiceTest extends TestCase
 {
     public function test_class_is_final_readonly(): void
     {
-        $reflection = new \ReflectionClass(\App\Services\Security\IdempotencyService::class);
+        $reflection = new \ReflectionClass(IdempotencyService::class);
         $this->assertTrue($reflection->isFinal(), 'IdempotencyService must be final');
         $this->assertTrue($reflection->isReadOnly(), 'IdempotencyService must be readonly');
     }
 
     public function test_has_constructor_injection(): void
     {
-        $reflection = new \ReflectionClass(\App\Services\Security\IdempotencyService::class);
+        $reflection = new \ReflectionClass(IdempotencyService::class);
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
@@ -29,7 +32,7 @@ final class IdempotencyServiceTest extends TestCase
     public function test_check_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Services\Security\IdempotencyService::class, 'check'),
+            method_exists(IdempotencyService::class, 'check'),
             'IdempotencyService must implement check()'
         );
     }
@@ -37,7 +40,7 @@ final class IdempotencyServiceTest extends TestCase
     public function test_record_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Services\Security\IdempotencyService::class, 'record'),
+            method_exists(IdempotencyService::class, 'record'),
             'IdempotencyService must implement record()'
         );
     }
@@ -45,17 +48,16 @@ final class IdempotencyServiceTest extends TestCase
     public function test_cleanup_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Services\Security\IdempotencyService::class, 'cleanup'),
+            method_exists(IdempotencyService::class, 'cleanup'),
             'IdempotencyService must implement cleanup()'
         );
     }
 
-    public function test_getRecord_method_exists(): void
+    public function test_get_record_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Services\Security\IdempotencyService::class, 'getRecord'),
+            method_exists(IdempotencyService::class, 'getRecord'),
             'IdempotencyService must implement getRecord()'
         );
     }
-
 }

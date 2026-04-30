@@ -15,12 +15,10 @@ use InvalidArgumentException;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Shared\Domain\ValueObjects
  */
 final readonly class TenantId
 {
-    public function __construct(private int $value)
+    public function __construct(private readonly int $value)
     {
         if ($this->value < 1) {
             throw new InvalidArgumentException('TenantId must be a positive integer.');
@@ -49,11 +47,9 @@ final readonly class TenantId
 
     /**
      * Get the string representation of this object.
-     *
-     * @return string
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new');
+        return self::class.'::'.($this->id ?? 'new');
     }
 }

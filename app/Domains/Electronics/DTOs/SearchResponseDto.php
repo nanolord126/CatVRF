@@ -1,13 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\DTOs;
 
 final readonly class SearchResponseDto
 {
     /**
-     * @param array<int, array<string, mixed>> $products
-     * @param array<string, mixed> $aggregations
-     * @param array<string, mixed> $metadata
+     * @param  array<int, array<string, mixed>>  $products
+     * @param  array<string, mixed>  $aggregations
+     * @param  array<string, mixed>  $metadata
      */
     public function __construct(
         public array $products,
@@ -19,8 +21,7 @@ final readonly class SearchResponseDto
         public array $metadata,
         public string $correlationId,
         public ?float $searchTimeMs,
-    ) {
-    }
+    ) {}
 
     public function toArray(): array
     {

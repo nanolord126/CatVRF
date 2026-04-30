@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Beauty\Events\VideoCallEndedEvent;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
+use Carbon\CarbonImmutable;
 
 final class VideoCallEndedListener
 {
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,) {}
     public function handle(VideoCallEndedEvent $event): void
     {
-        Log::channel('audit')->info('Video call ended event handled', [
+        $this->log->channel('audit')->$this->logger->info('Video call ended event handled', [
             'correlation_id' => $event->correlationId,
             'call_id' => $event->callId,
             'user_id' => $event->userId,
@@ -27,15 +33,15 @@ final class VideoCallEndedListener
 
     private function trackCallStatistics(VideoCallEndedEvent $event): void
     {
-        $key = "beauty:call_stats:daily:" . now()->toDateString();
-        Redis::hincrby($key, 'total_calls', 1);
-        Redis::hincrby($key, 'total_duration', $event->durationSeconds);
-        Redis::expire($key, 86400 * 30);
+        $key = 'beauty:call_stats:daily:'.CarbonImmutable::now()->toDateString();
+        $this->redis->hincrby($key, 'total_calls', 1);
+        $this->redis->hincrby($key, 'total_duration', $event->durationSeconds);
+        $this->redis->expire($key, 86400 * 30);
     }
 
     private function updateMasterAvailability(VideoCallEndedEvent $event): void
     {
         $key = "beauty:master:availability:{$event->masterId}";
-        Redis::del($key);
+        $this->redis->del($key);
     }
 }

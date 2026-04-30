@@ -1,35 +1,37 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs\Analytics;
 
+use Psr\Log\LoggerInterface;
 
 use App\Services\DemandForecastService;
 use App\Services\RecommendationService;
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 
 final class DailyAnalyticsJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    private string $correlationId;
+    private readonly string $correlationId;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
-    )
-    {
+        private readonly DatabaseManager $db,) {
         $this->correlationId = Str::uuid()->toString();
-        $this->onQueue('analytics');
+        $this->onQueue('default');
     }
 
     public function tags(): array
@@ -39,7 +41,7 @@ final class DailyAnalyticsJob implements ShouldQueue
 
     public function retryUntil(): \DateTime
     {
-        return now()->addHours(6);
+        return CarbonImmutable::now()->addHours(6);
     }
 
     public function handle(
@@ -59,8 +61,8 @@ final class DailyAnalyticsJob implements ShouldQueue
                     try {
                         $forecast = $forecastService->forecastForItem(
                             $item->id,
-                            Carbon::now(),
-                            Carbon::now()->addDays(30)
+                            new DateTime(),
+                            (clone $now)->modify(+30 days)
                         );
 
                         $this->logger->channel('audit')->debug('Demand forecast calculated', [
@@ -80,9 +82,9 @@ final class DailyAnalyticsJob implements ShouldQueue
                 // Recalculate recommendation embeddings
                 $recommendationService->recalculateEmbeddings();
 
-                $this->logger->channel('audit')->info('Daily analytics job completed', [
+                $this->logger->channel('audit')->$this->logger->info('Daily analytics job completed', [
                     'correlation_id' => $this->correlationId,
-                    'timestamp' => Carbon::now()->toIso8601String(),
+                    'timestamp' => new DateTime()->toIso8601String(),
                 ]);
             });
         } catch (\Exception $e) {
@@ -103,4 +105,3 @@ final class DailyAnalyticsJob implements ShouldQueue
         }
     }
 }
-

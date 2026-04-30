@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\B2C\Taxi;
 
+use Illuminate\Http\Response;
 
 use Illuminate\Auth\AuthManager;
 use App\Domains\Auto\Taxi\Application\B2C\UseCases\RequestRideUseCase;
@@ -11,8 +12,6 @@ use App\Domains\Auto\Taxi\Application\Shared\DTOs\RequestRideDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\B2C\Taxi\RequestRideFormRequest;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
-
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -26,9 +25,7 @@ final class RideController extends Controller
         private readonly RequestRideUseCase $requestRideUseCase,
         private readonly LogManager $logger,
         private readonly ResponseFactory $response,
-    ) {
-
-    }
+    ) {}
 
     public function requestRide(RequestRideFormRequest $request): JsonResponse
     {

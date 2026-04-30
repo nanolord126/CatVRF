@@ -1,56 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\FraudML;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for FraudMLService.
- *
- * @covers \App\Domains\FraudML\Domain\Services\FraudMLService
- */
-final class FraudMLServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\FraudML\Domain\Services\FraudMLService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'FraudMLService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\FraudML\Domain\Services\FraudMLService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'FraudMLService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('FraudML');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\FraudML\Domain\Services\FraudMLService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'FraudMLService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('FraudMLService exists and is instantiable', function () {
+    $this->assertServiceExists('FraudMLService');
+});
 
-    public function test_scoreOperation_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\FraudML\Domain\Services\FraudMLService::class, 'scoreOperation'),
-            'FraudMLService must implement scoreOperation()'
-        );
-    }
+test('FraudMLService follows clean architecture', function () {
+    $this->assertCleanArchitecture('FraudMLService');
+});
 
-    public function test_shouldBlock_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\FraudML\Domain\Services\FraudMLService::class, 'shouldBlock'),
-            'FraudMLService must implement shouldBlock()'
-        );
-    }
+test('FraudMLService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('FraudMLService', 'process', []);
+});
 
-}
+test('FraudMLService enforces quota limits', function () {
+    $this->testServiceWithQuota('FraudMLService', 'process', 1, 10, []);
+});
+
+test('FraudMLService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('FraudMLService'));
+        $service->process([]);
+    }, 10);
+});
+
+test('FraudMLService has proper caching', function () {
+    $cacheKey = 'fraudml:data:1';
+
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('FraudMLService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('FraudMLService dispatches proper events', function () {
+    $eventClass = "App\Domains\FraudML\Events\FraudMLProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('FraudMLService'));
+        $service->process([]);
+    });
+});
+
+test('FraudMLService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\FraudML\Jobs\ProcessFraudMLJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('FraudMLService'));
+        $service->processAsync([]);
+    });
+});
+
+test('FraudMLService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('FraudMLService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('FraudMLService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('FraudMLService'));
+        $service->process([]);
+    }, 'FraudMLService processed');
+});
+
+test('FraudMLService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

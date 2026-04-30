@@ -1,30 +1,36 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
+use Carbon\CarbonImmutable;
+
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Personalized Email Campaign Service для Fashion.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * Персонализированные email-кампании на основе поведения,
         сегментация, A/B тестирование контента, автоматические триггеры.
  */
 final readonly class FashionEmailCampaignService
 {
     private const MIN_SEGMENT_SIZE = 50;
+
     private const MAX_EMAILS_PER_DAY = 1000;
 
     public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
     ) {}
 
     /**
@@ -54,8 +60,8 @@ final readonly class FashionEmailCampaignService
             'clicked_count' => 0,
             'converted_count' => 0,
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         $this->audit->record(
@@ -138,7 +144,7 @@ final readonly class FashionEmailCampaignService
                 $this->sendEmail($userId, $campaign, $correlationId);
                 $sentCount++;
             } catch (\Throwable $e) {
-                Log::channel('audit')->warning('Failed to send email', [
+                $this->log->channel('audit')->warning('Failed to send email', [
                     'user_id' => $userId,
                     'campaign_id' => $campaignId,
                     'error' => $e->getMessage(),
@@ -152,8 +158,8 @@ final readonly class FashionEmailCampaignService
             ->update([
                 'status' => 'sent',
                 'sent_count' => $sentCount,
-                'sent_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
+                'sent_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
         $this->audit->record(
@@ -187,7 +193,7 @@ final readonly class FashionEmailCampaignService
             'campaign_id' => $campaignId,
             'tenant_id' => $tenantId,
             'user_id' => $userId,
-            'opened_at' => Carbon::now(),
+            'opened_at' => CarbonImmutable::now(),
             'correlation_id' => $correlationId,
         ]);
 
@@ -216,7 +222,7 @@ final readonly class FashionEmailCampaignService
             'tenant_id' => $tenantId,
             'user_id' => $userId,
             'link' => $link,
-            'clicked_at' => Carbon::now(),
+            'clicked_at' => CarbonImmutable::now(),
             'correlation_id' => $correlationId,
         ]);
 
@@ -286,8 +292,7 @@ final readonly class FashionEmailCampaignService
         string $subject,
         string $template,
         string $correlationId = ''
-    ): array
-    {
+    ): array {
         $correlationId = $correlationId ?: Str::uuid()->toString();
         $tenantId = $this->getTenantId();
 
@@ -305,8 +310,8 @@ final readonly class FashionEmailCampaignService
             'clicked_count' => 0,
             'converted_count' => 0,
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         return [
@@ -319,25 +324,25 @@ final readonly class FashionEmailCampaignService
 
     private function applySegmentationRules(array $rules, int $tenantId): array
     {
-        $query = DB::table('users')->where('tenant_id', $tenantId);
+        $query = $this->db->table('users')->where('tenant_id', $tenantId);
 
-        if (!empty($rules['min_purchases'])) {
+        if (! empty($rules['min_purchases'])) {
             $query->where('purchase_count', '>=', $rules['min_purchases']);
         }
 
-        if (!empty($rules['categories'])) {
+        if (! empty($rules['categories'])) {
             $query->whereIn('preferred_category', $rules['categories']);
         }
 
-        if (!empty($rules['price_range'])) {
+        if (! empty($rules['price_range'])) {
             $query->whereBetween('avg_order_value', [
                 $rules['price_range']['min'],
                 $rules['price_range']['max'],
             ]);
         }
 
-        if (!empty($rules['last_purchase_days'])) {
-            $query->where('last_purchase_at', '>=', Carbon::now()->subDays($rules['last_purchase_days']));
+        if (! empty($rules['last_purchase_days'])) {
+            $query->where('last_purchase_at', '>=', CarbonImmutable::now()->subDays($rules['last_purchase_days']));
         }
 
         return $query->limit(self::MAX_EMAILS_PER_DAY)->pluck('id')->toArray();
@@ -352,15 +357,15 @@ final readonly class FashionEmailCampaignService
             'user_id' => $userId,
             'subject' => $campaign['subject'],
             'content' => $personalizedContent,
-            'sent_at' => Carbon::now(),
+            'sent_at' => CarbonImmutable::now(),
             'correlation_id' => $correlationId,
         ]);
     }
 
     private function personalizeContent(string $template, int $userId, string $correlationId): string
     {
-        $user = DB::table('users')->where('id', $userId)->first();
-        
+        $user = $this->db->table('users')->where('id', $userId)->first();
+
         if ($user === null) {
             return $template;
         }
@@ -376,7 +381,7 @@ final readonly class FashionEmailCampaignService
 
     private function getUserRecommendations(int $userId, string $correlationId): array
     {
-        return DB::table('fashion_user_memory_interactions')
+        return $this->db->table('fashion_user_memory_interactions')
             ->where('user_id', $userId)
             ->select('category')
             ->distinct()

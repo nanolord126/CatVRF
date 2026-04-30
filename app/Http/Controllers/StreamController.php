@@ -1,22 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 final class StreamController extends Controller
 {
-
     use AuthorizesRequests;
-        /**
-         * Show live stream for event
-         */
-        public function show(Event $stream): View
-        {
-            $this->authorize('view', $stream);
-            return view('live-stream', [
-                'stream' => $stream,
-                'title' => $stream->name,
-            ]);
-        }
 
     /**
      * Version identifier for this component.
@@ -34,21 +26,38 @@ final class StreamController extends Controller
     private const CACHE_TTL = 3600;
 
     /**
+     * Show live stream for event
+     */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
+    public function show(Event $stream): View
+    {
+        $this->authorize('view', $stream);
+
+        return $this->viewFactory->make('live-stream', [
+            'stream' => $stream,
+            'title' => $stream->name,
+        ]);
+    }
+
+    /**
      * Get the component identifier for logging and audit purposes.
      *
      * @return string The fully qualified component name
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**
      * Handle graceful error recovery for the component.
      * Logs the error and determines if retry is possible.
      *
-     * @param \Throwable $exception The caught exception
-     * @param int $attempt Current attempt number
+     * @param  \Throwable  $exception  The caught exception
+     * @param  int  $attempt  Current attempt number
      * @return bool Whether the operation should be retried
      */
     private function handleError(\Throwable $exception, int $attempt = 1): bool
@@ -59,5 +68,4 @@ final class StreamController extends Controller
 
         return true;
     }
-
 }

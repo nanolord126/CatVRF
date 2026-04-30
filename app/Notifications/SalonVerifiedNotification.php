@@ -1,8 +1,9 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -13,15 +14,12 @@ use App\Domains\Beauty\Models\Salon as BeautySalon;
  *
  * Уведомление об успешной верификации салона красоты.
  * Отправляется владельцу салона по database и email каналам.
- *
- * @package App\Notifications
  */
 final class SalonVerifiedNotification extends Notification implements ShouldQueue
 {
     public function __construct(
         private readonly BeautySalon $salon,
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {
@@ -39,10 +37,10 @@ final class SalonVerifiedNotification extends Notification implements ShouldQueu
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return (new MailMessage())
             ->subject('Салон верифицирован')
             ->line('Поздравляем! Ваш салон успешно прошёл верификацию.')
-            ->line('Салон: ' . $this->salon->name)
+            ->line('Салон: '.$this->salon->name)
             ->line('Теперь вы можете принимать записи от клиентов.')
             ->action('Перейти в панель управления', url('/tenant/dashboard'));
     }

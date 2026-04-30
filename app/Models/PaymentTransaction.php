@@ -1,13 +1,26 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class PaymentTransaction extends Model
 {
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_AUTHORIZED = 'authorized';
+
+    public const STATUS_CAPTURED = 'captured';
+
+    public const STATUS_REFUNDED = 'refunded';
+
+    public const STATUS_FAILED = 'failed';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
     protected $table = 'payment_transactions';
 
     protected $fillable = [
@@ -35,6 +48,7 @@ final class PaymentTransaction extends Model
         'device_fingerprint',
         'fraud_score',
         'fraud_ml_version',
+        'version',
         'ml_fraud_version',
         'three_ds_required',
         'three_ds_verified',
@@ -57,14 +71,8 @@ final class PaymentTransaction extends Model
         'captured_at' => 'datetime',
         'refunded_at' => 'datetime',
         'failed_at' => 'datetime',
+        'version' => 'integer',
     ];
-
-    const STATUS_PENDING = 'pending';
-    const STATUS_AUTHORIZED = 'authorized';
-    const STATUS_CAPTURED = 'captured';
-    const STATUS_REFUNDED = 'refunded';
-    const STATUS_FAILED = 'failed';
-    const STATUS_CANCELLED = 'cancelled';
 
     /**
      * Связь с кошельком
@@ -101,7 +109,7 @@ final class PaymentTransaction extends Model
     protected static function booted(): void
     {
         parent::booted();
-        static::addGlobalScope('tenant_id', function ($query) {
+        self::addGlobalScope('tenant_id', function ($query) {
             if (function_exists('tenant') && tenant('id')) {
                 $query->where('tenant_id', tenant('id'));
             }

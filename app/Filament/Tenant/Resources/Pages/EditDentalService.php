@@ -1,14 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
-
 use Psr\Log\LoggerInterface;
+
 use App\Filament\Tenant\Resources\DentalServiceResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use Illuminate\Support\Str;
 
 /**
  * Class EditDentalService
@@ -20,17 +25,15 @@ use Illuminate\Support\Facades\Log;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Filament\Tenant\Resources\Pages
+ * @see FraudControlService
+ * @see AuditService
  */
 final class EditDentalService extends EditRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = DentalServiceResource::class;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     protected function getHeaderActions(): array
     {
@@ -44,14 +47,14 @@ final class EditDentalService extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $data['correlation_id'] = (string) \Illuminate\Support\Str::uuid();
+        $data['correlation_id'] = (string) Str::uuid();
 
         return $data;
     }
 
     protected function afterSave(): void
     {
-        \Illuminate\Support\Facades\Log::channel('audit')->info('DentalService updated', [
+        $this->log->channel('audit')->$this->logger->info('DentalService updated', [
             'service_id'     => $this->record->id,
             'name'           => $this->record->name,
             'base_price'     => $this->record->base_price,

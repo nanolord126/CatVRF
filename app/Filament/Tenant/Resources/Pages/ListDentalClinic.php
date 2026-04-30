@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -10,25 +12,14 @@ use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Log;
 
 final class ListDentalClinic extends ListRecords
 {
     protected static string $resource = DentalClinicResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Добавить клинику')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -44,7 +35,7 @@ final class ListDentalClinic extends ListRecords
                     ->sortable()
                     ->searchable()
                     ->weight('bold')
-                    ->description(fn ($record) => $record->license_number ? 'Лицензия: ' . $record->license_number : null),
+                    ->description(fn ($record) => $record->license_number ? 'Лицензия: '.$record->license_number : null),
 
                 TextColumn::make('license_number')
                     ->label('№ лицензии')
@@ -60,7 +51,7 @@ final class ListDentalClinic extends ListRecords
                 TextColumn::make('rating')
                     ->label('Рейтинг')
                     ->sortable()
-                    ->formatStateUsing(fn ($state) => $state > 0 ? '★ ' . $state . '/100' : '—'),
+                    ->formatStateUsing(fn ($state) => $state > 0 ? '★ '.$state.'/100' : '—'),
 
                 IconColumn::make('is_premium')
                     ->label('Премиум')
@@ -99,5 +90,14 @@ final class ListDentalClinic extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Добавить клинику')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

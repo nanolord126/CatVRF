@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\Fraud;
 
@@ -8,12 +10,6 @@ use Tests\TestCase;
 final class FraudDataAnonymizerTest extends TestCase
 {
     private FraudDataAnonymizer $anonymizer;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->anonymizer = app(FraudDataAnonymizer::class);
-    }
 
     public function test_anonymizes_medical_symptoms(): void
     {
@@ -215,5 +211,11 @@ final class FraudDataAnonymizerTest extends TestCase
         $this->assertEquals('payment', $result['operation_type']);
         $this->assertEquals(123, $result['user_id']);
         $this->assertEquals('2024-01-01', $result['timestamp']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->anonymizer = app(FraudDataAnonymizer::class);
     }
 }

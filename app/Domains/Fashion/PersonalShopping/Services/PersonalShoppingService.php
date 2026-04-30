@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\PersonalShopping\Services;
 
@@ -11,21 +13,25 @@ use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 final readonly class PersonalShoppingService
 {
     private const COMMISSION_RATE = 0.14;
+
     private const RATE_LIMIT_KEY = 'shopping:session:';
+
     private const RATE_LIMIT_MAX = 15;
+
     private const RATE_LIMIT_DECAY = 3600;
 
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private AuditService $audit,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
@@ -74,7 +80,7 @@ final readonly class PersonalShoppingService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Personal shopping session created', [
+            $this->logger->$this->logger->info('Personal shopping session created', [
                 'session_id' => $session->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -180,7 +186,7 @@ final readonly class PersonalShoppingService
     /**
      * Получить список сессий клиента.
      */
-    public function getUserSessions(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    public function getUserSessions(int $clientId, int $limit = 10): Collection
     {
         return ShoppingSession::where('client_id', $clientId)
             ->orderBy('created_at', 'desc')

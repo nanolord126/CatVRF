@@ -1,24 +1,32 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\RealEstate\Models\PropertyViewing;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 final readonly class RealEstateFaceIDVerificationService
 {
     private const TOKEN_TTL_SECONDS = 300;
+
     private const VERIFICATION_CACHE_TTL = 600;
+
     private const MAX_VERIFICATION_ATTEMPTS = 3;
+
     private const ATTEMPT_WINDOW_MINUTES = 15;
 
     public function __construct(
-        private FraudControlService $fraudControl,
-        private AuditService $audit
+        private readonly FraudControlService $fraudControl,
+        private readonly AuditService $audit,
+        private readonly RedisConnection $redis,
     ) {}
 
     public function generateVerificationToken(
@@ -36,7 +44,7 @@ final readonly class RealEstateFaceIDVerificationService
         );
 
         $attemptsKey = $this->getAttemptsKey($userId, $propertyId);
-        $currentAttempts = (int) Redis::get($attemptsKey) ?? 0;
+        $currentAttempts = (int) $this->redis->get($attemptsKey) ?? 0;
 
         if ($currentAttempts >= self::MAX_VERIFICATION_ATTEMPTS) {
             throw new \DomainException('Maximum verification attempts exceeded. Please try again later.');
@@ -47,18 +55,18 @@ final readonly class RealEstateFaceIDVerificationService
             'user_id' => $userId,
             'property_id' => $propertyId,
             'correlation_id' => $correlationId,
-            'expires_at' => now()->addSeconds(self::TOKEN_TTL_SECONDS)->toIso8601String(),
-            'created_at' => now()->toIso8601String(),
+            'expires_at' => CarbonImmutable::now()->addSeconds(self::TOKEN_TTL_SECONDS)->toIso8601String(),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
         ];
 
-        Redis::setex(
+        $this->redis->setex(
             $this->getTokenKey($token),
             self::TOKEN_TTL_SECONDS,
             json_encode($tokenData)
         );
 
-        Redis::incr($attemptsKey);
-        Redis::expire($attemptsKey, self::ATTEMPT_WINDOW_MINUTES * 60);
+        $this->redis->incr($attemptsKey);
+        $this->redis->expire($attemptsKey, self::ATTEMPT_WINDOW_MINUTES * 60);
 
         $this->audit->record(
             'faceid_token_generated',
@@ -96,7 +104,7 @@ final readonly class RealEstateFaceIDVerificationService
             $correlationId
         );
 
-        $tokenDataJson = Redis::get($this->getTokenKey($token));
+        $tokenDataJson = $this->redis->get($this->getTokenKey($token));
 
         if ($tokenDataJson === null) {
             throw new \DomainException('Invalid or expired verification token');
@@ -105,7 +113,7 @@ final readonly class RealEstateFaceIDVerificationService
         $tokenData = json_decode($tokenDataJson, true);
 
         if ($tokenData['user_id'] !== $expectedUserId) {
-            Redis::del($this->getTokenKey($token));
+            $this->redis->del($this->getTokenKey($token));
             throw new \DomainException('Token user mismatch');
         }
 
@@ -124,7 +132,7 @@ final readonly class RealEstateFaceIDVerificationService
                 $correlationId
             );
 
-            throw new \DomainException('FaceID verification failed: ' . ($verification['reason'] ?? 'Unknown error'));
+            throw new \DomainException('FaceID verification failed: '.($verification['reason'] ?? 'Unknown error'));
         }
 
         if ($verification['confidence_score'] < 0.85) {
@@ -143,8 +151,8 @@ final readonly class RealEstateFaceIDVerificationService
             throw new \DomainException('FaceID verification confidence too low');
         }
 
-        Redis::del($this->getTokenKey($token));
-        Redis::del($this->getAttemptsKey($expectedUserId, $tokenData['property_id']));
+        $this->redis->del($this->getTokenKey($token));
+        $this->redis->del($this->getAttemptsKey($expectedUserId, $tokenData['property_id']));
 
         $verificationRecord = [
             'user_id' => $expectedUserId,
@@ -152,12 +160,12 @@ final readonly class RealEstateFaceIDVerificationService
             'verified' => true,
             'confidence_score' => $verification['confidence_score'],
             'verification_method' => $verification['method'] ?? 'biometric',
-            'verified_at' => now()->toIso8601String(),
+            'verified_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
         $cacheKey = $this->getVerificationCacheKey($expectedUserId, $tokenData['property_id']);
-        Redis::setex($cacheKey, self::VERIFICATION_CACHE_TTL, json_encode($verificationRecord));
+        $this->redis->setex($cacheKey, self::VERIFICATION_CACHE_TTL, json_encode($verificationRecord));
 
         $this->audit->record(
             'faceid_verified',
@@ -186,7 +194,7 @@ final readonly class RealEstateFaceIDVerificationService
         string $correlationId
     ): void {
         $cacheKey = $this->getVerificationCacheKey($viewing->user_id, $viewing->property_id);
-        $verificationJson = Redis::get($cacheKey);
+        $verificationJson = $this->redis->get($cacheKey);
 
         if ($verificationJson === null) {
             throw new \DomainException('No valid FaceID verification found for this viewing');
@@ -198,10 +206,10 @@ final readonly class RealEstateFaceIDVerificationService
             throw new \DomainException('FaceID verification not valid');
         }
 
-        $verificationAge = now()->diffInSeconds(Carbon::parse($verification['verified_at']));
+        $verificationAge = CarbonImmutable::now()->diffInSeconds(Carbon::parse($verification['verified_at']));
 
         if ($verificationAge > self::VERIFICATION_CACHE_TTL) {
-            Redis::del($cacheKey);
+            $this->redis->del($cacheKey);
             throw new \DomainException('FaceID verification has expired');
         }
 
@@ -231,7 +239,7 @@ final readonly class RealEstateFaceIDVerificationService
         string $correlationId
     ): array {
         $cacheKey = $this->getVerificationCacheKey($userId, $propertyId);
-        $verificationJson = Redis::get($cacheKey);
+        $verificationJson = $this->redis->get($cacheKey);
 
         if ($verificationJson === null) {
             return [
@@ -250,7 +258,7 @@ final readonly class RealEstateFaceIDVerificationService
             'verification_method' => $verification['verification_method'] ?? null,
             'verified_at' => $verification['verified_at'],
             'expires_at' => $expiresAt->toIso8601String(),
-            'seconds_until_expiry' => max(0, $expiresAt->diffInSeconds(now())),
+            'seconds_until_expiry' => max(0, $expiresAt->diffInSeconds(CarbonImmutable::now())),
         ];
     }
 
@@ -260,7 +268,7 @@ final readonly class RealEstateFaceIDVerificationService
         string $correlationId
     ): void {
         $cacheKey = $this->getVerificationCacheKey($userId, $propertyId);
-        $verificationJson = Redis::get($cacheKey);
+        $verificationJson = $this->redis->get($cacheKey);
 
         if ($verificationJson !== null) {
             $verification = json_decode($verificationJson, true);
@@ -274,10 +282,10 @@ final readonly class RealEstateFaceIDVerificationService
                 $correlationId
             );
 
-            Redis::del($cacheKey);
+            $this->redis->del($cacheKey);
         }
 
-        Redis::del($this->getAttemptsKey($userId, $propertyId));
+        $this->redis->del($this->getAttemptsKey($userId, $propertyId));
     }
 
     private function parseVerificationResult(string $verificationResult): array

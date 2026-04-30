@@ -1,93 +1,101 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Services;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+
 final readonly class FlightService
 {
-
-    public function __construct(private readonly FraudControlService $fraud,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+    public function __construct(private readonly BusDispatcher $bus,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard) {}
 
-        public function bookFlight(
-            TravelFlight $flight,
-            string $correlationId = null
+    public function bookFlight(
+        TravelFlight $flight,
+        ?string $correlationId = null
     ): TravelFlight {
 
-            $correlationId ??= Str::uuid()->toString();
+        $correlationId ??= Str::uuid()->toString();
 
-            try {
-                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
-    $this->db->transaction(function () use ($flight, $correlationId) {
-                    $flight->lockForUpdate();
+        try {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            $this->db->transaction(function () use ($flight, $correlationId) {
+                $flight->lockForUpdate();
 
-                    if ($flight->available_seats <= 0) {
-                        throw new \RuntimeException('No available seats on this flight');
-                    }
+                if ($flight->available_seats <= 0) {
+                    throw new \RuntimeException('No available seats on this flight');
+                }
 
-                    $flight->decrement('available_seats');
+                $flight->decrement('available_seats');
 
-                    $this->logger->info('Flight booked', [
-                        'flight_id' => $flight->id,
-                        'flight_number' => $flight->flight_number,
-                        'remaining_seats' => $flight->available_seats,
-                        'commission_amount' => $flight->commission_amount,
-                        'correlation_id' => $correlationId,
-                        'timestamp' => now(),
-                    ]);
-
-                    FlightBooked::dispatch($flight, $correlationId);
-
-                    return $flight->refresh();
-                });
-            } catch (Throwable $e) {
-                $this->logger->error('Flight booking failed', [
+                $this->logger->$this->logger->info('Flight booked', [
                     'flight_id' => $flight->id,
-                    'error' => $e->getMessage(),
+                    'flight_number' => $flight->flight_number,
+                    'remaining_seats' => $flight->available_seats,
+                    'commission_amount' => $flight->commission_amount,
                     'correlation_id' => $correlationId,
-                    'trace' => $e->getTraceAsString(),
+                    'timestamp' => CarbonImmutable::now(),
                 ]);
 
-                throw $e;
-            }
-        }
+                FlightBooked::$this->bus->dispatch($flight, $correlationId);
 
-        public function releaseFlight(
-            TravelFlight $flight,
-            string $correlationId = null
+                return $flight->refresh();
+            });
+        } catch (Throwable $e) {
+            $this->logger->error('Flight booking failed', [
+                'flight_id' => $flight->id,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    public function releaseFlight(
+        TravelFlight $flight,
+        ?string $correlationId = null
     ): TravelFlight {
 
-            $correlationId ??= $flight->correlation_id ?? Str::uuid()->toString();
+        $correlationId ??= $flight->correlation_id ?? Str::uuid()->toString();
 
-            try {
-                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
-    $this->db->transaction(function () use ($flight, $correlationId) {
-                    $flight->lockForUpdate();
+        try {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            $this->db->transaction(function () use ($flight, $correlationId) {
+                $flight->lockForUpdate();
 
-                    $flight->increment('available_seats');
+                $flight->increment('available_seats');
 
-                    $this->logger->info('Flight seat released', [
-                        'flight_id' => $flight->id,
-                        'flight_number' => $flight->flight_number,
-                        'available_seats' => $flight->available_seats,
-                        'correlation_id' => $correlationId,
-                        'timestamp' => now(),
-                    ]);
-
-                    return $flight->refresh();
-                });
-            } catch (Throwable $e) {
-                $this->logger->error('Flight seat release failed', [
+                $this->logger->$this->logger->info('Flight seat released', [
                     'flight_id' => $flight->id,
-                    'error' => $e->getMessage(),
+                    'flight_number' => $flight->flight_number,
+                    'available_seats' => $flight->available_seats,
                     'correlation_id' => $correlationId,
-                    'trace' => $e->getTraceAsString(),
+                    'timestamp' => CarbonImmutable::now(),
                 ]);
 
-                throw $e;
-            }
+                return $flight->refresh();
+            });
+        } catch (Throwable $e) {
+            $this->logger->error('Flight seat release failed', [
+                'flight_id' => $flight->id,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
         }
+    }
 }

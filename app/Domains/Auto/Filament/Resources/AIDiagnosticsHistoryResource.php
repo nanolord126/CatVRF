@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources;
 
@@ -6,15 +8,15 @@ use App\Domains\Auto\Filament\Resources\AIDiagnosticsHistoryResource\Pages;
 use App\Domains\Auto\Filament\Resources\AIDiagnosticsHistoryResource\Pages\ListDiagnosticsHistory;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Domains\Auto\Models\AutoDiagnosticsHistory;
 
-final class AIDiagnosticsHistoryResource extends Resource
+final class AIDiagnosticsHistoryResource extends BaseOptimizedResource
 {
-    protected static ?string $model = \App\Domains\Auto\Models\AutoDiagnosticsHistory::class;
+    protected static ?string $model = AutoDiagnosticsHistory::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-magnifying-glass';
 
@@ -117,7 +119,7 @@ final class AIDiagnosticsHistoryResource extends Resource
             ])
             ->filters([
                 Tables\Filters\Filter::make('critical_damages')
-                    ->query(fn (Builder $query): Builder => $query->whereJsonContains('diagnostics_data->damage_detection->critical_count', 0, '>', ))
+                    ->query(fn (Builder $query): Builder => $query->whereJsonContains('diagnostics_data->damage_detection->critical_count', 0, '>'))
                     ->label('Has Critical Damages'),
                 Tables\Filters\Filter::make('date_range')
                     ->form([
@@ -163,5 +165,13 @@ final class AIDiagnosticsHistoryResource extends Resource
             'index' => ListDiagnosticsHistory::route('/'),
             'view' => Pages\ViewDiagnosticsHistory::route('/{record}'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Auto
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * VehicleInspectionFailed — CatVRF 2026 Component.
@@ -7,51 +9,21 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/vehicleinspectionfailed
  */
 
-
 namespace App\Domains\Auto\Events;
 
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Queue\SerializesModels;
-
-
 use Psr\Log\LoggerInterface;
+
 final class VehicleInspectionFailed
 {
-
-    
-        public function __construct(
-            public readonly VehicleInspection $inspection,
-            public readonly string $correlationId, public readonly LoggerInterface $logger
-        ) {
-            $this->logger->info('VehicleInspectionFailed event dispatched', [
-                'correlation_id' => $this->correlationId,
-                'inspection_id' => $this->inspection->id,
-                'notes' => $this->inspection->notes,
-            ]);
-        }
-
-        public function broadcastOn(): array
-        {
-            return [
-                new PrivateChannel('tenant.' . $this->inspection->tenant_id),
-                new PrivateChannel('user.' . $this->inspection->client_id),
-            ];
-        }
-
-        public function broadcastAs(): string
-        {
-            return 'inspection.failed';
-        }
-
     /**
      * Version identifier for this component.
      */
@@ -67,4 +39,29 @@ final class VehicleInspectionFailed
      */
     private const CACHE_TTL = 3600;
 
+
+    public function __construct(
+        public readonly VehicleInspection $inspection,
+        public readonly string $correlationId,
+        public readonly LoggerInterface $logger
+    ) {
+        $this->logger->$this->logger->info('VehicleInspectionFailed event dispatched', [
+            'correlation_id' => $this->correlationId,
+            'inspection_id' => $this->inspection->id,
+            'notes' => $this->inspection->notes,
+        ]);
+    }
+
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('tenant.'.$this->inspection->tenant_id),
+            new PrivateChannel('user.'.$this->inspection->client_id),
+        ];
+    }
+
+    public function broadcastAs(): string
+    {
+        return 'inspection.failed';
+    }
 }

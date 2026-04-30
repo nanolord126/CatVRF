@@ -34,7 +34,7 @@ final class MedicalSupplySeeder extends Seeder
                     'name' => $supply['name'],
                 ],
                 [
-                    'sku' => strtoupper('MED-' . Str::random(8)),
+                    'sku' => strtoupper('MED-'.Str::random(8)),
                     'category' => $supply['category'],
                     'description' => 'Медицинские расходники и оборудование',
                     'price' => $supply['price'],

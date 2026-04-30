@@ -1,29 +1,29 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Services;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Electronics\DTOs\SearchRequestDto;
 use App\Domains\Electronics\DTOs\SearchResponseDto;
 use App\Domains\Electronics\DTOs\FilterDto;
 use App\Domains\Electronics\Models\ElectronicsProduct;
 use App\Services\FraudControlService;
-use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Cache\CacheManager;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Psr\Log\LoggerInterface;
+use Illuminate\Log\LogManager;
+use Carbon\CarbonImmutable;
 
 final readonly class ElectronicsSearchService
 {
-    public function __construct(
-        private FraudControlService $fraud,
-        private Cache $cache,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-    ) {
-    }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     public function search(SearchRequestDto $dto): SearchResponseDto
     {
@@ -40,7 +40,7 @@ final readonly class ElectronicsSearchService
 
         $cachedResult = $this->cache->get($cacheKey);
         if ($cachedResult !== null) {
-            $this->logger->info('Search cache hit', [
+            $this->log->$this->logger->info('Search cache hit', [
                 'query' => $dto->query,
                 'correlation_id' => $dto->correlationId,
             ]);
@@ -81,9 +81,9 @@ final readonly class ElectronicsSearchService
             searchTimeMs: $searchTimeMs,
         );
 
-        $this->cache->put($cacheKey, $response->toArray(), now()->addMinutes(5));
+        $this->cache->put($cacheKey, $response->toArray(), CarbonImmutable::now()->addMinutes(5));
 
-        Log::channel('audit')->info('Electronics search completed', [
+        $this->log->channel('audit')->$this->logger->info('Electronics search completed', [
             'query' => $dto->query,
             'total_results' => $total,
             'page' => $dto->page,
@@ -98,7 +98,7 @@ final readonly class ElectronicsSearchService
     {
         $cacheKey = "electronics_filters:{$category}";
 
-        return $this->cache->remember($cacheKey, now()->addHours(2), function () use ($category) {
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addHours(2), function () use ($category) {
             $query = ElectronicsProduct::query()
                 ->where('is_active', true)
                 ->where('availability_status', '!=', 'discontinued');
@@ -108,7 +108,7 @@ final readonly class ElectronicsSearchService
             }
 
             $brands = $query->clone()
-                ->select('brand', DB::raw('COUNT(*) as count'))
+                ->select('brand', $this->db->raw('COUNT(*) as count'))
                 ->groupBy('brand')
                 ->orderBy('count', 'desc')
                 ->get()
@@ -117,7 +117,7 @@ final readonly class ElectronicsSearchService
 
             $categories = ElectronicsProduct::query()
                 ->where('is_active', true)
-                ->select('category', DB::raw('COUNT(*) as count'))
+                ->select('category', $this->db->raw('COUNT(*) as count'))
                 ->groupBy('category')
                 ->orderBy('count', 'desc')
                 ->get()
@@ -126,7 +126,7 @@ final readonly class ElectronicsSearchService
 
             $colors = $query->clone()
                 ->whereNotNull('color')
-                ->select('color', DB::raw('COUNT(*) as count'))
+                ->select('color', $this->db->raw('COUNT(*) as count'))
                 ->groupBy('color')
                 ->orderBy('count', 'desc')
                 ->get()
@@ -153,17 +153,17 @@ final readonly class ElectronicsSearchService
             return [];
         }
 
-        $cacheKey = "electronics_suggestions:" . md5($query);
+        $cacheKey = 'electronics_suggestions:'.md5($query);
 
-        return $this->cache->remember($cacheKey, now()->addMinutes(30), function () use ($query, $limit) {
+        return $this->cache->remember($cacheKey, CarbonImmutable::now()->addMinutes(30), function () use ($query, $limit) {
             return ElectronicsProduct::query()
                 ->where('is_active', true)
                 ->where('availability_status', 'in_stock')
                 ->where(function ($q) use ($query) {
                     $q->where('name', 'like', "%{$query}%")
-                      ->orWhere('brand', 'like', "%{$query}%")
-                      ->orWhere('category', 'like', "%{$query}%")
-                      ->orWhere('sku', 'like', "%{$query}%");
+                        ->orWhere('brand', 'like', "%{$query}%")
+                        ->orWhere('category', 'like', "%{$query}%")
+                        ->orWhere('sku', 'like', "%{$query}%");
                 })
                 ->limit($limit)
                 ->get()
@@ -187,7 +187,7 @@ final readonly class ElectronicsSearchService
 
         if ($dto->inStockOnly) {
             $query->where('availability_status', 'in_stock')
-                  ->where('stock_quantity', '>', 0);
+                ->where('stock_quantity', '>', 0);
         }
 
         if ($dto->withDiscount) {
@@ -204,24 +204,24 @@ final readonly class ElectronicsSearchService
                 foreach ($searchTerms as $term) {
                     if (strlen($term) >= 2) {
                         $q->orWhere('name', 'like', "%{$term}%")
-                          ->orWhere('brand', 'like', "%{$term}%")
-                          ->orWhere('category', 'like', "%{$term}%")
-                          ->orWhere('sku', 'like', "%{$term}%")
-                          ->orWhere('specs->>\"description\"', 'like', "%{$term}%");
+                            ->orWhere('brand', 'like', "%{$term}%")
+                            ->orWhere('category', 'like', "%{$term}%")
+                            ->orWhere('sku', 'like', "%{$term}%")
+                            ->orWhere('specs->>\"description\"', 'like', "%{$term}%");
                     }
                 }
             });
         }
 
-        if (!empty($dto->brands)) {
+        if (! empty($dto->brands)) {
             $query->whereIn('brand', $dto->brands);
         }
 
-        if (!empty($dto->categories)) {
+        if (! empty($dto->categories)) {
             $query->whereIn('category', $dto->categories);
         }
 
-        if (!empty($dto->colors)) {
+        if (! empty($dto->colors)) {
             $query->whereIn('color', $dto->colors);
         }
 
@@ -234,7 +234,7 @@ final readonly class ElectronicsSearchService
         }
 
         foreach ($dto->specsFilters as $specKey => $specValues) {
-            if (!empty($specValues)) {
+            if (! empty($specValues)) {
                 $query->where(function ($q) use ($specKey, $specValues) {
                     foreach ($specValues as $value) {
                         $q->orWhere("specs->{$specKey}", 'like', "%{$value}%");
@@ -286,7 +286,7 @@ final readonly class ElectronicsSearchService
             'stock_quantity' => $product->stock_quantity,
             'availability_status' => $product->availability_status,
             'is_bestseller' => $product->is_bestseller ?? false,
-            'is_new' => $product->created_at && $product->created_at->gt(now()->subDays(30)),
+            'is_new' => $product->created_at && $product->created_at->gt(CarbonImmutable::now()->subDays(30)),
             'views_count' => $product->views_count ?? 0,
         ];
     }
@@ -296,7 +296,7 @@ final readonly class ElectronicsSearchService
         $baseQuery = $this->buildSearchQuery($dto);
 
         $brands = $baseQuery->clone()
-            ->select('brand', DB::raw('COUNT(*) as count'))
+            ->select('brand', $this->db->raw('COUNT(*) as count'))
             ->groupBy('brand')
             ->orderBy('count', 'desc')
             ->limit(20)
@@ -305,7 +305,7 @@ final readonly class ElectronicsSearchService
             ->toArray();
 
         $categories = $baseQuery->clone()
-            ->select('category', DB::raw('COUNT(*) as count'))
+            ->select('category', $this->db->raw('COUNT(*) as count'))
             ->groupBy('category')
             ->orderBy('count', 'desc')
             ->get()
@@ -314,9 +314,9 @@ final readonly class ElectronicsSearchService
 
         $priceStats = $baseQuery->clone()
             ->select(
-                DB::raw('MIN(price_kopecks) as min_price'),
-                DB::raw('MAX(price_kopecks) as max_price'),
-                DB::raw('AVG(price_kopecks) as avg_price')
+                $this->db->raw('MIN(price_kopecks) as min_price'),
+                $this->db->raw('MAX(price_kopecks) as max_price'),
+                $this->db->raw('AVG(price_kopecks) as avg_price')
             )
             ->first();
 
@@ -339,7 +339,7 @@ final readonly class ElectronicsSearchService
         foreach ($products as $product) {
             $productSpecs = $product->specs ?? [];
             foreach ($productSpecs as $key => $value) {
-                if (!isset($specs[$key])) {
+                if (! isset($specs[$key])) {
                     $specs[$key] = [];
                 }
                 if (is_array($value)) {
@@ -363,10 +363,10 @@ final readonly class ElectronicsSearchService
     private function calculatePriceRanges(Builder $query): array
     {
         $priceStats = $query->select(
-            DB::raw('MIN(price_kopecks) as min_price'),
-            DB::raw('MAX(price_kopecks) as max_price')
+            $this->db->raw('MIN(price_kopecks) as min_price'),
+            $this->db->raw('MAX(price_kopecks) as max_price')
         )
-        ->first();
+            ->first();
 
         $min = (int) $priceStats->min_price;
         $max = (int) $priceStats->max_price;
@@ -397,7 +397,8 @@ final readonly class ElectronicsSearchService
 
     private function getCacheKey(SearchRequestDto $dto): string
     {
-        $key = 'electronics_search:' . md5(serialize($dto->toArray()));
+        $key = 'electronics_search:'.md5(serialize($dto->toArray()));
+
         return $key;
     }
 
@@ -405,15 +406,15 @@ final readonly class ElectronicsSearchService
     {
         $count = 0;
 
-        if (!empty($dto->brands)) {
+        if (! empty($dto->brands)) {
             $count++;
         }
 
-        if (!empty($dto->categories)) {
+        if (! empty($dto->categories)) {
             $count++;
         }
 
-        if (!empty($dto->colors)) {
+        if (! empty($dto->colors)) {
             $count++;
         }
 
@@ -421,7 +422,7 @@ final readonly class ElectronicsSearchService
             $count++;
         }
 
-        if (!empty($dto->specsFilters)) {
+        if (! empty($dto->specsFilters)) {
             $count += count($dto->specsFilters);
         }
 

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ProposalAccepted — CatVRF 2026 Component.
@@ -7,30 +9,19 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/proposalaccepted
  */
 
-
 namespace App\Domains\Freelance\Events;
-
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Queue\SerializesModels;
 
 final class ProposalAccepted
 {
-
-
-    
-        public function __construct(
-            public readonly FreelanceProposal $proposal,
-            public readonly string $correlationId) {}
-
     /**
      * Version identifier for this component.
      */
@@ -46,6 +37,11 @@ final class ProposalAccepted
      */
     private const CACHE_TTL = 3600;
 
+    public function __construct(
+        public readonly FreelanceProposal $proposal,
+        public readonly string $correlationId
+    ) {}
+
     /**
      * Get the component identifier for logging and audit purposes.
      *
@@ -53,15 +49,15 @@ final class ProposalAccepted
      */
     private function getComponentIdentifier(): string
     {
-        return static::class . '@' . self::VERSION;
+        return self::class.'@'.self::VERSION;
     }
 
     /**
      * Validate the current operation context.
      * Ensures tenant scoping and correlation ID are present.
      *
-     * @param string $operation The operation being validated
-     * @return void
+     * @param  string  $operation  The operation being validated
+     *
      * @throws \DomainException If validation fails
      */
     private function validateOperationContext(string $operation): void
@@ -70,5 +66,4 @@ final class ProposalAccepted
             throw new \DomainException('Operation context cannot be empty');
         }
     }
-
 }

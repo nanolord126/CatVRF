@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Controllers\Api\V1;
 
@@ -17,12 +19,6 @@ final class SearchControllerTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->user = User::factory()->create();
-    }
 
     // ── validation: q param ──────────────────────────────────────────
 
@@ -195,5 +191,11 @@ final class SearchControllerTest extends TestCase
         $response = $this->getJson('/api/v1/search/suggestions?q=bea');
 
         $response->assertJsonStructure(['data']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->user = User::factory()->create();
     }
 }

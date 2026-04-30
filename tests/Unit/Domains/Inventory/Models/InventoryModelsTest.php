@@ -15,6 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionProperty;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Тесты Layer 1 — Models.
@@ -30,23 +31,7 @@ use ReflectionProperty;
 final class InventoryModelsTest extends TestCase
 {
     /* ================================================================== */
-    /*  Helpers                                                            */
-    /* ================================================================== */
-
-    private function makeModel(string $class): object
-    {
-        return (new ReflectionClass($class))->newInstanceWithoutConstructor();
-    }
-
-    /** @param array<string, mixed> $attributes */
-    private function setAttributes(object $model, array $attributes): void
-    {
-        $prop = new ReflectionProperty(\Illuminate\Database\Eloquent\Model::class, 'attributes');
-        $prop->setValue($model, $attributes);
-    }
-
-    /* ================================================================== */
-    /*  1. All Models are final                                            */
+    /*  1. All Models are final */
     /* ================================================================== */
 
     /** @return list<array{class-string}> */
@@ -70,7 +55,7 @@ final class InventoryModelsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  2. Table names                                                     */
+    /*  2. Table names */
     /* ================================================================== */
 
     #[Test]
@@ -109,7 +94,7 @@ final class InventoryModelsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  3. Fillable arrays contain CANON mandatory fields                  */
+    /*  3. Fillable arrays contain CANON mandatory fields */
     /* ================================================================== */
 
     #[Test]
@@ -178,7 +163,7 @@ final class InventoryModelsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  4. Casts                                                           */
+    /*  4. Casts */
     /* ================================================================== */
 
     #[Test]
@@ -236,7 +221,7 @@ final class InventoryModelsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  5. Relationships exist                                             */
+    /*  5. Relationships exist */
     /* ================================================================== */
 
     #[Test]
@@ -306,7 +291,7 @@ final class InventoryModelsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  6. InventoryItem computed attribute                                */
+    /*  6. InventoryItem computed attribute */
     /* ================================================================== */
 
     #[Test]
@@ -337,7 +322,7 @@ final class InventoryModelsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  7. Reservation scope method exists                                 */
+    /*  7. Reservation scope method exists */
     /* ================================================================== */
 
     #[Test]
@@ -347,7 +332,7 @@ final class InventoryModelsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  8. No facades imported                                             */
+    /*  8. No facades imported */
     /* ================================================================== */
 
     #[Test]
@@ -362,7 +347,7 @@ final class InventoryModelsTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  9. strict_types=1 declared                                         */
+    /*  9. strict_types=1 declared */
     /* ================================================================== */
 
     #[Test]
@@ -374,5 +359,20 @@ final class InventoryModelsTest extends TestCase
         $code = (string) file_get_contents($file);
 
         self::assertStringContainsString('declare(strict_types=1);', $code, "{$class} must declare strict_types=1");
+    }
+    /* ================================================================== */
+    /*  Helpers */
+    /* ================================================================== */
+
+    private function makeModel(string $class): object
+    {
+        return (new ReflectionClass($class))->newInstanceWithoutConstructor();
+    }
+
+    /** @param array<string, mixed> $attributes */
+    private function setAttributes(object $model, array $attributes): void
+    {
+        $prop = new ReflectionProperty(Model::class, 'attributes');
+        $prop->setValue($model, $attributes);
     }
 }

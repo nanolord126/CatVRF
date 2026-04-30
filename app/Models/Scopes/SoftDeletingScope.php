@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\Scopes;
 
@@ -15,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope as EloquentSoftDeletingScope;
  */
 final class SoftDeletingScope implements Scope
 {
-    private EloquentSoftDeletingScope $inner;
+    private readonly EloquentSoftDeletingScope $inner;
 
     public function __construct()
     {

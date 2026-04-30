@@ -1,7 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Policies;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 /**
  * Class WalletManagementPolicy
@@ -18,40 +24,43 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Policies
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class WalletManagementPolicy extends Model
 {
-        /**
-         * Handle view operation.
-         *
-         * @throws \DomainException
-         */
-        public function view(User $user, $wallet): bool
-        {
-            return $user->tenant_id === ($wallet->tenant_id ?? null);
-        }
+    /**
+     * Handle view operation.
+     *
+     * @throws \DomainException
+     */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
-        /**
-         * Handle viewBalance operation.
-         *
-         * @throws \DomainException
-         */
-        public function viewBalance(User $user, $wallet): bool
-        {
-            return $user->tenant_id === ($wallet->tenant_id ?? null);
-        }
+    public function $this->viewFactory->make(User $user, $wallet): bool
+    {
+        return $user->tenant_id === ($wallet->tenant_id ?? null);
+    }
 
-        /**
-         * Handle withdraw operation.
-         *
-         * @throws \DomainException
-         */
-        public function withdraw(User $user, $wallet): bool
-        {
-            return $user->tenant_id === ($wallet->tenant_id ?? null)
-                && ($user->isBusinessOwner() || $user->hasAbility('finance'));
-        }
+    /**
+     * Handle viewBalance operation.
+     *
+     * @throws \DomainException
+     */
+    public function viewBalance(User $user, $wallet): bool
+    {
+        return $user->tenant_id === ($wallet->tenant_id ?? null);
+    }
+
+    /**
+     * Handle withdraw operation.
+     *
+     * @throws \DomainException
+     */
+    public function withdraw(User $user, $wallet): bool
+    {
+        return $user->tenant_id === ($wallet->tenant_id ?? null)
+            && ($user->isBusinessOwner() || $user->hasAbility('finance'));
+    }
 }

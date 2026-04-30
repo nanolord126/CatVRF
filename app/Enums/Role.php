@@ -1,22 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Enums;
 
 enum Role: string
-{
-    // Platform-level roles
-    case SuperAdmin = 'super_admin';      // Full platform access
-    case SupportAgent = 'support_agent';  // Can help users
-
-    // Tenant-level roles
-    case Owner = 'owner';                 // Full tenant access (financial decisions, team)
-    case Manager = 'manager';             // Can manage operations, view analytics
-    case Employee = 'employee';           // Limited operations (can't view finance)
-    case Accountant = 'accountant';       // Can view financial reports only
-
-    // User-level roles
-    case Customer = 'customer';           // Regular user (can't be assigned to business)
-
+{
     public function label(): string
     {
         return match ($this) {
@@ -93,15 +82,17 @@ enum Role: string
     {
         return self::cases();
     }
-}
 
-                self::SuperAdmin,
-                self::SupportAgent,
-                self::Owner,
-                self::Manager,
-                self::Employee,
-                self::Accountant,
-                self::Customer,
-            ];
-        }
+    // Platform-level roles
+    case SuperAdmin = 'super_admin';      // Full platform access
+    case SupportAgent = 'support_agent';  // Can help users
+
+    // Tenant-level roles
+    case Owner = 'owner';                 // Full tenant access (financial decisions, team)
+    case Manager = 'manager';             // Can manage operations, view analytics
+    case Employee = 'employee';           // Limited operations (can't view finance)
+    case Accountant = 'accountant';       // Can view financial reports only
+
+    // User-level roles
+    case Customer = 'customer';           // Regular user (can't be assigned to business)
 }

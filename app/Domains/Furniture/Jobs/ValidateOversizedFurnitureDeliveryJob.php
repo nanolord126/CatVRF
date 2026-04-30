@@ -16,9 +16,10 @@ use Psr\Log\LoggerInterface;
 
 final class ValidateOversizedFurnitureDeliveryJob implements ShouldQueue
 {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public array $backoff = [60, 300, 900];
     public int $tries = 3;
-
     public int $timeout = 60;
 
     /**
@@ -27,7 +28,7 @@ final class ValidateOversizedFurnitureDeliveryJob implements ShouldQueue
      */
     public function __construct(
         private readonly FurnitureCustomOrder $order,
-        private ?string $correlationId = null,
+        private readonly ?string $null,
     ) {
     }
 

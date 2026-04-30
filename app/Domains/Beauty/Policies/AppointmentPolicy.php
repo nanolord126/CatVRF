@@ -1,16 +1,26 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Policies;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use App\Domains\Beauty\Models\Appointment;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
 final class AppointmentPolicy
 {
     use HandlesAuthorization;
 
-    public function view(User $user, Appointment $appointment): bool
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
+    public function $this->viewFactory->make(User $user, Appointment $appointment): bool
     {
         return $user->id === $appointment->user_id
             || $user->tenant_id === $appointment->tenant_id
@@ -20,7 +30,7 @@ final class AppointmentPolicy
     public function create(User $user): bool
     {
         return $user->hasVerifiedEmail()
-            && !$user->is_blocked;
+            && ! $user->is_blocked;
     }
 
     public function update(User $user, Appointment $appointment): bool
@@ -49,7 +59,7 @@ final class AppointmentPolicy
             return false;
         }
 
-        $hoursUntilAppointment = now()->diffInHours($appointment->starts_at, false);
+        $hoursUntilAppointment = CarbonImmutable::now()->diffInHours($appointment->starts_at, false);
 
         if ($hoursUntilAppointment < 1) {
             return false;
@@ -66,7 +76,7 @@ final class AppointmentPolicy
         }
 
         if (isset($appointment->metadata['video_call_expires_at'])) {
-            $expiresAt = \Carbon\Carbon::parse($appointment->metadata['video_call_expires_at']);
+            $expiresAt = Carbon::parse($appointment->metadata['video_call_expires_at']);
             if ($expiresAt->isFuture()) {
                 return true;
             }

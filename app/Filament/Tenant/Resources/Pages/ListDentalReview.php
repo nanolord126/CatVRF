@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -21,19 +23,10 @@ use Filament\Tables\Table;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Pages
  */
 final class ListDentalReview extends ListRecords
 {
     protected static string $resource = DentalReviewResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()->label('Добавить отзыв')->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -44,7 +37,7 @@ final class ListDentalReview extends ListRecords
                 TextColumn::make('dentist_id')->label('Врач ID')->sortable(),
                 TextColumn::make('rating')->label('Оценка')
                     ->sortable()
-                    ->formatStateUsing(fn ($state) => $state . '/100')
+                    ->formatStateUsing(fn ($state) => $state.'/100')
                     ->color(fn ($state) => $state >= 70 ? 'success' : ($state >= 40 ? 'warning' : 'danger')),
                 TextColumn::make('comment')->label('Комментарий')->limit(80)->wrap(),
                 IconColumn::make('is_verified')->label('Проверен')->boolean()->sortable(),
@@ -57,5 +50,12 @@ final class ListDentalReview extends ListRecords
             ->actions([ViewAction::make(), EditAction::make(), DeleteAction::make()])
             ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
             ->defaultSort('created_at', 'desc')->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()->label('Добавить отзыв')->icon('heroicon-o-plus'),
+        ];
     }
 }

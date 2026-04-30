@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Education;
 
@@ -7,45 +9,24 @@ use App\Domains\Education\DTOs\CalculatePriceDto;
 use App\Domains\Education\DTOs\PriceAdjustmentDto;
 use App\Domains\Education\Services\EducationDynamicPricingService;
 use App\Domains\Education\Models\Course;
-use App\Models\User;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\Security\IdempotencyService;
 use App\Services\ML\AnonymizationService;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\DB;
 use Mockery;
 
 final class EducationDynamicPricingServiceTest extends TestCase
 {
     private EducationDynamicPricingService $service;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
+
     private IdempotencyService $idempotency;
+
     private AnonymizationService $anonymizer;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = Mockery::mock(FraudControlService::class);
-        $this->audit = Mockery::mock(AuditService::class);
-        $this->idempotency = Mockery::mock(IdempotencyService::class);
-        $this->anonymizer = Mockery::mock(AnonymizationService::class);
-
-        $this->service = new EducationDynamicPricingService(
-            $this->fraud,
-            $this->audit,
-            $this->idempotency,
-            $this->anonymizer,
-        );
-    }
-
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
 
     public function test_calculate_dynamic_price_b2c(): void
     {
@@ -252,5 +233,28 @@ final class EducationDynamicPricingServiceTest extends TestCase
 
         $this->assertInstanceOf(PriceAdjustmentDto::class, $result);
         $this->assertEquals('cached-price-123', $result->priceId);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = Mockery::mock(FraudControlService::class);
+        $this->audit = Mockery::mock(AuditService::class);
+        $this->idempotency = Mockery::mock(IdempotencyService::class);
+        $this->anonymizer = Mockery::mock(AnonymizationService::class);
+
+        $this->service = new EducationDynamicPricingService(
+            $this->fraud,
+            $this->audit,
+            $this->idempotency,
+            $this->anonymizer,
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 }

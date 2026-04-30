@@ -13,8 +13,6 @@ use Illuminate\Support\Str;
  * CANON 2026 — Layer 2: DTOs.
  * Все свойства public readonly (PHP 8.3+), строгая типизация.
  * Nullable-поля означают «не менять» при обновлении.
- *
- * @package App\Domains\VerticalName\DTOs
  */
 final readonly class UpdateVerticalItemDto
 {
@@ -35,8 +33,7 @@ final readonly class UpdateVerticalItemDto
         public ?array $tags = null,
         public ?array $metadata = null,
         public bool $isB2B = false,
-    ) {
-    }
+    ) {}
 
     /**
      * Гидрация из HTTP-запроса.

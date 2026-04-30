@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\CarWashing\Services;
 
-
 use Illuminate\Contracts\Auth\Guard;
 use App\Domains\Auto\CarWashing\Models\CarWashStation;
 use App\Domains\Auto\CarWashing\Models\WashingOrder;
@@ -13,45 +12,49 @@ use App\Services\WalletService;
 use Illuminate\Cache\RateLimiter;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Collection;
 
 /**
  * Сервис управления заказами на мойку автомобилей.
  *
  * Комиссия платформы: 14% от стоимости услуги.
  * Все операции в $this->db->transaction(). FraudControlService перед каждой мутацией.
- *
- * @package App\Domains\Auto\CarWashing\Services
  */
 final readonly class CarWashingService
 {
     private const COMMISSION_RATE   = 0.14;
+
     private const RATE_LIMIT_KEY    = 'carwash:order';
+
     private const RATE_LIMIT_MAX    = 30;
+
     private const RATE_LIMIT_DECAY  = 3600;
 
-    public function __construct(private FraudControlService $fraud,
-        private WalletService       $wallet,
-        private RateLimiter         $rateLimiter,
-        private LoggerInterface     $auditLogger,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Guard $guard) {
-
-    }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly RateLimiter $rateLimiter,
+        private readonly LoggerInterface $auditLogger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard) {}
 
     /**
      * Создать заказ на мойку.
      *
      * @throws \RuntimeException если превышен лимит запросов или заблокирован fraud
- */
+     */
     public function createOrder(
-        int    $stationId,
-        mixed  $bookingDate,
+        int $stationId,
+        mixed $bookingDate,
         string $serviceType,
-        int    $clientId,
+        int $clientId,
         string $correlationId = '',
     ): WashingOrder {
         $correlationId = $correlationId ?: Uuid::uuid4()->toString();
 
-        $key = self::RATE_LIMIT_KEY . ':' . $clientId;
+        $key = self::RATE_LIMIT_KEY.':'.$clientId;
         if ($this->rateLimiter->tooManyAttempts($key, self::RATE_LIMIT_MAX)) {
             throw new \RuntimeException('Превышен лимит запросов.', 429);
         }
@@ -83,7 +86,7 @@ final readonly class CarWashingService
                 'tags'           => ['carwash' => true],
             ]);
 
-            $this->auditLogger->info('Car wash order created', [
+            $this->auditLogger->$this->logger->info('Car wash order created', [
                 'order_id'       => $order->id,
                 'station_id'     => $stationId,
                 'correlation_id' => $correlationId,
@@ -147,7 +150,7 @@ final readonly class CarWashingService
                 $this->wallet->credit(
                     tenantId: tenant()->id,
                     amount: $order->total_kopecks,
-                    type: \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,
+                    type: BalanceTransactionType::REFUND,
                     meta: [
                         'order_id'       => $order->id,
                         'correlation_id' => $correlationId,
@@ -170,7 +173,7 @@ final readonly class CarWashingService
     /**
      * Получить заказы пользователя (10 последних).
      */
-    public function getUserOrders(int $clientId): \Illuminate\Support\Collection
+    public function getUserOrders(int $clientId): Collection
     {
         return WashingOrder::where('client_id', $clientId)
             ->orderByDesc('created_at')

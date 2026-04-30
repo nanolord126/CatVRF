@@ -12,8 +12,6 @@ use Illuminate\Support\Str;
  *
  * CANON 2026 — Layer 2: DTOs.
  * Используется для передачи критериев поиска в сервис.
- *
- * @package App\Domains\VerticalName\DTOs
  */
 final readonly class SearchVerticalItemDto
 {
@@ -33,8 +31,7 @@ final readonly class SearchVerticalItemDto
         public int $perPage = 20,
         public int $page = 1,
         public bool $isB2B = false,
-    ) {
-    }
+    ) {}
 
     /**
      * Гидрация из HTTP-запроса.

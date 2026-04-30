@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Console\Commands;
 
@@ -9,18 +11,20 @@ use Ramsey\Uuid\Uuid;
 
 /**
  * MLModelRetrainCommand — manual trigger for ML model retraining
- * 
+ *
  * Usage:
  * php artisan ml:retrain              - Start new model retrain
  * php artisan ml:retrain --promote    - Promote shadow model to active
  * php artisan ml:retrain --force      - Force retrain (skip quota check)
- * 
+ *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final class MLModelRetrainCommand extends Command
 {
     protected $signature = 'ml:retrain {--promote : Promote shadow model to active} {--force : Force retrain without quota check}';
+
     protected $description = 'Train or promote FraudML models with shadow mode and validation';
 
     public function handle(): int

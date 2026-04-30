@@ -1,10 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\EventPlanning;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Illuminate\Notifications\ChannelManager;
+
 use Illuminate\Database\Eloquent\Builder;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
@@ -14,199 +19,201 @@ use Filament\Notifications\Notification;
 
 final class EventResource extends Resource
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
+    protected static ?string $model = $this->eventDispatcher->class;
 
-
-    protected static ?string $model = Event::class;
+    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
 
-        protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
-        protected static ?string $navigationGroup = 'Event Planning Management';
-        protected static ?string $modelLabel = 'Событие';
-        protected static ?string $pluralModelLabel = 'События и Праздники';
+    protected static ?string $navigationGroup = 'Event Planning Management';
 
-        /**
-         * Форма создания/редактирования события.
-         */
-        public static function form(Form $form): Form
-        {
-            return $form
-                ->schema([
-                    Section::make('Основная информация (Core Info)')
-                        ->description('Базовые параметры планируемого события')
-                        ->columns(2)
-                        ->schema([
-                            TextInput::make('title')
-                                ->required()
-                                ->minLength(5)
-                                ->maxLength(255)
-                                ->label('Название события'),
+    protected static ?string $modelLabel = 'Событие';
 
-                            Select::make('type')
-                                ->required()
-                                ->options([
-                                    'wedding' => 'Свадьба',
-                                    'corporate' => 'Корпоратив',
-                                    'birthday' => 'День рождения',
-                                    'anniversary' => 'Юбилей',
-                                    'other' => 'Другое',
-                                ])
-                                ->label('Тип'),
+    protected static ?string $pluralModelLabel = 'События и Праздники';
 
-                            DateTimePicker::make('event_date')
-                                ->required()
-                                ->label('Дата и время'),
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly ChannelManager $notificationManager,
+        private readonly LoggerInterface $logger,) {}
 
-                            TextInput::make('location')
-                                ->required()
-                                ->prefix('📍')
-                                ->label('Место проведения'),
+    /**
+     * Форма создания/редактирования события.
+     */
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Section::make('Основная информация (Core Info)')
+                    ->description('Базовые параметры планируемого события')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('title')
+                            ->required()
+                            ->minLength(5)
+                            ->maxLength(255)
+                            ->label('Название события'),
 
-                            TextInput::make('guest_count')
-                                ->numeric()
-                                ->minValue(1)
-                                ->default(20)
-                                ->label('Количество гостей'),
+                        Select::make('type')
+                            ->required()
+                            ->options([
+                                'wedding' => 'Свадьба',
+                                'corporate' => 'Корпоратив',
+                                'birthday' => 'День рождения',
+                                'anniversary' => 'Юбилей',
+                                'other' => 'Другое',
+                            ])
+                            ->label('Тип'),
 
-                            Select::make('status')
-                                ->required()
-                                ->options([
-                                    'draft' => 'Черновик',
-                                    'planning' => 'Планирование',
-                                    'confirmed' => 'Подтверждено',
-                                    'active' => 'В процессе',
-                                    'completed' => 'Завершено',
-                                    'cancelled' => 'Отменено',
-                                ])
-                                ->default('draft')
-                                ->label('Статус'),
-                        ]),
+                        DateTimePicker::make('event_date')
+                            ->required()
+                            ->label('Дата и время'),
 
-                    Section::make('Финансы и Бюджет (Financial Control)')
-                        ->description('Контроль финансового потока праздника')
-                        ->columns(3)
-                        ->schema([
-                            TextInput::make('total_budget_kopecks')
-                                ->numeric()
-                                ->label('Бюджет (в копейках)')
-                                ->helperText('Сумма в копейках для точности расчетов (int 2026)'),
+                        TextInput::make('location')
+                            ->required()
+                            ->prefix('📍')
+                            ->label('Место проведения'),
 
-                            TextInput::make('prepayment_kopecks')
-                                ->numeric()
-                                ->disabled()
-                                ->label('Требуемая предоплата (коп.)'),
+                        TextInput::make('guest_count')
+                            ->numeric()
+                            ->minValue(1)
+                            ->default(20)
+                            ->label('Количество гостей'),
 
-                            TextInput::make('cancellation_fee_kopecks')
-                                ->numeric()
-                                ->label('Штраф за отмену (коп.)'),
-                        ]),
+                        Select::make('status')
+                            ->required()
+                            ->options([
+                                'draft' => 'Черновик',
+                                'planning' => 'Планирование',
+                                'confirmed' => 'Подтверждено',
+                                'active' => 'В процессе',
+                                'completed' => 'Завершено',
+                                'cancelled' => 'Отменено',
+                            ])
+                            ->default('draft')
+                            ->label('Статус'),
+                    ]),
 
-                    Section::make('AI Протокол (AI Constructor)')
-                        ->schema([
-                            Forms\Components\KeyValue::make('ai_plan')
-                                ->label('AI Детализация плана')
-                                ->disabled(),
-                        ]),
-                ]);
-        }
+                Section::make('Финансы и Бюджет (Financial Control)')
+                    ->description('Контроль финансового потока праздника')
+                    ->columns(3)
+                    ->schema([
+                        TextInput::make('total_budget_kopecks')
+                            ->numeric()
+                            ->label('Бюджет (в копейках)')
+                            ->helperText('Сумма в копейках для точности расчетов (int 2026)'),
 
-        /**
-         * Таблица списка событий.
-         */
-        public static function table(Table $table): Table
-        {
-            return $table
-                ->columns([
-                    TextColumn::make('uuid')
-                        ->label('UUID')
-                        ->copyable()
-                        ->toggleable(isToggledHiddenByDefault: true),
+                        TextInput::make('prepayment_kopecks')
+                            ->numeric()
+                            ->disabled()
+                            ->label('Требуемая предоплата (коп.)'),
 
-                    TextColumn::make('title')
-                        ->label('Название')
-                        ->searchable()
-                        ->sortable(),
+                        TextInput::make('cancellation_fee_kopecks')
+                            ->numeric()
+                            ->label('Штраф за отмену (коп.)'),
+                    ]),
 
-                    TextColumn::make('type')
-                        ->badge()
-                        ->label('Тип')
-                        ->color(fn (string $state): string => match ($state) {
-                            'corporate' => 'indigo',
-                            'birthday' => 'success',
-                            default => 'gray',
-                        }),
+                Section::make('AI Протокол (AI Constructor)')
+                    ->schema([
+                        Forms\Components\KeyValue::make('ai_plan')
+                            ->label('AI Детализация плана')
+                            ->disabled(),
+                    ]),
+            ]);
+    }
 
-                    TextColumn::make('event_date')
-                        ->label('Дата')
-                        ->dateTime()
-                        ->sortable(),
+    /**
+     * Таблица списка событий.
+     */
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                TextColumn::make('uuid')
+                    ->label('UUID')
+                    ->copyable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
-                    TextColumn::make('guest_count')
-                        ->label('Гостей')
-                        ->numeric(),
+                TextColumn::make('title')
+                    ->label('Название')
+                    ->searchable()
+                    ->sortable(),
 
-                    TextColumn::make('status')
-                        ->badge()
-                        ->label('Статус'),
+                TextColumn::make('type')
+                    ->badge()
+                    ->label('Тип')
+                    ->color(fn (string $state): string => match ($state) {
+                        'corporate' => 'indigo',
+                        'birthday' => 'success',
+                        default => 'gray',
+                    }),
 
-                    TextColumn::make('total_budget_kopecks')
-                        ->label('Бюджет')
-                        ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
-                        ->sortable(),
-                ])
-                ->filters([
+                TextColumn::make('event_date')
+                    ->label('Дата')
+                    ->dateTime()
+                    ->sortable(),
+
+                TextColumn::make('guest_count')
+                    ->label('Гостей')
+                    ->numeric(),
+
+                TextColumn::make('status')
+                    ->badge()
+                    ->label('Статус'),
+
+                TextColumn::make('total_budget_kopecks')
+                    ->label('Бюджет')
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
+                    ->sortable(),
+            ])
+            ->filters([
                     SelectFilter::make('type')
-                        ->options([
-                            'wedding' => 'Свадьба',
-                            'corporate' => 'Корпоратив',
-                            'birthday' => 'День рождения',
-                        ]),
+                    ->options([
+                        'wedding' => 'Свадьба',
+                        'corporate' => 'Корпоратив',
+                        'birthday' => 'День рождения',
+                    ]),
                     Tables\Filters\TrashedFilter::make(),
                 ])
-                ->actions([
+            ->actions([
                     ViewAction::make(),
                     EditAction::make()
-                        ->before(function (Event $record, array $data) {
-                            $this->logger->info('Filament: Editing event', [
-                                'event_uuid' => $record->uuid,
-                                'tenant_id' => $record->tenant_id,
-                                'user_id' => $this->guard->id(),
-                            ]);
-                        })
-                        ->successNotification(
-                            Notification::make()
-                                ->success()
-                                ->title('План обновлен')
-                                ->body('Все изменения в бюджете и вендорах зафиксированы.')
-                        ),
+                    ->before(function (Event $record, array $data) {
+                        $this->logger->$this->logger->info('Filament: Editing event', [
+                            'event_uuid' => $record->uuid,
+                            'tenant_id' => $record->tenant_id,
+                            'user_id' => $this->guard->id(),
+                        ]);
+                    })
+                    ->successNotification(
+                        $this->notificationManager->make()
+                            ->success()
+                            ->title('План обновлен')
+                            ->body('Все изменения в бюджете и вендорах зафиксированы.')
+                    ),
                 ])
-                ->bulkActions([
+            ->bulkActions([
                     Tables\Actions\BulkActionGroup::make([
-                        DeleteBulkAction::make(),
-                        ForceDeleteBulkAction::make(),
-                        RestoreBulkAction::make(),
+                    DeleteBulkAction::make(),
+                    ForceDeleteBulkAction::make(),
+                    RestoreBulkAction::make(),
                     ]),
                 ]);
-        }
+    }
 
-        /**
-         * Глобальный поиск и запрос по тененам.
-         */
-        public static function getEloquentQuery(): Builder
-        {
-            return parent::getEloquentQuery()
-                ->withoutGlobalScopes([
-                    SoftDeletingScope::class,
-                ]);
-        }
+    /**
+     * Глобальный поиск и запрос по тененам.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+    }
 
-        public static function getPages(): array
-        {
-            return [
-                'index' => Pages\ListEvents::route('/'),
-                'create' => Pages\CreateEvent::route('/create'),
-                'edit' => Pages\EditEvent::route('/{record}/edit'),
-            ];
-        }
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\ListEvents::route('/'),
+            'create' => Pages\CreateEvent::route('/create'),
+            'edit' => Pages\EditEvent::route('/{record}/edit'),
+        ];
+    }
 }

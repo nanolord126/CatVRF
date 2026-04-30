@@ -1,16 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources;
 
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
+use App\Domains\Auto\Models\VehicleInsurance;
+use Illuminate\Database\Eloquent\Builder;
 
-final class VehicleInsuranceResource extends Resource
+final class VehicleInsuranceResource extends BaseOptimizedResource
 {
-    protected static ?string $model = \App\Domains\Auto\Models\VehicleInsurance::class;
+    protected static ?string $model = VehicleInsurance::class;
 
     protected static ?string $navigationLabel = 'Страхование';
 
@@ -40,7 +44,7 @@ final class VehicleInsuranceResource extends Resource
                     Forms\Components\TextInput::make('policy_number')
                         ->label('Номер полиса')
                         ->required()
-                        ->unique(\App\Domains\Auto\Models\VehicleInsurance::class, 'policy_number', ignoreRecord: true),
+                        ->unique(VehicleInsurance::class, 'policy_number', ignoreRecord: true),
 
                     Forms\Components\TextInput::make('insurance_company')
                         ->label('Страховая компания')
@@ -150,8 +154,16 @@ final class VehicleInsuranceResource extends Resource
         ];
     }
 
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    /**
+     * Relations to eager load for Auto
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

@@ -13,40 +13,25 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Str;
 
 final class RealEstateFaceIDVerificationServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private RealEstateFaceIDVerificationService $service;
+
     private Tenant $tenant;
+
     private Property $property;
+
     private User $user;
+
     private PropertyViewing $viewing;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = app(RealEstateFaceIDVerificationService::class);
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create();
-        $this->property = Property::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'type' => 'apartment',
-            'area_sqm' => 75.5,
-            'price' => 10000000.00,
-        ]);
-        $this->viewing = PropertyViewing::factory()->create([
-            'property_id' => $this->property->id,
-            'user_id' => $this->user->id,
-            'agent_id' => User::factory()->create()->id,
-        ]);
-    }
 
     public function test_generate_verification_token_returns_valid_token(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->generateVerificationToken(
             $this->user->id,
             $this->property->id,
@@ -65,7 +50,7 @@ final class RealEstateFaceIDVerificationServiceTest extends TestCase
 
     public function test_generate_verification_token_limits_attempts(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
 
         for ($i = 0; $i < 4; $i++) {
             $result = $this->service->generateVerificationToken(
@@ -87,7 +72,7 @@ final class RealEstateFaceIDVerificationServiceTest extends TestCase
 
     public function test_verify_face_id_with_valid_token(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $tokenResult = $this->service->generateVerificationToken(
             $this->user->id,
             $this->property->id,
@@ -115,7 +100,7 @@ final class RealEstateFaceIDVerificationServiceTest extends TestCase
 
     public function test_verify_face_id_rejects_low_confidence(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $tokenResult = $this->service->generateVerificationToken(
             $this->user->id,
             $this->property->id,
@@ -141,7 +126,7 @@ final class RealEstateFaceIDVerificationServiceTest extends TestCase
 
     public function test_verify_face_id_rejects_invalid_token(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $verificationResult = json_encode([
             'verified' => true,
             'confidence_score' => 0.95,
@@ -160,7 +145,7 @@ final class RealEstateFaceIDVerificationServiceTest extends TestCase
 
     public function test_verify_face_id_rejects_user_mismatch(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $tokenResult = $this->service->generateVerificationToken(
             $this->user->id,
             $this->property->id,
@@ -185,7 +170,7 @@ final class RealEstateFaceIDVerificationServiceTest extends TestCase
 
     public function test_check_verification_status_with_no_verification(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $result = $this->service->checkVerificationStatus(
             $this->user->id,
             $this->property->id,
@@ -199,7 +184,7 @@ final class RealEstateFaceIDVerificationServiceTest extends TestCase
 
     public function test_check_verification_status_with_valid_verification(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $tokenResult = $this->service->generateVerificationToken(
             $this->user->id,
             $this->property->id,
@@ -231,7 +216,7 @@ final class RealEstateFaceIDVerificationServiceTest extends TestCase
 
     public function test_revoke_verification_removes_cached_data(): void
     {
-        $correlationId = \Illuminate\Support\Str::uuid()->toString();
+        $correlationId = Str::uuid()->toString();
         $tokenResult = $this->service->generateVerificationToken(
             $this->user->id,
             $this->property->id,
@@ -263,6 +248,26 @@ final class RealEstateFaceIDVerificationServiceTest extends TestCase
         );
 
         $this->assertFalse($status['verified']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = app(RealEstateFaceIDVerificationService::class);
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create();
+        $this->property = Property::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'type' => 'apartment',
+            'area_sqm' => 75.5,
+            'price' => 10000000.00,
+        ]);
+        $this->viewing = PropertyViewing::factory()->create([
+            'property_id' => $this->property->id,
+            'user_id' => $this->user->id,
+            'agent_id' => User::factory()->create()->id,
+        ]);
     }
 
     protected function tearDown(): void

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
 
@@ -18,9 +20,9 @@ use Illuminate\Support\Str;
 final class BeautyBookingController
 {
     public function __construct(
-        private BeautyBookingService $bookingService,
-        private Queue $queue,
-        private ResponseFactory $response,
+        private readonly BeautyBookingService $bookingService,
+        private readonly Queue $queue,
+        private readonly ResponseFactory $response,
     ) {}
 
     public function book(BookAppointmentRequest $request): JsonResponse

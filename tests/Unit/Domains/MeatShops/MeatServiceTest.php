@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\MeatShops;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\MeatShops\Domain\Services\MeatService;
 
 /**
  * Unit tests for MeatService.
@@ -14,7 +17,7 @@ final class MeatServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\MeatShops\Domain\Services\MeatService::class
+            MeatService::class
         );
         $this->assertTrue($reflection->isFinal(), 'MeatService must be final');
     }
@@ -22,7 +25,7 @@ final class MeatServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\MeatShops\Domain\Services\MeatService::class
+            MeatService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'MeatService must be readonly');
     }
@@ -30,35 +33,34 @@ final class MeatServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\MeatShops\Domain\Services\MeatService::class
+            MeatService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'MeatService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_createOrder_method_exists(): void
+    public function test_create_order_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\MeatShops\Domain\Services\MeatService::class, 'createOrder'),
+            method_exists(MeatService::class, 'createOrder'),
             'MeatService must implement createOrder()'
         );
     }
 
-    public function test_readyForDelivery_method_exists(): void
+    public function test_ready_for_delivery_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\MeatShops\Domain\Services\MeatService::class, 'readyForDelivery'),
+            method_exists(MeatService::class, 'readyForDelivery'),
             'MeatService must implement readyForDelivery()'
         );
     }
 
-    public function test_finalizePayout_method_exists(): void
+    public function test_finalize_payout_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\MeatShops\Domain\Services\MeatService::class, 'finalizePayout'),
+            method_exists(MeatService::class, 'finalizePayout'),
             'MeatService must implement finalizePayout()'
         );
     }
-
 }

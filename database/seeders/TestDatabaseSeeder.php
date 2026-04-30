@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use App\Models\User;
 
 /**
  * Test Database Seeder
@@ -24,7 +27,7 @@ class TestDatabaseSeeder extends Seeder
 
         // Create test users
         for ($i = 1; $i <= 5; $i++) {
-            \App\Models\User::factory()->create([
+            User::factory()->create([
                 'id' => $i,
                 'tenant_id' => 1,
                 'email' => "user{$i}@test.com",
