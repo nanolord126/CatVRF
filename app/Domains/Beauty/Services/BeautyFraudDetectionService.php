@@ -4,33 +4,60 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Beauty\DTOs\BeautyFraudDetectionDto;
 use App\Domains\Beauty\Events\FraudDetectedEvent;
+use App\Octane\Services\SwooleTableService;
 use App\Services\AuditService;
 use App\Services\Fraud\FraudMLService;
 use App\Services\Security\RateLimiterService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
+use Carbon\CarbonImmutable;
 
 final readonly class BeautyFraudDetectionService
 {
     private const CACHE_TTL = 3600;
+
     private const FRAUD_THRESHOLD_BLOCK = 0.85;
+
     private const FRAUD_THRESHOLD_REVIEW = 0.65;
+
     private const SUSPICIOUS_ACTIONS_THRESHOLD = 10;
+
     private const SUSPICIOUS_ACTIONS_WINDOW = 300;
 
-    public function __construct(
-        private FraudMLService $fraudML,
-        private AuditService $audit,
-        private RateLimiterService $rateLimiter,
-    ) {}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
+        private readonly FraudMLService $fraudML,
+        private readonly AuditService $audit,
+        private readonly RateLimiterService $rateLimiter,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,
+        private readonly ?SwooleTableService $swooleTableService = null,) {}
 
     public function analyze(BeautyFraudDetectionDto $dto): array
     {
-        return DB::transaction(function () use ($dto) {
+        return $this->db->transaction(function () use ($dto) {
+            // Check cache first for faster repeated checks
+            $cached = $this->getCachedFraudScore($dto->userId);
+            if ($cached !== null && ($cached['cached_at'] ?? 0) > time() - 300) {
+                return [
+                    'success' => true,
+                    'fraud_score' => round($cached['score'], 4),
+                    'risk_level' => $cached['risk_level'],
+                    'action_required' => $this->determineAction($cached['score'], $cached['risk_level']),
+                    'flags' => [],
+                    'correlation_id' => $dto->correlationId,
+                    'cached' => true,
+                ];
+            }
+
             $mlScore = $this->getMLScore($dto);
             $ruleScore = $this->applyRuleBasedDetection($dto);
             $behaviorScore = $this->analyzeBehavioralPatterns($dto);
@@ -50,12 +77,16 @@ final readonly class BeautyFraudDetectionService
                 'action_required' => $actionRequired,
                 'flags' => $this->getFlags($dto, $finalScore),
                 'correlation_id' => $dto->correlationId,
+                'cached' => false,
             ];
+
+            // Cache the result in Swoole Table for faster access
+            $this->cacheFraudScore($dto->userId, $finalScore, $riskLevel);
 
             $this->recordFraudCheck($dto, $result);
 
             if ($finalScore >= self::FRAUD_THRESHOLD_REVIEW) {
-                event(new FraudDetectedEvent(
+                $this->eventDispatcher->dispatch(new FraudDetectedEvent(
                     userId: $dto->userId,
                     fraudScore: $finalScore,
                     riskLevel: $riskLevel,
@@ -64,7 +95,7 @@ final readonly class BeautyFraudDetectionService
                 ));
             }
 
-            Log::channel('fraud_alert')->info('Fraud detection analysis completed', [
+            $this->log->channel('fraud_alert')->$this->logger->info('Fraud detection analysis completed', [
                 'correlation_id' => $dto->correlationId,
                 'user_id' => $dto->userId,
                 'action' => $dto->action,
@@ -90,6 +121,20 @@ final readonly class BeautyFraudDetectionService
         });
     }
 
+    public function addSuspiciousIP(string $ip): void
+    {
+        $key = 'beauty:suspicious_ips';
+        $this->redis->sadd($key, $ip);
+        $this->redis->expire($key, 86400 * 7);
+    }
+
+    public function recordFailedPayment(int $userId): void
+    {
+        $key = "beauty:failed_payments:{$userId}";
+        $this->redis->incr($key);
+        $this->redis->expire($key, 86400);
+    }
+
     private function getMLScore(BeautyFraudDetectionDto $dto): float
     {
         try {
@@ -102,7 +147,7 @@ final readonly class BeautyFraudDetectionService
                 'tenant_id' => $dto->tenantId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('fraud_alert')->warning('ML fraud prediction failed', [
+            $this->log->channel('fraud_alert')->warning('ML fraud prediction failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $dto->correlationId,
             ]);
@@ -143,7 +188,7 @@ final readonly class BeautyFraudDetectionService
         $score = 0.0;
 
         $key = "beauty:user_behavior:{$dto->userId}";
-        $behavior = Redis::get($key);
+        $behavior = $this->redis->get($key);
 
         if ($behavior) {
             $data = json_decode($behavior, true);
@@ -229,27 +274,61 @@ final readonly class BeautyFraudDetectionService
 
     private function isSuspiciousIP(?string $ip): bool
     {
-        if (!$ip) {
+        if (! $ip) {
             return false;
         }
 
-        $key = "beauty:suspicious_ips";
-        return Redis::sismember($key, $ip);
+        // Try Swoole Table first for faster access
+        if ($this->swooleTableService !== null) {
+            $fraudCache = $this->swooleTableService->fraudCache();
+            if ($fraudCache) {
+                $key = 'suspicious_ip:'.md5($ip);
+                $cached = $fraudCache->get($key);
+                if ($cached && $cached['expires_at'] > time()) {
+                    return $cached['risk_score'] > 0;
+                }
+            }
+        }
+
+        // Fallback to Redis
+        $key = 'beauty:suspicious_ips';
+
+        return $this->redis->sismember($key, $ip);
     }
 
     private function hasExcessiveActions(int $userId): bool
     {
+        // Try Swoole Table for faster rate limiting
+        if ($this->swooleTableService !== null) {
+            $rateLimitsTable = $this->swooleTableService->rateLimits();
+            if ($rateLimitsTable) {
+                $key = "beauty:actions:{$userId}";
+                $current = $rateLimitsTable->get($key);
+                $count = $current ? $current['count'] + 1 : 1;
+                $rateLimitsTable->set($key, [
+                    'identifier' => (string) $userId,
+                    'key' => 'beauty_actions',
+                    'count' => $count,
+                    'reset_at' => time() + self::SUSPICIOUS_ACTIONS_WINDOW,
+                    'blocked_until' => 0,
+                ]);
+
+                return $count > self::SUSPICIOUS_ACTIONS_THRESHOLD;
+            }
+        }
+
+        // Fallback to Redis
         $key = "beauty:user_actions:{$userId}";
 
-        $count = Redis::incr($key);
-        Redis::expire($key, self::SUSPICIOUS_ACTIONS_WINDOW);
+        $count = $this->redis->incr($key);
+        $this->redis->expire($key, self::SUSPICIOUS_ACTIONS_WINDOW);
 
         return $count > self::SUSPICIOUS_ACTIONS_THRESHOLD;
     }
 
     private function isUnusualAmount(?int $amount): bool
     {
-        if (!$amount) {
+        if (! $amount) {
             return false;
         }
 
@@ -258,7 +337,7 @@ final readonly class BeautyFraudDetectionService
 
     private function isSuspiciousUserAgent(?string $userAgent): bool
     {
-        if (!$userAgent) {
+        if (! $userAgent) {
             return true;
         }
 
@@ -276,7 +355,7 @@ final readonly class BeautyFraudDetectionService
     private function hasRecentFailedPayments(int $userId): bool
     {
         $key = "beauty:failed_payments:{$userId}";
-        $count = Redis::get($key);
+        $count = $this->redis->get($key);
 
         return $count !== null && (int) $count > 3;
     }
@@ -284,56 +363,96 @@ final readonly class BeautyFraudDetectionService
     private function isNewAccount(int $userId): bool
     {
         $key = "beauty:user_created:{$userId}";
-        $createdAt = Redis::get($key);
+        $createdAt = $this->redis->get($key);
 
-        if (!$createdAt) {
+        if (! $createdAt) {
             return false;
         }
 
-        return (now()->timestamp - (int) $createdAt) < 86400;
+        return (CarbonImmutable::now()->timestamp - (int) $createdAt) < 86400;
     }
 
     private function updateBehaviorPattern(BeautyFraudDetectionDto $dto): void
     {
         $key = "beauty:user_behavior:{$dto->userId}";
-        $behavior = json_decode(Redis::get($key) ?: '{}', true);
+        $behavior = json_decode($this->redis->get($key) ?: '{}', true);
 
         $behavior['actions_last_hour'] = ($behavior['actions_last_hour'] ?? 0) + 1;
-        $behavior['last_action'] = now()->toIso8601String();
+        $behavior['last_action'] = CarbonImmutable::now()->toIso8601String();
 
         if ($dto->masterId) {
             $mastersKey = "beauty:user_masters:{$dto->userId}";
-            Redis::sadd($mastersKey, $dto->masterId);
-            Redis::expire($mastersKey, 86400);
-            $behavior['unique_masters_last_day'] = Redis::scard($mastersKey);
+            $this->redis->sadd($mastersKey, $dto->masterId);
+            $this->redis->expire($mastersKey, 86400);
+            $behavior['unique_masters_last_day'] = $this->redis->scard($mastersKey);
         }
 
-        Redis::setex($key, 86400, json_encode($behavior));
+        $this->redis->setex($key, 86400, json_encode($behavior));
     }
 
     private function recordFraudCheck(BeautyFraudDetectionDto $dto, array $result): void
     {
         $key = "beauty:fraud_checks:{$dto->userId}";
-        Redis::lpush($key, json_encode([
-            'timestamp' => now()->toIso8601String(),
+        $this->redis->lpush($key, json_encode([
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
             'action' => $dto->action,
             'fraud_score' => $result['fraud_score'],
             'risk_level' => $result['risk_level'],
         ]));
-        Redis::expire($key, 86400 * 30);
+        $this->redis->expire($key, 86400 * 30);
     }
 
-    public function addSuspiciousIP(string $ip): void
+    private function cacheFraudScore(int $userId, float $score, string $riskLevel, int $ttl = 3600): void
     {
-        $key = "beauty:suspicious_ips";
-        Redis::sadd($key, $ip);
-        Redis::expire($key, 86400 * 7);
+        if ($this->swooleTableService === null) {
+            // Fallback to Redis
+            $key = "beauty:fraud_score:{$userId}";
+            $this->redis->setex($key, $ttl, json_encode([
+                'score' => $score,
+                'risk_level' => $riskLevel,
+                'cached_at' => time(),
+            ]));
+
+            return;
+        }
+
+        // Use Swoole Table for faster access
+        $fraudCache = $this->swooleTableService->fraudCache();
+        if ($fraudCache) {
+            $fraudCache->set("beauty:{$userId}", [
+                'user_id' => $userId,
+                'ip_address' => '',
+                'fingerprint' => '',
+                'risk_score' => (int) ($score * 100),
+                'flags' => $riskLevel,
+                'last_checked' => time(),
+                'expires_at' => time() + $ttl,
+            ]);
+        }
     }
 
-    public function recordFailedPayment(int $userId): void
+    private function getCachedFraudScore(int $userId): ?array
     {
-        $key = "beauty:failed_payments:{$userId}";
-        Redis::incr($key);
-        Redis::expire($key, 86400);
+        if ($this->swooleTableService === null) {
+            // Fallback to Redis
+            $key = "beauty:fraud_score:{$userId}";
+            $cached = $this->redis->get($key);
+
+            return $cached ? json_decode($cached, true) : null;
+        }
+
+        $fraudCache = $this->swooleTableService->fraudCache();
+        if ($fraudCache) {
+            $cached = $fraudCache->get("beauty:{$userId}");
+            if ($cached && $cached['expires_at'] > time()) {
+                return [
+                    'score' => $cached['risk_score'] / 100,
+                    'risk_level' => $cached['flags'],
+                    'cached_at' => $cached['last_checked'],
+                ];
+            }
+        }
+
+        return null;
     }
 }

@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Listeners;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\RealEstate\Events\ViewingConfirmedEvent;
 use App\Services\NotificationService;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 final class NotifyUserViewingConfirmedListener
 {
-    public function __construct(
-        private readonly NotificationService $notificationService
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly NotificationService $notificationService,
+        private readonly LogManager $log,) {}
 
     public function handle(ViewingConfirmedEvent $event): void
     {
@@ -36,7 +38,7 @@ final class NotifyUserViewingConfirmedListener
                 correlationId: $event->correlationId
             );
 
-            Log::channel('audit')->info('User notified about viewing confirmation', [
+            $this->log->channel('audit')->$this->logger->info('User notified about viewing confirmation', [
                 'viewing_id' => $viewing->id,
                 'user_id' => $viewing->user_id,
                 'property_id' => $viewing->property_id,
@@ -44,7 +46,7 @@ final class NotifyUserViewingConfirmedListener
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Failed to notify user about viewing confirmation', [
+            $this->log->channel('audit')->error('Failed to notify user about viewing confirmation', [
                 'viewing_id' => $viewing->id,
                 'user_id' => $viewing->user_id,
                 'error' => $e->getMessage(),

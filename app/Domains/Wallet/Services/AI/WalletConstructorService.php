@@ -20,20 +20,20 @@ use Psr\Log\LoggerInterface;
  * бонусов и кэшбэка.
  *
  * CANON 2026: final readonly, constructor DI, FraudControlService::check(),
- * DB::transaction(), correlation_id, AuditService::record().
+ * $this->db->transaction(), correlation_id, AuditService::record().
  */
 final readonly class WalletConstructorService
 {
     private const CACHE_TTL_SECONDS = 3600;
+
     private const CACHE_PREFIX = 'wallet_ai:';
 
-    public function __construct(
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private CacheRepository $cache,
-    ) {}
+    public function __construct(private readonly DatabaseManager $db,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly CacheRepository $cache,) {}
 
     /**
      * Анализировать кошелёк и дать AI-рекомендации.
@@ -61,7 +61,7 @@ final readonly class WalletConstructorService
             'correlation_id' => $correlationId,
         ]);
 
-        $cacheKey = self::CACHE_PREFIX . $walletId;
+        $cacheKey = self::CACHE_PREFIX.$walletId;
         $cached = $this->cache->get($cacheKey);
 
         if (is_array($cached)) {
@@ -83,7 +83,7 @@ final readonly class WalletConstructorService
 
         $this->cache->put($cacheKey, $result, self::CACHE_TTL_SECONDS);
 
-        $this->logger->info('Wallet AI analysis completed', [
+        $this->logger->$this->logger->info('Wallet AI analysis completed', [
             'wallet_id' => $walletId,
             'user_id' => $userId,
             'recommendations_count' => count($recommendations),

@@ -1,19 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
 
 use App\Services\AuditService;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
  * Анализ трендов Fashion из социальных сетей.
  * PRODUCTION MANDATORY — канон CatVRF 2026.
- * 
+ *
  * Мониторинг Instagram, TikTok, Pinterest, Twitter
  * Анализ mentions, hashtags, influencer posts
  * Предсказание трендов на основе данных
@@ -21,13 +23,16 @@ use Illuminate\Support\Str;
 final readonly class FashionSocialMediaTrendService
 {
     private const TREND_WINDOW_DAYS = 30;
+
     private const MIN_MENTIONS_FOR_TREND = 50;
+
     private const SENTIMENT_THRESHOLD = 0.6;
 
     public function __construct(
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private \Illuminate\Database\DatabaseManager $db,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
     ) {}
 
     /**
@@ -46,7 +51,7 @@ final readonly class FashionSocialMediaTrendService
                 $platformTrends = $this->collectPlatformTrends($platform, $tenantId, $correlationId);
                 $trends[$platform] = $platformTrends;
             } catch (\Throwable $e) {
-                Log::channel('audit')->warning('Failed to collect trends from platform', [
+                $this->log->channel('audit')->warning('Failed to collect trends from platform', [
                     'platform' => $platform,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -61,7 +66,7 @@ final readonly class FashionSocialMediaTrendService
             oldValues: [],
             newValues: [
                 'platforms_collected' => count($trends),
-                'total_trends' => array_sum(array_map(fn($p) => count($p), $trends)),
+                'total_trends' => array_sum(array_map(fn ($p) => count($p), $trends)),
             ],
             correlationId: $correlationId
         );
@@ -69,8 +74,8 @@ final readonly class FashionSocialMediaTrendService
         return [
             'tenant_id' => $tenantId,
             'platforms' => $trends,
-            'total_trends' => array_sum(array_map(fn($p) => count($p), $trends)),
-            'collected_at' => Carbon::now()->toIso8601String(),
+            'total_trends' => array_sum(array_map(fn ($p) => count($p), $trends)),
+            'collected_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
     }
@@ -121,7 +126,7 @@ final readonly class FashionSocialMediaTrendService
         $trends = $this->db->table('fashion_trend_keywords')
             ->where('tenant_id', $tenantId)
             ->where('category', $category)
-            ->where('created_at', '>=', Carbon::now()->subDays(self::TREND_WINDOW_DAYS))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(self::TREND_WINDOW_DAYS))
             ->orderBy('trend_score', 'desc')
             ->orderBy('velocity', 'desc')
             ->limit($limit)
@@ -146,7 +151,7 @@ final readonly class FashionSocialMediaTrendService
 
         $historicalTrends = $this->db->table('fashion_trend_keywords')
             ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', Carbon::now()->subDays(90))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(90))
             ->orderBy('created_at', 'desc')
             ->get()
             ->toArray();
@@ -196,14 +201,14 @@ final readonly class FashionSocialMediaTrendService
 
         foreach ($hashtags as $hashtag) {
             $trendScore = $this->calculateHashtagTrendScore($hashtag, $platform);
-            
+
             if ($trendScore >= self::SENTIMENT_THRESHOLD) {
                 $trends[] = [
                     'type' => 'hashtag',
                     'value' => $hashtag,
                     'platform' => $platform,
                     'trend_score' => $trendScore,
-                    'collected_at' => Carbon::now()->toIso8601String(),
+                    'collected_at' => CarbonImmutable::now()->toIso8601String(),
                 ];
 
                 $this->saveTrendKeyword($hashtag, 'hashtag', $platform, $trendScore, $tenantId, $correlationId);
@@ -212,14 +217,14 @@ final readonly class FashionSocialMediaTrendService
 
         foreach ($keywords as $keyword) {
             $trendScore = $this->calculateKeywordTrendScore($keyword, $platform);
-            
+
             if ($trendScore >= self::SENTIMENT_THRESHOLD) {
                 $trends[] = [
                     'type' => 'keyword',
                     'value' => $keyword,
                     'platform' => $platform,
                     'trend_score' => $trendScore,
-                    'collected_at' => Carbon::now()->toIso8601String(),
+                    'collected_at' => CarbonImmutable::now()->toIso8601String(),
                 ];
 
                 $this->saveTrendKeyword($keyword, 'keyword', $platform, $trendScore, $tenantId, $correlationId);
@@ -256,7 +261,7 @@ final readonly class FashionSocialMediaTrendService
     private function calculateHashtagTrendScore(string $hashtag, string $platform): float
     {
         $baseScore = rand(50, 100) / 100.0;
-        
+
         $platformMultiplier = match ($platform) {
             'tiktok' => 1.3,
             'instagram' => 1.2,
@@ -271,7 +276,7 @@ final readonly class FashionSocialMediaTrendService
     private function calculateKeywordTrendScore(string $keyword, string $platform): float
     {
         $baseScore = rand(40, 90) / 100.0;
-        
+
         $platformMultiplier = match ($platform) {
             'instagram' => 1.2,
             'tiktok' => 1.25,
@@ -294,8 +299,8 @@ final readonly class FashionSocialMediaTrendService
             'velocity' => rand(0, 100) / 100.0,
             'category' => $this->inferCategory($keyword),
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 
@@ -325,7 +330,7 @@ final readonly class FashionSocialMediaTrendService
         return $this->db->table('fashion_social_mentions')
             ->where('product_id', $productId)
             ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', Carbon::now()->subDays(self::TREND_WINDOW_DAYS))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(self::TREND_WINDOW_DAYS))
             ->get()
             ->toArray();
     }
@@ -342,6 +347,7 @@ final readonly class FashionSocialMediaTrendService
         }
 
         $maxScore = count($mentions) * 1000;
+
         return min($totalScore / max($maxScore, 1), 1.0);
     }
 
@@ -364,13 +370,13 @@ final readonly class FashionSocialMediaTrendService
         $recentMentions = $this->db->table('fashion_social_mentions')
             ->where('product_id', $productId)
             ->where('tenant_id', $tenantId)
-            ->where('created_at', '>=', Carbon::now()->subDays(7))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(7))
             ->count();
 
         $olderMentions = $this->db->table('fashion_social_mentions')
             ->where('product_id', $productId)
             ->where('tenant_id', $tenantId)
-            ->whereBetween('created_at', [Carbon::now()->subDays(14), Carbon::now()->subDays(7)])
+            ->whereBetween('created_at', [CarbonImmutable::now()->subDays(14), CarbonImmutable::now()->subDays(7)])
             ->count();
 
         if ($olderMentions === 0) {
@@ -388,7 +394,7 @@ final readonly class FashionSocialMediaTrendService
                 'trend_score' => $trendScore,
                 'demand_velocity' => $velocity,
                 'correlation_id' => $correlationId,
-                'updated_at' => Carbon::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]
         );
     }
@@ -400,6 +406,7 @@ final readonly class FashionSocialMediaTrendService
             $platform = $mention['platform'];
             $byPlatform[$platform] = ($byPlatform[$platform] ?? 0) + 1;
         }
+
         return $byPlatform;
     }
 
@@ -419,7 +426,7 @@ final readonly class FashionSocialMediaTrendService
         foreach ($topKeywords as $keyword) {
             $currentScore = $keywordScores[$keyword];
             $predictedScore = min($currentScore * (1 + rand(0, 20) / 100.0), 1.0);
-            
+
             $predictions[] = [
                 'keyword' => $keyword,
                 'current_score' => $currentScore,
@@ -439,7 +446,7 @@ final readonly class FashionSocialMediaTrendService
         }
 
         $dataPoints = count($historicalTrends);
-        
+
         return match (true) {
             $dataPoints >= 100 => 0.8,
             $dataPoints >= 50 => 0.7,

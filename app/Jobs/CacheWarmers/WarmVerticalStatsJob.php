@@ -1,57 +1,114 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs\CacheWarmers;
 
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Log\LogManager;
 use Illuminate\Cache\CacheManager;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
 final class WarmVerticalStatsJob implements ShouldQueue
 {
-        protected int $tries = 3;
-        protected int $timeout = 45;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-        public function __construct(private readonly string $vertical,
+    public int $tries = 3;
+
+    public int $timeout = 45;
+
+    private readonly string $correlationId;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly string $vertical,
         private readonly LogManager $logger,
         private readonly CacheManager $cache,
-    ) {}
+        private readonly DatabaseManager $db,) {
+        $this->correlationId = Str::uuid()->toString();
+        $this->onQueue('cache-warmer');
+    }
 
-        public function handle(): void
-        {
-            try {
-                $cacheKey = "vertical_stats:{$this->vertical}";
-                $cacheTag = "vertical_stats_{$this->vertical}";
+    public function tags(): array
+    {
+        return ['cache-warmer', 'vertical-stats', $this->vertical];
+    }
 
-                $stats = $this->calculateStats();
+    public function retryUntil(): \DateTime
+    {
+        return CarbonImmutable::now()->addMinutes(15);
+    }
 
-                $this->cache->store('redis')
-                    ->tags([$cacheTag])
-                    ->put($cacheKey, $stats, now()->addHours(8));
+    public function handle(): void
+    {
+        $this->logger->channel('audit')->$this->logger->info('[WarmVerticalStatsJob] Started', [
+            'vertical' => $this->vertical,
+            'correlation_id' => $this->correlationId,
+        ]);
 
-                $this->logger->channel('audit')->info('Vertical stats cached', [
-                    'vertical' => $this->vertical,
-                    'correlation_id' => $stats['correlation_id'],
-                ]);
-            } catch (\Throwable $e) {
-                $this->logger->channel('audit')->error('Failed to warm vertical stats cache', [
-                    'vertical' => $this->vertical,
-                    'error' => $e->getMessage(),
-                ]);
-                throw $e;
-            }
-        }
+        try {
+            $cacheKey = "vertical_stats:{$this->vertical}";
+            $cacheTag = "vertical_stats_{$this->vertical}";
 
-        private function calculateStats(): array
-        {
-            return [
+            $stats = $this->calculateStats();
+
+            $this->cache->store('redis')
+                ->tags([$cacheTag])
+                ->put($cacheKey, $stats, CarbonImmutable::now()->addHours(8));
+
+            $this->logger->channel('audit')->$this->logger->info('[WarmVerticalStatsJob] Completed', [
                 'vertical' => $this->vertical,
-                'total_revenue' => 0,
-                'orders_count' => 0,
-                'users_count' => 0,
-                'average_order' => 0,
-                'calculated_at' => now()->toIso8601String(),
-                'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
-            ];
+                'correlation_id' => $this->correlationId,
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('[WarmVerticalStatsJob] Failed', [
+                'vertical' => $this->vertical,
+                'correlation_id' => $this->correlationId,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
         }
+    }
+
+    private function calculateStats(): array
+    {
+        $revenue = $this->db->table('orders')
+            ->where('vertical', $this->vertical)
+            ->where('created_at', '>=', CarbonImmutable::now()->subDay())
+            ->sum('total_amount');
+
+        $ordersCount = $this->db->table('orders')
+            ->where('vertical', $this->vertical)
+            ->where('created_at', '>=', CarbonImmutable::now()->subDay())
+            ->count();
+
+        return [
+            'vertical' => $this->vertical,
+            'total_revenue' => (float) ($revenue ?? 0),
+            'orders_count' => $ordersCount,
+            'average_order' => $ordersCount > 0 ? round((float) ($revenue ?? 0) / $ordersCount, 2) : 0,
+            'calculated_at' => CarbonImmutable::now()->toIso8601String(),
+            'correlation_id' => $this->correlationId,
+        ];
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        $this->logger->channel('audit')->error('[WarmVerticalStatsJob] Failed permanently', [
+            'vertical' => $this->vertical,
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

@@ -1,30 +1,35 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * FraudAttempt — запись о подозрительном действии.
  * Канон CatVRF 2026 — PRODUCTION MANDATORY.
  *
- * @property int         $id
- * @property int|null    $tenant_id
- * @property int|null    $user_id
- * @property string      $operation_type
- * @property string      $ip_address
- * @property string      $device_fingerprint
- * @property string      $correlation_id
- * @property float|null  $ml_score
+ * @property int $id
+ * @property int|null $tenant_id
+ * @property int|null $user_id
+ * @property string $operation_type
+ * @property string $ip_address
+ * @property string $device_fingerprint
+ * @property string $correlation_id
+ * @property float|null $ml_score
  * @property string|null $ml_version
- * @property array|null  $features
- * @property string      $decision          block|review|allow
+ * @property array|null $features
+ * @property string $decision block|review|allow
  * @property string|null $reason
- * @property \Carbon\Carbon|null $blocked_at
- * @property \Carbon\Carbon      $created_at
- * @property \Carbon\Carbon      $updated_at
+ * @property Carbon|null $blocked_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class FraudAttempt extends Model
 {
@@ -67,17 +72,17 @@ final class FraudAttempt extends Model
 
     // ── Scopes ───────────────────────────────────────────────
 
-    public function scopeBlocked($query): \Illuminate\Database\Eloquent\Builder
+    public function scopeBlocked($query): Builder
     {
         return $query->where('decision', 'block');
     }
 
-    public function scopeToday($query): \Illuminate\Database\Eloquent\Builder
+    public function scopeToday($query): Builder
     {
-        return $query->where('created_at', '>=', now()->startOfDay());
+        return $query->where('created_at', '>=', CarbonImmutable::now()->startOfDay());
     }
 
-    public function scopeHighRisk($query): \Illuminate\Database\Eloquent\Builder
+    public function scopeHighRisk($query): Builder
     {
         return $query->where('ml_score', '>=', 0.65);
     }

@@ -1,10 +1,9 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Taxi;
 
-use App\Domains\Taxi\Models\TaxiRide;
-use App\Domains\Taxi\Services\TaxiOrderService;
-use App\Domains\Taxi\DTOs\CreateTaxiOrderDto;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -16,13 +15,13 @@ final class TaxiFalsePositiveTest extends TestCase
     public function test_legitimate_user_with_good_history_not_flagged(): void
     {
         $userId = 1;
-        
+
         Cache::put("fraud:user:{$userId}:cancellation_rate", 0.05, 3600);
         Cache::put("fraud:user:{$userId}:chargeback_rate", 0.01, 3600);
         Cache::put("fraud:user:{$userId}:successful_orders", 50, 3600);
 
         $isFlagged = $this->checkUserFraudRisk($userId);
-        
+
         $this->assertFalse($isFlagged, 'Legitimate user should not be flagged');
     }
 
@@ -30,18 +29,18 @@ final class TaxiFalsePositiveTest extends TestCase
     {
         $userId = 1;
         $knownDeviceFingerprint = 'known-trusted-device-12345';
-        
+
         Cache::put("fraud:user:{$userId}:known_devices", [$knownDeviceFingerprint], 3600);
 
-        $isNewDevice = !in_array($knownDeviceFingerprint, Cache::get("fraud:user:{$userId}:known_devices", []));
-        
+        $isNewDevice = ! in_array($knownDeviceFingerprint, Cache::get("fraud:user:{$userId}:known_devices", []), true);
+
         $this->assertFalse($isNewDevice, 'Known device should not be flagged as new');
     }
 
     public function test_normal_geographic_location_change_not_flagged(): void
     {
         $userId = 1;
-        
+
         Cache::put("fraud:user:{$userId}:last_location", [
             'lat' => 55.75396,
             'lon' => 37.62039,
@@ -54,8 +53,10 @@ final class TaxiFalsePositiveTest extends TestCase
         ];
 
         $distance = $this->calculateDistance(
-            55.75396, 37.62039,
-            55.7550, 37.6250
+            55.75396,
+            37.62039,
+            55.7550,
+            37.6250
         );
 
         $this->assertLessThan(10, $distance, 'Normal location change should not be flagged');
@@ -64,11 +65,11 @@ final class TaxiFalsePositiveTest extends TestCase
     public function test_single_payment_attempt_not_flagged(): void
     {
         $cardFingerprint = 'card-12345';
-        
+
         Cache::put("fraud:card:{$cardFingerprint}:attempts", 1, 3600);
 
         $isBlocked = Cache::get("fraud:card:{$cardFingerprint}:blocked");
-        
+
         $this->assertFalse($isBlocked, 'Single payment attempt should not be blocked');
     }
 
@@ -78,16 +79,16 @@ final class TaxiFalsePositiveTest extends TestCase
         $fraudThreshold = 100000;
 
         $requiresVerification = $orderAmount > $fraudThreshold;
-        
+
         $this->assertFalse($requiresVerification, 'Reasonable order amount should not require verification');
     }
 
     public function test_consistent_payment_method_not_flagged(): void
     {
         $userId = 1;
-        
+
         $paymentMethods = ['wallet', 'wallet', 'wallet', 'wallet'];
-        
+
         Cache::put("fraud:user:{$userId}:payment_history", $paymentMethods, 3600);
 
         $history = Cache::get("fraud:user:{$userId}:payment_history");
@@ -99,7 +100,7 @@ final class TaxiFalsePositiveTest extends TestCase
     public function test_normal_order_pattern_not_flagged(): void
     {
         $userId = 1;
-        
+
         $recentOrders = [
             ['time' => now()->subDays(1), 'amount' => 5000],
             ['time' => now()->subDays(3), 'amount' => 3000],
@@ -108,7 +109,7 @@ final class TaxiFalsePositiveTest extends TestCase
 
         Cache::put("fraud:user:{$userId}:recent_orders", $recentOrders, 3600);
 
-        $isUnusual = count($recentOrders) > 4 && 
+        $isUnusual = count($recentOrders) > 4 &&
                      $recentOrders[0]['time']->diffInMinutes($recentOrders[count($recentOrders) - 1]['time']) < 30;
 
         $this->assertFalse($isUnusual, 'Normal order pattern should not be flagged');
@@ -117,23 +118,23 @@ final class TaxiFalsePositiveTest extends TestCase
     public function test_valid_inn_not_rejected(): void
     {
         $validInn = '7728168971';
-        
+
         $isValid = $this->validateInn($validInn);
-        
+
         $this->assertTrue($isValid, 'Valid INN should not be rejected');
     }
 
     public function test_single_active_ride_not_flagged(): void
     {
         $userId = 1;
-        
+
         $activeRides = [
             ['location' => 'Moscow', 'status' => 'in_progress'],
         ];
 
         Cache::put("fraud:user:{$userId}:active_rides", $activeRides, 3600);
 
-        $hasConflictingRides = count($activeRides) > 1 && 
+        $hasConflictingRides = count($activeRides) > 1 &&
                               $activeRides[0]['status'] === 'in_progress';
 
         $this->assertFalse($hasConflictingRides, 'Single active ride should not be flagged');
@@ -142,7 +143,7 @@ final class TaxiFalsePositiveTest extends TestCase
     public function test_normal_refund_timing_not_flagged(): void
     {
         $rideUuid = 'test-ride-uuid';
-        
+
         Cache::put("fraud:ride:{$rideUuid}:payment_time", now()->subHours(2), 3600);
         Cache::put("fraud:ride:{$rideUuid}:refund_request_time", now(), 3600);
 
@@ -158,7 +159,7 @@ final class TaxiFalsePositiveTest extends TestCase
     public function test_low_fraud_score_not_flagged(): void
     {
         $userId = 1;
-        
+
         $fraudFactors = [
             'high_value_order' => 0,
             'new_device' => 0,
@@ -177,27 +178,27 @@ final class TaxiFalsePositiveTest extends TestCase
     public function test_legitimate_ip_not_blacklisted(): void
     {
         $legitimateIp = '192.168.1.100';
-        
+
         $isBlacklisted = Cache::get("fraud:blacklist:ip:{$legitimateIp}");
-        
+
         $this->assertFalse($isBlacklisted, 'Legitimate IP should not be blacklisted');
     }
 
     public function test_whitelisted_ip_bypasses_rate_limiting(): void
     {
         $whitelistedIp = '192.168.1.200';
-        
+
         Cache::put("whitelist:ip:{$whitelistedIp}", true, 3600);
 
         $isWhitelisted = Cache::get("whitelist:ip:{$whitelistedIp}");
-        
+
         $this->assertTrue($isWhitelisted, 'Whitelisted IP should bypass rate limiting');
     }
 
     public function test_verified_user_not_flagged(): void
     {
         $userId = 1;
-        
+
         Cache::put("fraud:user:{$userId}:verified", true, 3600);
         Cache::put("fraud:user:{$userId}:verification_level", 'high', 3600);
 
@@ -212,7 +213,7 @@ final class TaxiFalsePositiveTest extends TestCase
     {
         $userId = 1;
         $businessInn = '7728168971';
-        
+
         Cache::put("fraud:user:{$userId}:is_business", true, 3600);
         Cache::put("fraud:user:{$userId}:inn_verified", true, 3600);
 
@@ -226,7 +227,7 @@ final class TaxiFalsePositiveTest extends TestCase
     public function test_corporate_account_not_flagged(): void
     {
         $businessCardId = 'corp-card-123';
-        
+
         Cache::put("fraud:business_card:{$businessCardId}:active", true, 3600);
         Cache::put("fraud:business_card:{$businessCardId}:credit_limit", 1000000, 3600);
 
@@ -240,7 +241,7 @@ final class TaxiFalsePositiveTest extends TestCase
     public function test_long_term_user_not_flagged(): void
     {
         $userId = 1;
-        
+
         Cache::put("fraud:user:{$userId}:account_age_days", 365, 3600);
         Cache::put("fraud:user:{$userId}:total_orders", 100, 3600);
 
@@ -255,7 +256,7 @@ final class TaxiFalsePositiveTest extends TestCase
     {
         $userId = 1;
         $referrerId = 2;
-        
+
         Cache::put("fraud:user:{$userId}:referred_by", $referrerId, 3600);
         Cache::put("fraud:user:{$referrerId}:is_trusted", true, 3600);
 
@@ -277,7 +278,7 @@ final class TaxiFalsePositiveTest extends TestCase
         $suspiciousThreshold = 150000;
 
         $requiresReview = $totalAmount > $suspiciousThreshold;
-        
+
         $this->assertFalse($requiresReview, 'Normal split payment should not require review');
     }
 
@@ -285,7 +286,7 @@ final class TaxiFalsePositiveTest extends TestCase
     {
         $userId = 1;
         $biometricVerified = true;
-        
+
         Cache::put("fraud:user:{$userId}:biometric_verified", $biometricVerified, 3600);
 
         $isVerified = Cache::get("fraud:user:{$userId}:biometric_verified");
@@ -297,7 +298,7 @@ final class TaxiFalsePositiveTest extends TestCase
     {
         $cancellationRate = Cache::get("fraud:user:{$userId}:cancellation_rate", 0);
         $chargebackRate = Cache::get("fraud:user:{$userId}:chargeback_rate", 0);
-        
+
         return $cancellationRate > 0.3 || $chargebackRate > 0.1;
     }
 
@@ -306,13 +307,13 @@ final class TaxiFalsePositiveTest extends TestCase
         $earthRadius = 6371;
         $dLat = deg2rad($lat2 - $lat1);
         $dLon = deg2rad($lon2 - $lon1);
-        
+
         $a = sin($dLat / 2) * sin($dLat / 2) +
             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
             sin($dLon / 2) * sin($dLon / 2);
-        
+
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-        
+
         return $earthRadius * $c;
     }
 

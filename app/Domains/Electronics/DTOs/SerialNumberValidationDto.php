@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\DTOs;
 
@@ -13,8 +15,7 @@ final readonly class SerialNumberValidationDto
         public ?string $purchaseDate = null,
         public ?string $proofOfPurchaseUrl = null,
         public ?string $idempotencyKey = null,
-    ) {
-    }
+    ) {}
 
     public static function fromRequest(array $data, int $userId, string $correlationId): self
     {

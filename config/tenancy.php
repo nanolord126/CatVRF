@@ -1,6 +1,12 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\Tenant;
+use Database\Seeders\DatabaseSeeder;
+use Stancl\Tenancy\Bootstrappers\CacheTenancyBootstrapper;
+use Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper;
+use Stancl\Tenancy\Bootstrappers\FilesystemTenancyBootstrapper;
+use Stancl\Tenancy\Bootstrappers\QueueTenancyBootstrapper;
 
 /**
  * CatVRF 2026 — Multi-Tenancy Configuration.
@@ -14,7 +20,7 @@ return [
     | Tenant Model
     |--------------------------------------------------------------------------
     */
-    'tenant_model' => \App\Models\Tenant::class,
+    'tenant_model' => Tenant::class,
 
     /*
     |--------------------------------------------------------------------------
@@ -111,10 +117,10 @@ return [
     | Tasks that should be performed when a tenant is identified.
     */
     'bootstrappers' => [
-        \Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper::class,
-        \Stancl\Tenancy\Bootstrappers\CacheTenancyBootstrapper::class,
-        \Stancl\Tenancy\Bootstrappers\FilesystemTenancyBootstrapper::class,
-        \Stancl\Tenancy\Bootstrappers\QueueTenancyBootstrapper::class,
+        DatabaseTenancyBootstrapper::class,
+        CacheTenancyBootstrapper::class,
+        FilesystemTenancyBootstrapper::class,
+        QueueTenancyBootstrapper::class,
     ],
 
     /*
@@ -145,7 +151,7 @@ return [
     |--------------------------------------------------------------------------
     */
     'seeding' => [
-        'shared_seeder' => \Database\Seeders\DatabaseSeeder::class,
+        'shared_seeder' => DatabaseSeeder::class,
     ],
 
     /*

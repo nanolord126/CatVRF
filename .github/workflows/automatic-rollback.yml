@@ -1,0 +1,84 @@
+name: Automatic Rollback
+
+on:
+  workflow_run:
+    workflows: ["CI/CD Pipeline - Production Ready (Improved)"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      rollback_to:
+        description: 'SHA or tag to rollback to'
+        required: true
+        type: string
+
+jobs:
+  monitor-deployment:
+    name: Monitor Deployment Health
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    
+    steps:
+      - name: Wait for deployment to stabilize
+        run: |
+          echo "Waiting 5 minutes for deployment to stabilize..."
+          sleep 300
+
+      - name: Check deployment health
+        id: health_check
+        run: |
+          # Check health endpoint
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://catvrf.ru/api/health/detailed)
+          
+          if [ "$HEALTH_STATUS" -ne 200 ]; then
+            echo "❌ Deployment health check failed with status: $HEALTH_STATUS"
+            echo "needs_rollback=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Deployment health check passed"
+            echo "needs_rollback=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check error rate
+        id: error_rate
+        run: |
+          # Query Prometheus for error rate (example)
+          # ERROR_RATE=$(curl -s 'http://prometheus:9090/api/v1/query?query=rate(http_requests_total{status=~"5.."}[5m])')
+          
+          # For now, simulate check
+          echo "needs_rollback=false" >> $GITHUB_OUTPUT
+
+      - name: Trigger rollback if needed
+        if: steps.health_check.outputs.needs_rollback == 'true' || steps.error_rate.outputs.needs_rollback == 'true'
+        run: |
+          echo "🚨 Initiating automatic rollback..."
+          # Call rollback script
+          # ssh user@server "cd /var/www/catvrf && ./scripts/deploy-blue-green.sh rollback green"
+
+  manual-rollback:
+    name: Manual Rollback
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment:
+      name: production
+      url: https://catvrf.ru
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Execute rollback
+        run: |
+          echo "Rolling back to ${{ github.event.inputs.rollback_to }}"
+          # ssh user@server "cd /var/www/catvrf && ./scripts/deploy-blue-green.sh rollback ${{ github.event.inputs.rollback_to }}"
+
+      - name: Verify rollback
+        run: |
+          echo "Verifying rollback..."
+          sleep 30
+          curl -f https://catvrf.ru/api/health || exit 1
+
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: '🔄 Manual rollback to ${{ github.event.inputs.rollback_to }}: ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}

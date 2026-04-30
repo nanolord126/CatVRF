@@ -4,32 +4,37 @@ declare(strict_types=1);
 
 namespace App\Domains\Payment\Models;
 
+use App\Traits\TenantScoped;
 use App\Domains\Payment\Enums\PaymentProvider;
 use App\Domains\Payment\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use App\Models\BusinessGroup;
+use App\Models\Tenant;
 
 /**
  * Платёжная транзакция — запись о внешнем платеже через шлюз.
  *
- * @property int             $id
- * @property int             $tenant_id
- * @property int|null        $business_group_id
- * @property string          $uuid
- * @property string          $idempotency_key
+ * @property int $id
+ * @property int $tenant_id
+ * @property int|null $business_group_id
+ * @property string $uuid
+ * @property string $idempotency_key
  * @property PaymentProvider $provider_code
- * @property PaymentStatus   $status
- * @property int             $amount_kopecks
- * @property bool            $is_hold
- * @property string|null     $provider_payment_id
- * @property array|null      $provider_response
- * @property string|null     $correlation_id
- * @property array|null      $tags
- * @property array|null      $metadata
+ * @property PaymentStatus $status
+ * @property int $amount_kopecks
+ * @property bool $is_hold
+ * @property string|null $provider_payment_id
+ * @property array|null $provider_response
+ * @property string|null $correlation_id
+ * @property array|null $tags
+ * @property array|null $metadata
  */
 final class PaymentRecord extends Model
 {
+    use TenantScoped;
+
     protected $table = 'payment_transactions';
 
     protected $fillable = [
@@ -46,6 +51,8 @@ final class PaymentRecord extends Model
         'correlation_id',
         'tags',
         'metadata',
+        'payable_type',
+        'payable_id',
     ];
 
     protected $casts = [
@@ -59,29 +66,11 @@ final class PaymentRecord extends Model
     ];
 
     /**
-     * Tenant-scoping + auto-UUID.
-     */
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', static function ($query): void {
-            if (function_exists('tenant') && tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-
-        static::creating(static function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = Str::uuid()->toString();
-            }
-        });
-    }
-
-    /**
      * @return BelongsTo<Model, self>
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class, 'tenant_id');
+        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     /**
@@ -89,7 +78,15 @@ final class PaymentRecord extends Model
      */
     public function businessGroup(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\BusinessGroup::class, 'business_group_id');
+        return $this->belongsTo(BusinessGroup::class, 'business_group_id');
+    }
+
+    /**
+     * Polymorphic relation to Order, Booking, etc.
+     */
+    public function payable()
+    {
+        return $this->morphTo();
     }
 
     /**
@@ -114,5 +111,23 @@ final class PaymentRecord extends Model
     public function isFinal(): bool
     {
         return $this->status->isFinal();
+    }
+
+    /**
+     * Tenant-scoping + auto-UUID.
+     */
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', static function ($query): void {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(static function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

@@ -33,7 +33,7 @@ final class PaymentListenersTest extends TestCase
         $this->assertNotNull($ctor);
 
         $params = $ctor->getParameters();
-        $names = array_map(fn(\ReflectionParameter $p) => $p->getName(), $params);
+        $names = array_map(fn (\ReflectionParameter $p) => $p->getName(), $params);
 
         $this->assertContains('logger', $names);
         $this->assertContains('audit', $names);
@@ -85,7 +85,7 @@ final class PaymentListenersTest extends TestCase
         $this->assertNotNull($ctor);
 
         $params = $ctor->getParameters();
-        $names = array_map(fn(\ReflectionParameter $p) => $p->getName(), $params);
+        $names = array_map(fn (\ReflectionParameter $p) => $p->getName(), $params);
 
         $this->assertContains('logger', $names);
         $this->assertContains('audit', $names);

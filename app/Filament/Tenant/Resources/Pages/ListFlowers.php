@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -17,15 +19,6 @@ use Filament\Tables\Table;
 final class ListFlowers extends ListRecords
 {
     protected static string $resource = FlowersResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Новый B2B-магазин')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -72,5 +65,14 @@ final class ListFlowers extends ListRecords
             ->bulkActions([DeleteBulkAction::make()])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новый B2B-магазин')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

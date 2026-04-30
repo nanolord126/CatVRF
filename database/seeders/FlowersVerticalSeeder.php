@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Database\Seeders;
@@ -21,13 +22,13 @@ final class FlowersVerticalSeeder extends Seeder
         $tenantId = 'bloom-flowers';
         $tenant = Tenant::find($tenantId);
 
-        if (!$tenant) {
+        if (! $tenant) {
             $tenant = Tenant::create([
                 'id' => $tenantId,
                 'name' => 'Bloom & Bouquet',
                 'type' => 'flowers',
                 'correlation_id' => (string) Str::uuid(),
-                'tags' => ['source:seeder']
+                'tags' => ['source:seeder'],
             ]);
             $tenant->domains()->create(['domain' => 'flowers.localhost']);
         }
@@ -36,7 +37,7 @@ final class FlowersVerticalSeeder extends Seeder
 
         // 2. Создание флориста
         $florist = User::where('email', 'florist@bloom.local')->first();
-        if (!$florist) {
+        if (! $florist) {
             $florist = User::create([
                 'name' => 'Rose Garland',
                 'email' => 'florist@bloom.local',
@@ -66,7 +67,7 @@ final class FlowersVerticalSeeder extends Seeder
             ]);
         }
 
-        // 4. (Дополнительно) Можно добавить продукты, если реализована таблица, 
+        // 4. (Дополнительно) Можно добавить продукты, если реализована таблица,
         // но в basic_verticals миграции пока только магазины.
 
         tenancy()->end();

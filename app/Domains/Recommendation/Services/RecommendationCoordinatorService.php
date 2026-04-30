@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Recommendation\Services;
-
-
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
@@ -11,11 +11,17 @@ use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
+
 final readonly class RecommendationCoordinatorService
 {
-    public function __construct(private FraudControlService $fraud,
-        private AuditService        $audit,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Создание записи с fraud-check, $this->db->transaction и correlation_id.
@@ -32,7 +38,7 @@ final readonly class RecommendationCoordinatorService
                 'tenant_id'      => tenant()?->id ?? $data['tenant_id'] ?? null,
             ]));
 
-            $this->logger->info('Recommendation record created', [
+            $this->logger->$this->logger->info('Recommendation record created', [
                 'id'             => $record->id,
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $record->tenant_id,
@@ -57,7 +63,7 @@ final readonly class RecommendationCoordinatorService
             $old = $record->toArray();
             $record->update(array_merge($data, ['correlation_id' => $correlationId]));
 
-            $this->logger->info('Recommendation record updated', [
+            $this->logger->$this->logger->info('Recommendation record updated', [
                 'id'             => $record->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -81,7 +87,7 @@ final readonly class RecommendationCoordinatorService
             $old = $record->toArray();
             $record->delete();
 
-            $this->logger->info('Recommendation record deleted', [
+            $this->logger->$this->logger->info('Recommendation record deleted', [
                 'id'             => $old['id'] ?? null,
                 'correlation_id' => $correlationId,
             ]);
@@ -97,7 +103,7 @@ final readonly class RecommendationCoordinatorService
      */
     public function list(array $filters = []): Collection
     {
-        return Recommendation::when(!empty($filters['status']), fn($q) => $q->where('status', $filters['status']))
+        return Recommendation::when(! empty($filters['status']), fn ($q) => $q->where('status', $filters['status']))
             ->latest()
             ->get();
     }

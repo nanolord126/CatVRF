@@ -1,52 +1,27 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\UserCrmResource\Pages;
 
-use Filament\Notifications\Notification;
+use Illuminate\Notifications\ChannelManager;
 
+use Filament\Notifications\Notification;
 use Psr\Log\LoggerInterface;
 use App\Filament\Tenant\Resources\UserCrmResource;
 use Filament\Actions;
 use Filament\Infolists\Infolist;
 use Filament\Infolists;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Forms\Components\Textarea;
+use Illuminate\Support\Str;
 
 final class ViewUserCrm extends ViewRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = UserCrmResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\Action::make('send_notification')
-                ->label('Отправить уведомление')
-                ->icon('heroicon-o-bell')
-                ->color('primary')
-                ->form([
-                    \Filament\Forms\Components\Textarea::make('message')
-                        ->label('Сообщение')
-                        ->required()
-                        ->maxLength(500),
-                ])
-                ->action(function (array $data) {
-                    $correlationId = (string) \Illuminate\Support\Str::uuid()->toString();
-                    $this->logger->info('CRM: Send notification', [
-                        'user_id' => $this->record->id,
-                        'tenant_id' => filament()->getTenant()?->id,
-                        'correlation_id' => $correlationId,
-                    ]);
-                    // Notification::send($this->record, new CrmMessageNotification($data['message']));
-                    \Filament\Notifications\Notification::make()
-                        ->success()
-                        ->title('Уведомление отправлено')
-                        ->send();
-                }),
-        ];
-    }
+    public function __construct(private readonly ChannelManager $notificationManager,
+        private readonly LoggerInterface $logger,) {}
 
     public function infolist(Infolist $infolist): Infolist
     {
@@ -75,8 +50,9 @@ final class ViewUserCrm extends ViewRecord
 
                     Infolists\Components\TextEntry::make('payment_transactions_sum_amount')
                         ->label('Всего потрачено')
-                        ->formatStateUsing(fn($state) => $state
-                            ? number_format($state / 100, 2, '.', ' ') . ' ₽'
+                        ->formatStateUsing(
+                            fn ($state) => $state
+                            ? number_format($state / 100, 2, '.', ' ').' ₽'
                             : '0.00 ₽'
                         )
                         ->badge()
@@ -88,12 +64,13 @@ final class ViewUserCrm extends ViewRecord
                 Infolists\Components\Grid::make(2)->schema([
                     Infolists\Components\TextEntry::make('wallet_balance')
                         ->label('Текущий баланс')
-                        ->formatStateUsing(fn($state) => $state !== null
-                            ? number_format((int)$state / 100, 2, '.', ' ') . ' ₽'
+                        ->formatStateUsing(
+                            fn ($state) => $state !== null
+                            ? number_format((int) $state / 100, 2, '.', ' ').' ₽'
                             : '0.00 ₽'
                         )
                         ->badge()
-                        ->color(fn($state) => ($state ?? 0) > 0 ? 'success' : 'gray'),
+                        ->color(fn ($state) => ($state ?? 0) > 0 ? 'success' : 'gray'),
 
                     Infolists\Components\TextEntry::make('last_order_at')
                         ->label('Последний заказ')
@@ -102,5 +79,34 @@ final class ViewUserCrm extends ViewRecord
                 ]),
             ]),
         ]);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\Action::make('send_notification')
+                ->label('Отправить уведомление')
+                ->icon('heroicon-o-bell')
+                ->color('primary')
+                ->form([
+                    Textarea::make('message')
+                        ->label('Сообщение')
+                        ->required()
+                        ->maxLength(500),
+                ])
+                ->action(function (array $data) {
+                    $correlationId = (string) Str::uuid()->toString();
+                    $this->logger->$this->logger->info('CRM: Send notification', [
+                        'user_id' => $this->record->id,
+                        'tenant_id' => filament()->getTenant()?->id,
+                        'correlation_id' => $correlationId,
+                    ]);
+                    // $this->notificationManager->send($this->record, new CrmMessageNotification($data['message']));
+                    $this->notificationManager->make()
+                        ->success()
+                        ->title('Уведомление отправлено')
+                        ->send();
+                }),
+        ];
     }
 }

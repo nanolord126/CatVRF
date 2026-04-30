@@ -9,14 +9,14 @@ declare(strict_types=1);
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/filamenttenancybootstrapper
  */
-
 
 namespace App\Application\Tenancy\Boostrappers;
 
@@ -33,14 +33,12 @@ use Stancl\Tenancy\Contracts\Tenant;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Application\Tenancy\Boostrappers
  */
 final class FilamentTenancyBootstrapper implements TenancyBootstrapper
 {
-    protected array $originalConfig;
+    protected readonly array $originalConfig;
 
-    public function __construct(protected Repository $config)
+    public function __construct(protected readonly Repository $config)
     {
         $this->originalConfig = $this->config->get([
             'filament',

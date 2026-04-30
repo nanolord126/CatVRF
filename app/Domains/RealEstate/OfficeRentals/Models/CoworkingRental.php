@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CoworkingRental — CatVRF 2026 Component.
@@ -7,22 +9,19 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/coworkingrental
  */
 
-
 namespace App\Domains\RealEstate\OfficeRentals\Models;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use App\Traits\TenantScoped;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
 
 /**
  * Class CoworkingRental
@@ -42,25 +41,24 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\RealEstate\OfficeRentals\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class CoworkingRental extends Model
 {
-
     protected $table = 'coworking_rentals';
-    protected $fillable = ['uuid', 'tenant_id', 'space_id', 'tenant_business_id', 'correlation_id', 'status', 'total_kopecks', 'payout_kopecks', 'payment_status', 'lease_start', 'lease_end', 'seats_booked', 'tags'];
-    protected $casts = ['total_kopecks' => 'integer', 'payout_kopecks' => 'integer', 'lease_start' => 'datetime', 'lease_end' => 'datetime', 'seats_booked' => 'integer', 'tags' => 'json'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope('tenant', fn ($q) => $q->where('coworking_rentals.tenant_id', tenant()->id));
-    }
+    protected $fillable = ['uuid', 'tenant_id', 'space_id', 'tenant_business_id', 'correlation_id', 'status', 'total_kopecks', 'payout_kopecks', 'payment_status', 'lease_start', 'lease_end', 'seats_booked', 'tags'];
+
+    protected $casts = ['total_kopecks' => 'integer', 'payout_kopecks' => 'integer', 'lease_start' => 'datetime', 'lease_end' => 'datetime', 'seats_booked' => 'integer', 'tags' => 'json'];
 
     /**
      * The number of models to return for pagination.
      */
     protected $perPage = 25;
 
+    protected static function booted()
+    {
+        self::addGlobalScope('tenant', fn ($q) => $q->where('coworking_rentals.tenant_id', tenant()->id));
+    }
 }

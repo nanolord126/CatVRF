@@ -22,21 +22,19 @@ use Psr\Log\LoggerInterface;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Advertising\Infrastructure\Services
  */
 final readonly class MlPlacementStrategy implements AdPlacementStrategyInterface
 {
     public function __construct(
-        private LoggerInterface $logger,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
      * Select the best ad placement from available campaigns using ML scoring.
      *
-     * @param Collection<int, AdCampaign> $campaigns Available campaigns to choose from
-     * @param User $user Target user for personalization
-     * @param string $placementZone UI zone identifier (e.g. 'homepage_banner', 'sidebar')
+     * @param  Collection<int, AdCampaign>  $campaigns  Available campaigns to choose from
+     * @param  User  $user  Target user for personalization
+     * @param  string  $placementZone  UI zone identifier (e.g. 'homepage_banner', 'sidebar')
      * @return int|null Selected campaign ID or null
      *
      * @throws \DomainException When campaigns collection is empty
@@ -44,13 +42,13 @@ final readonly class MlPlacementStrategy implements AdPlacementStrategyInterface
     public function selectBestPlacement(Collection $campaigns, User $user, string $placementZone): ?int
     {
         if ($campaigns->isEmpty()) {
-            throw new \DomainException('No campaigns available for placement zone: ' . $placementZone);
+            throw new \DomainException('No campaigns available for placement zone: '.$placementZone);
         }
 
         /** @var AdCampaign $selected */
         $selected = $campaigns->random();
 
-        $this->logger->info('ML placement strategy selected campaign', [
+        $this->logger->$this->logger->info('ML placement strategy selected campaign', [
             'campaign_id' => $selected->id,
             'user_id' => $user->id,
             'placement_zone' => $placementZone,
@@ -63,11 +61,9 @@ final readonly class MlPlacementStrategy implements AdPlacementStrategyInterface
 
     /**
      * Get the string representation of this object.
-     *
-     * @return string
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 }

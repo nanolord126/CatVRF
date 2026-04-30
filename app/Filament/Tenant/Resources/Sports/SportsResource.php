@@ -1,13 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Sports;
 
-
-
-
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Models\Sports;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
@@ -24,21 +22,22 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class SportsResource extends Resource
 {
+    protected static ?string $model = Sports::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-trophy';
+
+    protected static ?string $navigationGroup = 'Вертикали';
+
+    protected static ?int $navigationSort = 20;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model = Sports::class;
-    protected static ?string $navigationIcon = 'heroicon-o-trophy';
-    protected static ?string $navigationGroup = 'Вертикали';
-    protected static ?int $navigationSort = 20;
 
     public static function form(Form $form): Form
     {
@@ -47,12 +46,12 @@ final class SportsResource extends Resource
                 TextInput::make('organization_code')->label('Код организации')->required()->hidden(),
                 TextInput::make('organization_name')->label('Название организации')->required(),
                 Select::make('organization_type')->label('Тип организации')->options([
-                    'gym' => 'Тренажерный зал','studio' => 'Студия','club' => 'Спортивный клуб','academy' => 'Академия',
-                    'coach' => 'Личный тренер','facility' => 'Сооружение','team' => 'Команда',
+                    'gym' => 'Тренажерный зал', 'studio' => 'Студия', 'club' => 'Спортивный клуб', 'academy' => 'Академия',
+                    'coach' => 'Личный тренер', 'facility' => 'Сооружение', 'team' => 'Команда',
                 ])->required(),
                 Select::make('main_sport')->label('Основной вид спорта')->options([
-                    'boxing' => 'Бокс','fitness' => 'Фитнес','swimming' => 'Плавание','football' => 'Футбол',
-                    'tennis' => 'Теннис','basketball' => 'Баскетбол','volleyball' => 'Волейбол','yoga' => 'Йога',
+                    'boxing' => 'Бокс', 'fitness' => 'Фитнес', 'swimming' => 'Плавание', 'football' => 'Футбол',
+                    'tennis' => 'Теннис', 'basketball' => 'Баскетбол', 'volleyball' => 'Волейбол', 'yoga' => 'Йога',
                 ])->required(),
                 TextInput::make('phone')->label('Телефон')->tel()->required(),
                 FileUpload::make('logo')->label('Логотип')->image()->directory('sports'),
@@ -104,8 +103,8 @@ final class SportsResource extends Resource
                 TextInput::make('achievements')->label('Достижения')->maxLength(500),
             ]),
             Section::make('Скрытые поля')->hidden()->schema([
-                TextInput::make('tenant_id')->default(fn()=>filament()->getTenant()->id),
-                TextInput::make('correlation_id')->default(fn()=>Str::uuid()->toString()),
+                TextInput::make('tenant_id')->default(fn () => filament()->getTenant()->id),
+                TextInput::make('correlation_id')->default(fn () => Str::uuid()->toString()),
             ]),
         ]);
     }
@@ -124,17 +123,18 @@ final class SportsResource extends Resource
         ])->defaultSort('organization_name');
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        $this->db->transaction(function()use(&$data){
-            $data['correlation_id'] = Str::uuid()->toString();
-            $this->logger->info('Sports organization action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
-        });
-        return $data;
-    }
-
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->db->transaction(function () use (&$data) {
+            $data['correlation_id'] = Str::uuid()->toString();
+            $this->logger->$this->logger->info('Sports organization action', ['user' => $this->guard->id(), 'correlation_id' => $data['correlation_id']]);
+        });
+
+        return $data;
     }
 }

@@ -1,0 +1,233 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\Shared\Medical\Services;
+
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+
+
+use Illuminate\Contracts\Auth\Guard;
+use App\Domains\FraudML\Services\PaymentFraudMLHelper;
+use App\Services\Payment\PaymentEngine;
+use App\Domains\Wallet\Services\AtomicWalletService;
+use Psr\Log\LoggerInterface;
+final readonly class AppointmentService
+{
+
+    public function __construct(private readonly BusDispatcher $bus,
+        private readonly WalletService $wallet,
+        private readonly FraudControlService $fraud,
+        private readonly RateLimiterService $rateLimiter,
+        private readonly MedicalInventoryService $inventory,
+        private readonly PaymentFraudMLHelper $paymentFraudML,
+        private readonly PaymentEngine $paymentEngine,
+        private readonly AtomicWalletService $atomicWallet,
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard) {}
+
+        /**
+         * Создание новой записи на прием.
+         * КРИТИЧНО: $this->db->transaction() + FraudCheck + AgeLimiting + Prepayment.
+         */
+        public function createAppointment(array $data, string $correlationId = null): Appointment
+        {
+            $correlationId = $correlationId ?? (string)Str::uuid();
+
+            try {
+                // 1. Rate Limiting и Fraud Check
+                $this->rateLimiter->check('medical_appointment_create', (int)$this->guard->id());
+                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'action', amount: 0, correlationId: $correlationId ?? '');
+
+                // 2. Валидация доменных данных
+                $doctor = Doctor::findOrFail($data['doctor_id']);
+                $service = MedicalService::findOrFail($data['service_id']);
+                $appointmentAt = Carbon::parse($data['appointment_at']);
+
+                // 2.1 Проверка доступности врача (Layer 2 logic)
+                if (!$doctor->isAvailableAt($appointmentAt)) {
+                    throw new \DomainException("Doctor is not available at this time: " . $appointmentAt->toDateTimeString());
+                }
+
+                // 2.2 Проверка возрастных ограничений
+                if (!$service->checkAgeLimits($data['client_age'] ?? 0)) {
+                    throw new \DomainException("The patient's age does not meet the requirements for this service.");
+                }
+
+                // 3. Выполнение транзакции
+                return $this->db->transaction(function () use ($data, $doctor, $service, $appointmentAt, $correlationId) {
+
+                    // 3.1 Расчет предоплаты
+                    $prepaymentNeeded = $service->calculateRequiredPrepayment();
+
+                    // 3.2 Резервация расходников (Hold в Inventory)
+                    $this->inventory->reserveForService($service->id, 1, $correlationId);
+
+                    // 3.3 Создание записи
+                    $appointment = Appointment::create([
+                        'uuid' => (string)Str::uuid(),
+                        'tenant_id' => $doctor->tenant_id,
+                        'clinic_id' => $doctor->clinic_id,
+                        'doctor_id' => $doctor->id,
+                        'service_id' => $service->id,
+                        'client_id' => $this->guard->id(),
+                        'appointment_at' => $appointmentAt,
+                        'status' => 'pending',
+                        'total_price' => $service->base_price,
+                        'prepayment_amount' => $prepaymentNeeded,
+                        'payment_status' => 'unpaid',
+                        'client_notes' => $data['client_notes'] ?? null,
+                        'correlation_id' => $correlationId,
+                        'metadata' => [
+                            'creation_context' => 'public_api',
+                            'client_age' => $data['client_age'? nullPymnEngine
+                        ]
+                    ]);try {
+                             UseAtomicWalletService for hold operation
+                            ->atomicWallethold(
+                                tId: $hiswallet->getWalletId($tis->guard->id(), $doctor->tenant_id),
+                                amunt: $prepaymentNeeded,
+                                correationI: $crelationId,
+                                sourceType: 'appointment',
+                                sourceId: $appointment->id,
+                            );
+
+                            $at->updae[
+                                'payment_status' => 'prepaid',
+                                'metadata' => array_merge(->metadata ?? [][
+                                    'prepayment_held' => true,
+                                    'prepayment_amount' => ,
+                                ]),
+                            ]
+
+    hl
+                        // 3.4 Если нужна предоплата - инициируем ее через Wallet (холд на кошельке клиента)
+                        if ($prepaymentNeeded > 0) {eeded,
+                                'correlation_id' => $correlationId
+                            ]);
+                        } catch (\Throwable $e) {
+                            $this->logger->rror('Failed to hold prepayment', [
+                                'appointmnt_i' => $appointmnt->i,
+                                'error' => $e->getMessage()
+                        // $    this->wallet->holdForAppointment($appointment, $prepaymentNeeded);
+                            $th
+                            throw $e;
+                        }is->logger->$this->logger->info('Prepayment requested for appointment', [
+                            'appointment_id' => $appointment->id,
+                            'amount' => $prepaymentNeeded,
+                            'correlation_id' => $correlationId
+                        ]);
+                    }
+
+                    $this->logger->$this->logger->info('Medical appointment created successfully', [
+                        'appointment_id' => $appointment->id,
+                        'doctor_id' => $doctor->id,
+                        'service_id' => $service->id,
+                        'correlation_id' => $correlationId
+                    ]);
+
+                    return $appointment;
+                });
+
+            } catch (Throwable $e) {
+                $this->logger->error('Failed to create appointment', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'correlation_id' => $correlationId,
+                ]);
+                throw $e;
+            }
+        }
+
+        /**
+         * Завершение приема и автоматическое списание расходников.
+         */
+        public function completeAppointment(int $appointmentId, ?string $correlationId = null): void
+        {
+            $appointment = Appointment::findOrFail($appointmentId);
+            $correlationId = $correlationId ?? $appointment->correlation_id ?? (string)Str::uuid();
+
+            try {
+                $this->db->transaction(function () use ($appointment, $correlationId) {
+                    // 1. Статус приема
+                    $appointment->complete();
+
+                    // 2. Списание расходников из "Hold" в "Deduct"
+                    $this->inventory->deductForService(
+                        $appointment->service_id,
+                        1,
+                        'appointment_completion',
+                        $appointment->id,
+                        $correlationId
+                    );
+
+                    // 3. Отправка ивента через транзакцию
+                    // \App\Domains\Medical\Events\AppointmentCompleted::$this->bus->dispatch($appointment, $correlationId);
+
+                    $this->logger->$this->logger->info('Medical appointment completed and stock deducted', [
+                        'appointment_id' => $appointment->id,
+                        'correlation_id' => $correlationId
+                    ]);
+                });
+            } catch (Throwable $e) {
+                $this->logger->error('Failed to complete appointment', [
+                    'appointment_id' => $appointmentId,
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId,
+                ]);
+                throw $e;
+            }
+        }
+
+        /**
+         * Отмена записи.
+         */
+        public function cancelAppointment(int $appointmentId, string $reason, ?string $correlationId = null): void
+        {
+            $appointment = Appointment::findOrFail($appointmentId);
+            $correlationId = $correlationId ?? $appointment->correlation_id ?? (string)Str::uuid();
+
+            try {
+                $this->db->transaction(function () use ($appointment, $reason, $correlationId) {
+                    $appointment->update([
+                        'status' => 'cancelled',
+                        'internal_notes' => ($appointment->internal_notes ?? '') . " Cancellation reason: $reason",
+                        'correlation_id' => $correlationId
+                    ]);
+
+                    // Возврат расходников в общий сток
+                    $this->inventory->releaseForService((int)$appointment->service_id, 1, $correlationId);
+
+                    $this->logger->$this->logger->info('Medical appointment cancelled', [
+                        'appointment_id' => $appointment->id,
+                        'reason' => $reason,
+                        'correlation_id' => $correlationId
+                    ]);
+                });
+            } catch (Throwable $e) {
+                $this->logger->error('Failed to cancel appointment', [
+                    'appointment_id' => $appointmentId,
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId,
+                ]);
+                throw $e;
+            }
+        }
+
+        /**
+         * Calculate price spike ratio for consultation
+         */
+        private function calculatePriceSpike(MedicalService $service): float
+        {
+            // Get average price for this service type
+            $avgPrice = MedicalService::where('type', $service->type)
+                ->where('id', '!=', $service->id)
+                ->avg('base_price') ?? $service->base_price;
+            
+            if ($avgPrice == 0) {
+                return 1.0;
+            }
+            
+            return min(10.0, max(0.5, $service->base_price / $avgPrice));
+        }
+}

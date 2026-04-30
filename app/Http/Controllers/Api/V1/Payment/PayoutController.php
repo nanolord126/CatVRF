@@ -1,6 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Payment;
+
+use App\Traits\Guards\HighRiskActionGuard;
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use App\Services\FraudControlService;
@@ -17,7 +24,9 @@ use Illuminate\Support\Str;
  */
 final class PayoutController extends Controller
 {
+    use HighRiskActionGuard;
     public function __construct(
+        private readonly LoggerInterface $psrLogger,
         private readonly FraudControlService $fraudService,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
@@ -29,6 +38,10 @@ final class PayoutController extends Controller
      * POST /payouts — создание заявки на вывод.
      */
     public function store(Request $request): JsonResponse
+            return $this->getFinancialOperationsBlockedResponse();
+        }
+
+        ic function store(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
@@ -93,15 +106,15 @@ final class PayoutController extends Controller
                     'status' => 'pending',
                     'idempotency_key' => $request->input('idempotency_key', Str::uuid()->toString()),
                     'correlation_id' => $correlationId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
                 $this->db->table('wallets')
                     ->where('id', $wallet->id)
                     ->update([
                         'hold_amount' => $this->db->raw("hold_amount + {$amount}"),
-                        'updated_at' => now(),
+                        'updated_at' => CarbonImmutable::now(),
                     ]);
 
                 $this->logger->channel('audit')->info('Payout request created', [

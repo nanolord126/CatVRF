@@ -1,9 +1,9 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Requests\Referral;
 
-
-use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -12,8 +12,6 @@ use Illuminate\Foundation\Http\FormRequest;
  * Form Request with validation rules.
  * Validates input before reaching the controller.
  * Authorization checks tenant and business group access.
- *
- * @package App\Http\Requests\Referral
  */
 final class GenerateReferralRequest extends FormRequest
 {
@@ -23,37 +21,35 @@ final class GenerateReferralRequest extends FormRequest
      * @throws \DomainException
      */
     public function authorize(): bool
-        {
-            return $this->guard->check();
-        }
+    {
+        return $this->guard->check();
+    }
 
-        /**
-         * Handle rules operation.
-         *
-         * @throws \DomainException
-         */
-        public function rules(): array
-        {
-            return [];
-        }
+    /**
+     * Handle rules operation.
+     *
+     * @throws \DomainException
+     */
+    public function rules(): array
+    {
+        return [];
+    }
 
-        /**
-         * Handle messages operation.
-         *
-         * @throws \DomainException
-         */
-        public function messages(): array
-        {
-            return [];
-        }
+    /**
+     * Handle messages operation.
+     *
+     * @throws \DomainException
+     */
+    public function messages(): array
+    {
+        return [];
+    }
 
     /**
      * Get the string representation of this object.
-     *
-     * @return string
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new');
+        return self::class.'::'.($this->id ?? 'new');
     }
 }

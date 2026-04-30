@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\WritingServices\Services;
 
@@ -9,24 +11,24 @@ use App\Services\WalletService;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * WritingServicesService — управление заказами на написание текстов.
  *
  * Полный цикл: создание, завершение, отмена заказов
  * с fraud-check, wallet-интеграцией и audit-логированием.
- *
- * @package App\Domains\Freelance\WritingServices\Services
  */
 final readonly class WritingServicesService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private AuditService $audit,
-        private \Illuminate\Database\DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
@@ -78,7 +80,7 @@ final readonly class WritingServicesService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Writing order created', [
+            $this->logger->$this->logger->info('Writing order created', [
                 'order_id' => $order->id,
                 'writer_id' => $writerId,
                 'correlation_id' => $correlationId,
@@ -124,7 +126,7 @@ final readonly class WritingServicesService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Writing order completed', [
+            $this->logger->$this->logger->info('Writing order completed', [
                 'order_id' => $order->id,
                 'payout' => $order->payout_kopecks,
                 'correlation_id' => $correlationId,
@@ -174,7 +176,7 @@ final readonly class WritingServicesService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Writing order cancelled', [
+            $this->logger->$this->logger->info('Writing order cancelled', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -194,7 +196,7 @@ final readonly class WritingServicesService
     /**
      * Получить список заказов клиента.
      */
-    public function getUserOrders(int $clientId): \Illuminate\Database\Eloquent\Collection
+    public function getUserOrders(int $clientId): Collection
     {
         return WritingOrder::where('client_id', $clientId)
             ->orderBy('created_at', 'desc')

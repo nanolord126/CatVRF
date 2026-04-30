@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
@@ -15,17 +17,15 @@ use Illuminate\Contracts\Routing\ResponseFactory;
  * Основной класс для работы с платформой CatVRF.
  *
  * @author CatVRF
- * @package App\Http\Controllers\API\V1
+ *
  * @version 1.0.0
  */
 final class Furniture3DController extends Controller
 {
-    public function __construct(private readonly FurnitureARService $service,
+    public function __construct(
+        private readonly FurnitureARService $service,
         private readonly ResponseFactory $response,
-    )
-    {
-
-    }
+    ) {}
 
     public function generate(int $furnitureId, Request $request): JsonResponse
     {
@@ -38,11 +38,13 @@ final class Furniture3DController extends Controller
             'colors' => 'array',
         ]);
         $model = $this->service->generateFurniture3DModel($furnitureData);
+
         return $this->response->json([
             'data' => $model,
             'correlation_id' => Str::uuid(),
         ]);
     }
+
     public function roomPlacement(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -59,6 +61,7 @@ final class Furniture3DController extends Controller
             ],
             []
         );
+
         return $this->response->json([
             'data' => $visualization,
             'correlation_id' => Str::uuid(),

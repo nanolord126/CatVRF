@@ -1,8 +1,9 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -57,7 +58,7 @@ final class Wallet extends Model
     protected static function booted(): void
     {
         parent::booted();
-        static::addGlobalScope('tenant_id', function ($query) {
+        self::addGlobalScope('tenant_id', function ($query) {
             if (function_exists('tenant') && tenant('id')) {
                 $query->where('tenant_id', tenant('id'));
             }

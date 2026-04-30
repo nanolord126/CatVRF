@@ -1,6 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services\AI;
+
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Fashion\DTOs\FashionStyleAnalysisDto;
 use App\Domains\Fashion\DTOs\FashionVirtualTryOnDto;
@@ -22,17 +30,17 @@ use App\Services\ML\UserBehaviorAnalyzerService;
 use App\Services\RecommendationService;
 use App\Services\Wallet\WalletService;
 use App\Services\Wallet\BonusService;
-use App\Services\Payment\PaymentService;
 use App\Domains\Inventory\Services\InventoryService;
 use App\Domains\CRM\Services\CRMIntegrationService;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use OpenAI\Client as OpenAIClient;
+use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 
 /**
  * AI-конструктор стиля для вертикали Fashion с killer-features.
@@ -53,32 +61,43 @@ use OpenAI\Client as OpenAIClient;
 final readonly class FashionStyleConstructorService
 {
     private const CACHE_TTL_ANALYSIS = 3600;
+
     private const CACHE_TTL_PRICING = 300;
+
     private const CACHE_TTL_TRY_ON = 1800;
+
     private const MAX_3D_MODELS_PER_DAY = 10;
+
     private const MAX_WEBRTC_SESSIONS_PER_DAY = 3;
+
     private const MIN_TREND_SCORE_FOR_FLASH_SALE = 0.85;
+
     private const FLASH_SALE_DISCOUNT_MAX = 0.30;
+
     private const LOYALTY_POINTS_PER_PURCHASE = 100;
+
     private const LOYALTY_POINTS_PER_TRY_ON = 10;
+
     private const LOYALTY_NFT_UNLOCK_THRESHOLD = 5000;
 
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private UserBehaviorAnalyzerService $behaviorAnalyzer,
-        private RecommendationService $recommendation,
-        private InventoryService $inventory,
-        private WalletService $wallet,
-        private BonusService $bonus,
-        private PaymentServiceAdapter $payment,
-        private CRMIntegrationService $crm,
-        private OpenAIClient $openai,
-        private \Illuminate\Contracts\Cache\Repository $cache,
-        private \Illuminate\Database\DatabaseManager $db,
-        private \Illuminate\Contracts\Bus\Dispatcher $bus,
-    ) {}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly UserBehaviorAnalyzerService $behaviorAnalyzer,
+        private readonly RecommendationService $recommendation,
+        private readonly InventoryService $inventory,
+        private readonly WalletService $wallet,
+        private readonly BonusService $bonus,
+        private readonly PaymentServiceAdapter $payment,
+        private readonly CRMIntegrationService $crm,
+        private readonly OpenAIClient $openai,
+        private readonly Repository $cache,
+        private readonly DatabaseManager $db,
+        private readonly Dispatcher $bus,
+        private readonly LogManager $log,
+        private readonly FilesystemFactory $storage,) {}
 
     /**
      * Анализировать фото пользователя и сгенерировать персонализированный стиль.
@@ -102,9 +121,9 @@ final readonly class FashionStyleConstructorService
             correlationId: $correlationId
         );
 
-        $cacheKey = "fashion_style_analysis:{$tenantId}:{$userId}:" . md5($photo->getClientOriginalName() . ($eventType ?? ''));
+        $cacheKey = "fashion_style_analysis:{$tenantId}:{$userId}:".md5($photo->getClientOriginalName().($eventType ?? ''));
 
-        $result = $this->cache->remember($cacheKey, Carbon::now()->addSeconds(self::CACHE_TTL_ANALYSIS), function () use (
+        $result = $this->cache->remember($cacheKey, CarbonImmutable::now()->addSeconds(self::CACHE_TTL_ANALYSIS), function () use (
             $photo,
             $userId,
             $eventType,
@@ -123,7 +142,7 @@ final readonly class FashionStyleConstructorService
                 $businessGroupId
             ) {
                 $photoPath = $photo->store('fashion/style-photos', 's3');
-                $photoUrl = Storage::disk('s3')->url($photoPath);
+                $photoUrl = $this->storage->disk('s3')->url($photoPath);
 
                 $visionAnalysis = $this->analyzePhotoWithVision($photo, $correlationId);
                 $tasteProfile = $this->tasteAnalyzer->getProfile($userId);
@@ -171,7 +190,7 @@ final readonly class FashionStyleConstructorService
                     correlationId: $correlationId
                 );
 
-                event(new StyleAnalysisCompletedEvent(
+                $this->eventDispatcher->dispatch(new StyleAnalysisCompletedEvent(
                     designId: $designId,
                     userId: $userId,
                     tenantId: $tenantId,
@@ -188,7 +207,7 @@ final readonly class FashionStyleConstructorService
                     correlationId: $correlationId
                 ));
 
-                Log::channel('audit')->info('Fashion style analysis completed', [
+                $this->log->channel('audit')->$this->logger->info('Fashion style analysis completed', [
                     'design_id' => $designId,
                     'user_id' => $userId,
                     'tenant_id' => $tenantId,
@@ -240,9 +259,9 @@ final readonly class FashionStyleConstructorService
             correlationId: $correlationId
         );
 
-        $cacheKey = "fashion_virtual_try_on:{$tenantId}:{$designId}:" . md5(implode(',', $productIds));
+        $cacheKey = "fashion_virtual_try_on:{$tenantId}:{$designId}:".md5(implode(',', $productIds));
 
-        $result = $this->cache->remember($cacheKey, Carbon::now()->addSeconds(self::CACHE_TTL_TRY_ON), function () use (
+        $result = $this->cache->remember($cacheKey, CarbonImmutable::now()->addSeconds(self::CACHE_TTL_TRY_ON), function () use (
             $designId,
             $userId,
             $productIds,
@@ -326,7 +345,7 @@ final readonly class FashionStyleConstructorService
                     correlationId: $correlationId
                 );
 
-                event(new VirtualTryOnCompletedEvent(
+                $this->eventDispatcher->dispatch(new VirtualTryOnCompletedEvent(
                     designId: $designId,
                     userId: $userId,
                     tenantId: $tenantId,
@@ -336,7 +355,7 @@ final readonly class FashionStyleConstructorService
                     correlationId: $correlationId
                 ));
 
-                Log::channel('audit')->info('Fashion virtual try-on completed', [
+                $this->log->channel('audit')->$this->logger->info('Fashion virtual try-on completed', [
                     'design_id' => $designId,
                     'user_id' => $userId,
                     'tenant_id' => $tenantId,
@@ -383,7 +402,7 @@ final readonly class FashionStyleConstructorService
 
         $cacheKey = "fashion_dynamic_pricing:{$tenantId}:{$productId}";
 
-        $result = $this->cache->remember($cacheKey, Carbon::now()->addSeconds(self::CACHE_TTL_PRICING), function () use (
+        $result = $this->cache->remember($cacheKey, CarbonImmutable::now()->addSeconds(self::CACHE_TTL_PRICING), function () use (
             $productId,
             $userId,
             $isB2B,
@@ -419,7 +438,7 @@ final readonly class FashionStyleConstructorService
                     $discountPercent = min($trendScore * self::FLASH_SALE_DISCOUNT_MAX, self::FLASH_SALE_DISCOUNT_MAX);
                     $dynamicPrice = $basePrice * (1 - $discountPercent);
                     $isFlashSale = true;
-                    $flashSaleEndTime = Carbon::now()->addHours(4);
+                    $flashSaleEndTime = CarbonImmutable::now()->addHours(4);
                 } elseif ($stockLevel < 5 && $demandForecast['velocity'] < 0.3) {
                     $discountPercent = 0.15;
                     $dynamicPrice = $basePrice * (1 - $discountPercent);
@@ -458,7 +477,7 @@ final readonly class FashionStyleConstructorService
                     correlationId: $correlationId
                 );
 
-                event(new DynamicPriceAppliedEvent(
+                $this->eventDispatcher->dispatch(new DynamicPriceAppliedEvent(
                     productId: $productId,
                     tenantId: $tenantId,
                     businessGroupId: $businessGroupId,
@@ -476,7 +495,7 @@ final readonly class FashionStyleConstructorService
                     correlationId: $correlationId
                 ));
 
-                Log::channel('audit')->info('Fashion dynamic pricing applied', [
+                $this->log->channel('audit')->$this->logger->info('Fashion dynamic pricing applied', [
                     'product_id' => $productId,
                     'tenant_id' => $tenantId,
                     'base_price' => $basePrice,
@@ -558,16 +577,16 @@ final readonly class FashionStyleConstructorService
                 'stylist_id' => $actualStylistId,
                 'session_token' => $sessionToken,
                 'status' => 'initiated',
-                'scheduled_at' => $scheduledTime ? Carbon::parse($scheduledTime) : Carbon::now()->addMinutes(5),
-                'expires_at' => Carbon::now()->addHours(2),
+                'scheduled_at' => $scheduledTime ? Carbon::parse($scheduledTime) : CarbonImmutable::now()->addMinutes(5),
+                'expires_at' => CarbonImmutable::now()->addHours(2),
                 'correlation_id' => $correlationId,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ];
 
             $this->db->table('fashion_webrtc_sessions')->insert($sessionData);
 
-            $this->cache->put("fashion_webrtc_daily:{$userId}", $dailySessionCount + 1, Carbon::now()->endOfDay());
+            $this->cache->put("fashion_webrtc_daily:{$userId}", $dailySessionCount + 1, CarbonImmutable::now()->endOfDay());
 
             $this->audit->record(
                 action: 'fashion_webrtc_session_initiated',
@@ -583,7 +602,7 @@ final readonly class FashionStyleConstructorService
                 correlationId: $correlationId
             );
 
-            event(new WebRTCSessionInitiatedEvent(
+            $this->eventDispatcher->dispatch(new WebRTCSessionInitiatedEvent(
                 sessionId: $sessionId,
                 userId: $userId,
                 stylistId: $actualStylistId,
@@ -593,7 +612,7 @@ final readonly class FashionStyleConstructorService
                 correlationId: $correlationId
             ));
 
-            Log::channel('audit')->info('Fashion WebRTC session initiated', [
+            $this->log->channel('audit')->$this->logger->info('Fashion WebRTC session initiated', [
                 'session_id' => $sessionId,
                 'user_id' => $userId,
                 'stylist_id' => $actualStylistId,
@@ -727,8 +746,8 @@ final readonly class FashionStyleConstructorService
                 ['user_id' => $userId, 'tenant_id' => $tenantId],
                 [
                     'total_points' => $newPoints,
-                    'last_earned_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
+                    'last_earned_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]
             );
 
@@ -740,7 +759,7 @@ final readonly class FashionStyleConstructorService
                 'points_earned' => $totalPoints,
                 'reward_type' => $rewardType,
                 'correlation_id' => $correlationId,
-                'created_at' => Carbon::now(),
+                'created_at' => CarbonImmutable::now(),
             ]);
 
             $nftUnlocked = false;
@@ -761,7 +780,7 @@ final readonly class FashionStyleConstructorService
                     'metadata' => json_encode($nftMetadata),
                     'points_threshold' => self::LOYALTY_NFT_UNLOCK_THRESHOLD,
                     'correlation_id' => $correlationId,
-                    'created_at' => Carbon::now(),
+                    'created_at' => CarbonImmutable::now(),
                 ]);
             }
 
@@ -782,7 +801,7 @@ final readonly class FashionStyleConstructorService
                 correlationId: $correlationId
             );
 
-            Log::channel('audit')->info('Fashion loyalty reward processed', [
+            $this->log->channel('audit')->$this->logger->info('Fashion loyalty reward processed', [
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
                 'points_earned' => $totalPoints,
@@ -836,8 +855,7 @@ final readonly class FashionStyleConstructorService
             $splitConfig,
             $isB2B,
             $correlationId,
-            $tenantId,
-            $businessGroupId
+            $tenantId
         ) {
             $clientShare = $splitConfig['client_share'] ?? 0.70;
             $brandShare = $splitConfig['brand_share'] ?? 0.20;
@@ -924,7 +942,7 @@ final readonly class FashionStyleConstructorService
                 correlationId: $correlationId
             ));
 
-            Log::channel('audit')->info('Fashion split payment processed', [
+            $this->log->channel('audit')->$this->logger->info('Fashion split payment processed', [
                 'order_id' => $orderId,
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
@@ -967,7 +985,7 @@ final readonly class FashionStyleConstructorService
                             [
                                 'type' => 'image_url',
                                 'image_url' => [
-                                    'url' => 'data:image/jpeg;base64,' . base64_encode(file_get_contents($photo->getRealPath())),
+                                    'url' => 'data:image/jpeg;base64,'.base64_encode(file_get_contents($photo->getRealPath())),
                                 ],
                             ],
                         ],
@@ -993,7 +1011,7 @@ final readonly class FashionStyleConstructorService
                 'confidence_score' => (float) ($analysis['confidence_score'] ?? 0.92),
             ];
         } catch (\Throwable $e) {
-            Log::channel('audit')->warning('Vision API failed, using fallback', [
+            $this->log->channel('audit')->warning('Vision API failed, using fallback', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -1065,10 +1083,10 @@ final readonly class FashionStyleConstructorService
         $capsule = [];
 
         foreach ($categories as $category) {
-            $items = array_filter($recommendations, fn($r) => ($r['category'] ?? '') === $category);
-            if (!empty($items)) {
+            $items = array_filter($recommendations, fn ($r) => ($r['category'] ?? '') === $category);
+            if (! empty($items)) {
                 $sortedItems = array_values($items);
-                usort($sortedItems, fn($a, $b) => ($b['color_match_score'] ?? 0) <=> ($a['color_match_score'] ?? 0));
+                usort($sortedItems, fn ($a, $b) => ($b['color_match_score'] ?? 0) <=> ($a['color_match_score'] ?? 0));
                 $capsule[] = $sortedItems[0];
             }
         }
@@ -1125,8 +1143,8 @@ final readonly class FashionStyleConstructorService
                 'photo_url' => $photoUrl,
             ], JSON_UNESCAPED_UNICODE),
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
-            'updated_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         return $designId;
@@ -1236,9 +1254,9 @@ final readonly class FashionStyleConstructorService
     private function generateARPreview(int $designId, int $productId, array $styleProfile, string $correlationId): string
     {
         $previewPath = "fashion/ar-previews/{$designId}_{$productId}.glb";
-        
-        if (Storage::disk('s3')->exists($previewPath)) {
-            return Storage::disk('s3')->url($previewPath);
+
+        if ($this->storage->disk('s3')->exists($previewPath)) {
+            return $this->storage->disk('s3')->url($previewPath);
         }
 
         $this->bus->dispatch(new Generate3DModelJob(
@@ -1296,7 +1314,7 @@ final readonly class FashionStyleConstructorService
             'try_on_results' => json_encode($tryOnResults, JSON_UNESCAPED_UNICODE),
             'average_fit_score' => $averageFitScore,
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
         ]);
     }
 
@@ -1304,22 +1322,22 @@ final readonly class FashionStyleConstructorService
     {
         $views = $this->db->table('product_views')
             ->where('product_id', $productId)
-            ->where('created_at', '>=', Carbon::now()->subDays(7))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(7))
             ->count();
 
         $addToCarts = $this->db->table('cart_items')
             ->where('product_id', $productId)
-            ->where('created_at', '>=', Carbon::now()->subDays(7))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(7))
             ->count();
 
         $purchases = $this->db->table('order_items')
             ->where('product_id', $productId)
-            ->where('created_at', '>=', Carbon::now()->subDays(7))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(7))
             ->count();
 
         $socialMentions = $this->db->table('fashion_social_mentions')
             ->where('product_id', $productId)
-            ->where('created_at', '>=', Carbon::now()->subDays(7))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(7))
             ->count();
 
         $baseScore = 0.0;
@@ -1335,7 +1353,7 @@ final readonly class FashionStyleConstructorService
     {
         $historicalSales = $this->db->table('order_items')
             ->where('product_id', $productId)
-            ->where('created_at', '>=', Carbon::now()->subDays(30))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(30))
             ->selectRaw('DATE(created_at) as date, COUNT(*) as sales')
             ->groupBy('date')
             ->orderBy('date')
@@ -1390,7 +1408,7 @@ final readonly class FashionStyleConstructorService
                 'is_flash_sale' => $isFlashSale,
                 'flash_sale_end_time' => $flashSaleEndTime,
                 'correlation_id' => $correlationId,
-                'updated_at' => Carbon::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]
         );
     }
@@ -1411,7 +1429,7 @@ final readonly class FashionStyleConstructorService
             'session_id' => $sessionId,
             'user_id' => $userId,
             'stylist_id' => $stylistId,
-            'exp' => Carbon::now()->addHours(2)->timestamp,
+            'exp' => CarbonImmutable::now()->addHours(2)->timestamp,
         ];
 
         return base64_encode(json_encode($payload));
@@ -1420,9 +1438,9 @@ final readonly class FashionStyleConstructorService
     private function generateARModel(int $designId, int $productId, array $styleProfile, string $correlationId): string
     {
         $modelPath = "fashion/ar-models/{$designId}_{$productId}.glb";
-        
-        if (Storage::disk('s3')->exists($modelPath)) {
-            return Storage::disk('s3')->url($modelPath);
+
+        if ($this->storage->disk('s3')->exists($modelPath)) {
+            return $this->storage->disk('s3')->url($modelPath);
         }
 
         $this->bus->dispatch(new Generate3DModelJob(
@@ -1465,8 +1483,8 @@ final readonly class FashionStyleConstructorService
             ['user_id' => $userId, 'tenant_id' => $tenantId],
             [
                 'total_points' => $currentPoints + $points,
-                'last_earned_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
+                'last_earned_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]
         );
 
@@ -1477,7 +1495,7 @@ final readonly class FashionStyleConstructorService
             'points_earned' => $points,
             'reward_type' => $reason,
             'correlation_id' => $correlationId,
-            'created_at' => Carbon::now(),
+            'created_at' => CarbonImmutable::now(),
         ]);
     }
 
@@ -1490,7 +1508,7 @@ final readonly class FashionStyleConstructorService
         $metadata = [
             'style' => $selectedStyle,
             'points_threshold' => self::LOYALTY_NFT_UNLOCK_THRESHOLD,
-            'generated_at' => Carbon::now()->toIso8601String(),
+            'generated_at' => CarbonImmutable::now()->toIso8601String(),
             'rarity' => $points > 10000 ? 'legendary' : ($points > 5000 ? 'epic' : 'rare'),
         ];
 
@@ -1552,7 +1570,7 @@ final readonly class FashionStyleConstructorService
             return true;
         }
 
-        $daysSinceCreation = Carbon::parse($user->created_at)->diffInDays(Carbon::now());
+        $daysSinceCreation = Carbon::parse($user->created_at)->diffInDays(CarbonImmutable::now());
         $orderCount = $this->db->table('orders')->where('user_id', $userId)->count();
 
         return $daysSinceCreation <= 7 && $orderCount === 0;

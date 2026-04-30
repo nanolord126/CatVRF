@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use App\Domains\Travel\Http\Controllers\TourismBookingController;
 use App\Domains\Travel\Http\Controllers\TourismWishlistController;
@@ -6,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 /**
  * Tourism API Routes
- * 
+ *
  * API endpoints for Tourism vertical with killer features:
  * - AI-personalized tours with embeddings
  * - Real-time availability hold with biometric verification
@@ -18,7 +20,6 @@ use Illuminate\Support\Facades\Route;
  * - Wallet split payment + instant cashback
  * - CRM integration at every status
  */
-
 Route::middleware(['auth:sanctum', 'tenant'])->prefix('v1/tourism')->group(function () {
     Route::prefix('bookings')->group(function () {
         Route::post('/', [TourismBookingController::class, 'store'])->name('tourism.bookings.store');

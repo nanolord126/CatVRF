@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domains\Advertising\Models;
 
+use Carbon\CarbonImmutable;
+
+use App\Traits\TenantScoped;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Models\BusinessGroup;
+use App\Models\Tenant;
 
 /**
  * AdCampaign Eloquent Model.
@@ -30,11 +32,10 @@ use Illuminate\Support\Str;
  * @property array|null $metadata
  * @property Carbon $created_at
  * @property Carbon $updated_at
- *
- * @package App\Domains\Advertising\Models
  */
 final class AdCampaign extends Model
 {
+    use TenantScoped;
 
     protected $table = 'ad_campaigns';
 
@@ -66,30 +67,12 @@ final class AdCampaign extends Model
         'end_at' => 'datetime',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query): void {
-            if (function_exists('tenant') && tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-
-        static::creating(function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) Str::uuid();
-            }
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = (string) Str::uuid();
-            }
-        });
-    }
-
     /**
      * Tenant relationship.
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     /**
@@ -97,7 +80,7 @@ final class AdCampaign extends Model
      */
     public function businessGroup(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\BusinessGroup::class);
+        return $this->belongsTo(BusinessGroup::class);
     }
 
     /**
@@ -106,7 +89,7 @@ final class AdCampaign extends Model
     public function isActive(): bool
     {
         return $this->status === 'active'
-            && Carbon::now()->between($this->start_at, $this->end_at);
+            && CarbonImmutable::now()->between($this->start_at, $this->end_at);
     }
 
     /**
@@ -121,7 +104,25 @@ final class AdCampaign extends Model
             'status' => $this->status,
             'tenant_id' => $this->tenant_id,
             'correlation_id' => $this->correlation_id,
-            'checked_at' => Carbon::now()->toIso8601String(),
+            'checked_at' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query): void {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = (string) Str::uuid();
+            }
+        });
     }
 }

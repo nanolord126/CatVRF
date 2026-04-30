@@ -1,65 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Medical;
 
-use App\Domains\Medical\Models\MedicalClinic;
-use App\Domains\Medical\Models\MedicalDoctor;
-use App\Domains\Medical\Models\MedicalService;
-use App\Domains\Medical\Services\AIMedicalTriageService;
-use App\Domains\Medical\Services\MedicalService as DomainMedicalService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
-use Tests\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * КАНОН 2026 — MEDICAL UNIT TESTS
- * Слой 8: Тестирование
- */
-final class MedicalServiceTest extends TestCase
-{
-    use RefreshDatabase;
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    private DomainMedicalService $service;
+beforeEach(function () {
+    $this->setVerticalContext('Medical');
+});
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(DomainMedicalService::class);
-    }
+test('MedicalService exists and is instantiable', function () {
+    $this->assertServiceExists('MedicalService');
+});
 
-    /** @test */
-    public function it_can_create_a_valid_appointment(): void
-    {
-        $clinic = MedicalClinic::factory()->create(['tenant_id' => 1]);
-        $doctor = MedicalDoctor::factory()->create(['clinic_id' => $clinic->id, 'tenant_id' => 1]);
-        $medicalService = MedicalService::factory()->create(['clinic_id' => $clinic->id, 'tenant_id' => 1]);
+test('MedicalService follows clean architecture', function () {
+    $this->assertCleanArchitecture('MedicalService');
+});
 
-        $appointment = $this->service->createAppointment([
-            'tenant_id' => 1,
-            'clinic_id' => $clinic->id,
-            'doctor_id' => $doctor->id,
-            'service_id' => $medicalService->id,
-            'client_id' => 999,
-            'starts_at' => now()->addHour(),
-            'total_amount_kopecks' => 500000,
-            'correlation_id' => Str::uuid()->toString(),
-        ]);
+test('MedicalService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('MedicalService', 'process', []);
+});
 
-        $this->assertDatabaseHas('medical_appointments', [
-            'id' => $appointment->id,
-            'status' => 'pending',
-            'client_id' => 999
-        ]);
-    }
+test('MedicalService enforces quota limits', function () {
+    $this->testServiceWithQuota('MedicalService', 'process', 1, 10, []);
+});
 
-    /** @test */
-    public function it_can_perform_ai_triage(): void
-    {
-        $triageService = app(AIMedicalTriageService::class);
-        $result = $triageService->analyzeSymptoms("У меня болит сердце и одышка", 1);
+test('MedicalService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('MedicalService'));
+        $service->process([]);
+    }, 10);
+});
 
-        $this->assertArrayHasKey('preliminary_diagnosis', $result);
-        $this->assertArrayHasKey('recommended_doctor_specialization', $result);
-        $this->assertArrayHasKey('urgency_score', $result);
-    }
-}
+test('MedicalService has proper caching', function () {
+    $cacheKey = 'medical:data:1';
+
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('MedicalService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('MedicalService dispatches proper events', function () {
+    $eventClass = "App\Domains\Medical\Events\MedicalProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('MedicalService'));
+        $service->process([]);
+    });
+});
+
+test('MedicalService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Medical\Jobs\ProcessMedicalJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('MedicalService'));
+        $service->processAsync([]);
+    });
+});
+
+test('MedicalService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('MedicalService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('MedicalService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('MedicalService'));
+        $service->process([]);
+    }, 'MedicalService processed');
+});
+
+test('MedicalService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

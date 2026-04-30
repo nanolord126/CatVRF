@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -26,7 +28,7 @@ final class PharmacyFactory extends Factory
                 'Сироп от кашля',
                 'Мазь антисептическая',
             ]),
-            'sku' => 'PHARM-' . strtoupper($this->faker->lexify('????')),
+            'sku' => 'PHARM-'.strtoupper($this->faker->lexify('????')),
             'mnn' => $this->faker->randomElement(['paracetamol', 'ibuprofen', 'acetylsalicylic_acid', 'amoxicillin']),
             'form' => $this->faker->randomElement(['tablet', 'capsule', 'syrup', 'drops', 'ointment', 'injection']),
             'dosage' => $this->faker->randomElement(['200mg', '400mg', '500mg', '1000mg', '5%', '10%']),

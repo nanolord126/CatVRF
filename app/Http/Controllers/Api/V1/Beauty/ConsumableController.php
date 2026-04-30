@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Beauty;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Auth\Guard;
@@ -15,15 +21,14 @@ use App\Services\FraudControlService;
 /**
  * Beauty Consumable API Controller — расходные материалы салонов.
  */
-class ConsumableController extends Controller
+final class ConsumableController extends Controller
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly FraudControlService $fraudService,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
-        private readonly ResponseFactory $response,
-    ) {}
+        private readonly ResponseFactory $response,) {}
 
     /**
      * GET /consumables — список расходников.
@@ -124,11 +129,11 @@ class ConsumableController extends Controller
                     'quantity' => $request->integer('quantity', 0),
                     'min_stock' => $request->integer('min_stock', 5),
                     'cost_price' => $request->integer('cost_price', 0),
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
-                $this->logger->channel('audit')->info('Consumable created', [
+                $this->logger->channel('audit')->$this->logger->info('Consumable created', [
                     'correlation_id' => $correlationId,
                     'consumable_id' => $itemId,
                     'user_id' => auth()->id(),
@@ -172,7 +177,7 @@ class ConsumableController extends Controller
                         'min_stock' => $request->input('min_stock'),
                         'cost_price' => $request->input('cost_price'),
                         'correlation_id' => $correlationId,
-                        'updated_at' => now(),
+                        'updated_at' => CarbonImmutable::now(),
                     ]));
 
                 if ($updated === 0) {
@@ -183,7 +188,7 @@ class ConsumableController extends Controller
                     ], 404);
                 }
 
-                $this->logger->channel('audit')->info('Consumable updated', [
+                $this->logger->channel('audit')->$this->logger->info('Consumable updated', [
                     'correlation_id' => $correlationId,
                     'consumable_id' => $id,
                 ]);
@@ -227,7 +232,7 @@ class ConsumableController extends Controller
                     ], 404);
                 }
 
-                $this->logger->channel('audit')->info('Consumable deleted', [
+                $this->logger->channel('audit')->$this->logger->info('Consumable deleted', [
                     'correlation_id' => $correlationId,
                     'consumable_id' => $id,
                 ]);

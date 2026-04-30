@@ -8,7 +8,6 @@ use App\Domains\RealEstate\Application\B2C\DTOs\RequestViewingDTO;
 use App\Domains\RealEstate\Domain\Entities\ViewingAppointment;
 use App\Domains\RealEstate\Domain\Repository\PropertyRepositoryInterface;
 use App\Domains\RealEstate\Domain\Repository\ViewingRepositoryInterface;
-use App\Domains\RealEstate\Domain\ValueObjects\AgentId;
 use App\Domains\RealEstate\Domain\ValueObjects\PropertyId;
 use App\Domains\RealEstate\Domain\ValueObjects\ViewingId;
 use App\Services\FraudControlService;
@@ -20,10 +19,11 @@ final class RequestViewingUseCase
 {
     public function __construct(
         private readonly PropertyRepositoryInterface $propertyRepository,
-        private readonly ViewingRepositoryInterface  $viewingRepository,
-        private readonly FraudControlService         $fraud,
-        private readonly ConnectionInterface         $db,
-        private readonly LoggerInterface             $logger) {}
+        private readonly ViewingRepositoryInterface $viewingRepository,
+        private readonly FraudControlService $fraud,
+        private readonly ConnectionInterface $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Client requests a viewing appointment on an active property.
@@ -41,7 +41,7 @@ final class RequestViewingUseCase
             correlationId:     $dto->correlationId,
         );
 
-        $this->logger->info('RealEstate.RequestViewing started', [
+        $this->logger->$this->logger->info('RealEstate.RequestViewing started', [
             'correlation_id' => $dto->correlationId,
             'property_id'    => $dto->propertyId,
             'client_id'      => $dto->clientId,
@@ -87,7 +87,7 @@ final class RequestViewingUseCase
             $this->viewingRepository->save($viewing);
         });
 
-        $this->logger->info('RealEstate.RequestViewing completed', [
+        $this->logger->$this->logger->info('RealEstate.RequestViewing completed', [
             'correlation_id' => $dto->correlationId,
             'viewing_id'     => $viewingId->getValue(),
             'property_id'    => $dto->propertyId,

@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Travel\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Travel\DTOs\BookingDto;
 
 /**
  * Unit tests for BookingDto.
@@ -14,7 +17,7 @@ final class BookingDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Travel\DTOs\BookingDto::class
+            BookingDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'BookingDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'BookingDto must be readonly');
@@ -23,11 +26,11 @@ final class BookingDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Travel\DTOs\BookingDto::class
+            BookingDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('userId', $params, 'Constructor must have userId');
         $this->assertContains('bookableType', $params, 'Constructor must have bookableType');
         $this->assertContains('bookableId', $params, 'Constructor must have bookableId');
@@ -37,7 +40,7 @@ final class BookingDtoTest extends TestCase
         $this->assertContains('metadata', $params, 'Constructor must have metadata');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -47,6 +50,6 @@ final class BookingDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\Travel\DTOs\BookingDto::class;
+        return BookingDto::class;
     }
 }

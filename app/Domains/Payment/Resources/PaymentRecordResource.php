@@ -15,8 +15,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
 final class PaymentRecordResource extends JsonResource
 {
     /**
-     * @param Request $request
-     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -45,7 +43,6 @@ final class PaymentRecordResource extends JsonResource
     /**
      * Дополнительные данные, включая correlation_id.
      *
-     * @param Request $request
      *
      * @return array<string, mixed>
      */

@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Domains\RealEstate\Models\Property>
+ * @extends Factory<Property>
  */
 final class PropertyFactory extends Factory
 {
@@ -32,7 +32,7 @@ final class PropertyFactory extends Factory
     public function definition(): array
     {
         $type = $this->faker->randomElement(PropertyType::cases());
-        $isResidential = in_array($type, [PropertyType::APARTMENT, PropertyType::HOUSE]);
+        $isResidential = in_array($type, [PropertyType::APARTMENT, PropertyType::HOUSE], true);
 
         return [
             'uuid' => $this->faker->uuid(),
@@ -77,8 +77,6 @@ final class PropertyFactory extends Factory
 
     /**
      * Indicate that the property is active.
-     *
-     * @return \Illuminate\Database\Eloquent\Factories\Factory
      */
     public function active(): Factory
     {
@@ -91,8 +89,6 @@ final class PropertyFactory extends Factory
 
     /**
      * Indicate that the property is an apartment.
-     *
-     * @return \Illuminate\Database\Eloquent\Factories\Factory
      */
     public function apartment(): Factory
     {
@@ -108,8 +104,6 @@ final class PropertyFactory extends Factory
 
     /**
      * Indicate that the property is a house.
-     *
-     * @return \Illuminate\Database\Eloquent\Factories\Factory
      */
     public function house(): Factory
     {

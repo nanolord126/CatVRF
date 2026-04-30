@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * TaxiDriverPolicy — CatVRF 2026 Component.
@@ -7,47 +9,54 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/taxidriverpolicy
  */
 
-
 namespace App\Domains\Taxi\Policies;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Carbon\CarbonImmutable;
 
 final class TaxiDriverPolicy
 {
-
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
-        {
-            return true; // Все могут видеть список водителей
+    {
+        return true; // Все могут видеть список водителей
+    }
+
+    public function $this->viewFactory->make(User $user, TaxiDriver $driver): bool
+    {
+        return true; // Профиль водителя публичный
+    }
+
+    public function update(User $user, TaxiDriver $driver): Response
+    {
+        if ($user->id !== $driver->user_id && ! $user->isAdmin()) {
+            return $this->response->deny('Вы не можете редактировать этого водителя');
         }
 
-        public function view(User $user, TaxiDriver $driver): bool
-        {
-            return true; // Профиль водителя публичный
+        return $this->response->allow();
+    }
+
+    public function deactivate(User $user, TaxiDriver $driver): Response
+    {
+        if (! $user->isAdmin()) {
+            return $this->response->deny('Только администратор может деактивировать водителя');
         }
 
-        public function update(User $user, TaxiDriver $driver): Response
-        {
-            if ($user->id !== $driver->user_id && !$user->isAdmin()) {
-                return $this->response->deny('Вы не можете редактировать этого водителя');
-            }
-
-            return $this->response->allow();
-        }
-
-        public function deactivate(User $user, TaxiDriver $driver): Response
-        {
-            if (!$user->isAdmin()) {
-                return $this->response->deny('Только администратор может деактивировать водителя');
-            }
-
-            return $this->response->allow();
-        }
+        return $this->response->allow();
+    }
 
     /**
      * Get the string representation of this instance.
@@ -56,7 +65,7 @@ final class TaxiDriverPolicy
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -67,8 +76,8 @@ final class TaxiDriverPolicy
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

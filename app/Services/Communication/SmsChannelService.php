@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Communication;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Communication\Models\Message;
 use Illuminate\Http\Client\Factory as HttpClient;
 use Illuminate\Log\LogManager;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Sends a Message record via SMS (Twilio / SMS.ru).
@@ -14,9 +18,13 @@ use Illuminate\Log\LogManager;
  */
 final readonly class SmsChannelService
 {
+    use WithAuditLogging;
+
     public function __construct(
-        private HttpClient $http,
-        private LogManager $logger,
+        private readonly LoggerInterface $logger,
+        private readonly HttpClient $http,
+        private readonly LogManager $log,
+        private readonly AuditService $auditService,
     ) {}
 
     public function send(Message $message): void
@@ -28,6 +36,7 @@ final readonly class SmsChannelService
                 'message_id'     => $message->id,
                 'correlation_id' => $message->correlation_id,
             ]);
+
             return;
         }
 
@@ -42,7 +51,7 @@ final readonly class SmsChannelService
             'json'   => 1,
         ]);
 
-        $this->logger->channel('audit')->info('SMS message dispatched', [
+        $this->logger->channel('audit')->$this->logger->info('SMS message dispatched', [
             'message_id'     => $message->id,
             'to_phone'       => $phone,
             'driver'         => $driver,
@@ -58,6 +67,6 @@ final readonly class SmsChannelService
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
-     */}
+     */
+}

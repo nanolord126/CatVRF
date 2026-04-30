@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Taxi;
 
@@ -7,25 +9,13 @@ use Modules\Taxi\Services\TaxiRideService;
 use Modules\Taxi\Services\TaxiRideCreateDto;
 use Modules\Taxi\Models\TaxiRide;
 use Modules\Taxi\Models\TaxiDriver;
-use App\Services\FraudControlService;
-use App\Services\AuditService;
-use App\Services\Security\IdempotencyService;
-use App\Services\Payment\PaymentService;
-use App\Services\Wallet\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 
 final class TaxiRideServiceTest extends TestCase
 {
     use RefreshDatabase;
 
     private TaxiRideService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(TaxiRideService::class);
-    }
 
     public function test_create_ride_successfully(): void
     {
@@ -152,5 +142,11 @@ final class TaxiRideServiceTest extends TestCase
         $driver->refresh();
         $this->assertEquals(55.7560, $driver->current_latitude);
         $this->assertEquals(37.6175, $driver->current_longitude);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(TaxiRideService::class);
     }
 }

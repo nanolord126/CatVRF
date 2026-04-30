@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Services\AI;
+
+use Illuminate\Support\Collection;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Electronics\DTOs\AI\GadgetVisionAnalysisRequestDto;
 use App\Domains\Electronics\DTOs\AI\GadgetVisionAnalysisResponseDto;
@@ -11,25 +17,22 @@ use App\Services\UserTasteAnalyzerService;
 use App\Services\ML\UserBehaviorAnalyzerService;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 use OpenAI\Client as OpenAIClient;
-use Psr\Log\LoggerInterface;
 
 final readonly class GadgetVisionRecommendationService
 {
-    public function __construct(
-        private FraudControlService $fraud,
-        private RecommendationService $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private UserBehaviorAnalyzerService $behaviorAnalyzer,
-        private Cache $cache,
-        private DatabaseManager $db,
-        private OpenAIClient $openai,
-        private LoggerInterface $logger,
-    ) {
-    }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly UserBehaviorAnalyzerService $behaviorAnalyzer,
+        private readonly Cache $cache,
+        private readonly DatabaseManager $db,
+        private readonly OpenAIClient $openai,
+        private readonly LogManager $log,) {}
 
     public function analyzePhotoAndRecommend(GadgetVisionAnalysisRequestDto $dto): GadgetVisionAnalysisResponseDto
     {
@@ -50,7 +53,7 @@ final readonly class GadgetVisionRecommendationService
 
         $cachedResult = $this->cache->get($cacheKey);
         if ($cachedResult !== null) {
-            $this->logger->info('Electronics vision analysis cache hit', [
+            $this->log->warning('Electronics vision analysis cache hit', [
                 'user_id' => $dto->userId,
                 'correlation_id' => $correlationId,
             ]);
@@ -104,9 +107,9 @@ final readonly class GadgetVisionRecommendationService
 
             $this->saveAnalysisResult($dto->userId, $response->toArray(), $correlationId);
 
-            $this->cache->put($cacheKey, $response->toArray(), now()->addHours(1));
+            $this->cache->put($cacheKey, $response->toArray(), CarbonImmutable::now()->addHours(1));
 
-            Log::channel('audit')->info('Electronics vision analysis completed', [
+            $this->log->channel('audit')->$this->logger->info('Electronics vision analysis completed', [
                 'user_id' => $dto->userId,
                 'correlation_id' => $correlationId,
                 'analysis_type' => $dto->analysisType,
@@ -140,7 +143,7 @@ final readonly class GadgetVisionRecommendationService
                             [
                                 'type' => 'image_url',
                                 'image_url' => [
-                                    'url' => 'data:image/jpeg;base64,' . $imageBase64,
+                                    'url' => 'data:image/jpeg;base64,'.$imageBase64,
                                 ],
                             ],
                         ],
@@ -157,10 +160,10 @@ final readonly class GadgetVisionRecommendationService
                 'raw_response' => $parsed,
                 'analysis_type' => $analysisType,
                 'model_used' => 'gpt-4o',
-                'timestamp' => now()->toIso8601String(),
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ];
         } catch (\Throwable $e) {
-            $this->logger->error('Vision API analysis failed', [
+            $this->log->error('Vision API analysis failed', [
                 'error' => $e->getMessage(),
                 'analysis_type' => $analysisType,
             ]);
@@ -168,7 +171,7 @@ final readonly class GadgetVisionRecommendationService
             return [
                 'error' => 'Vision analysis failed',
                 'fallback_analysis' => $this->performFallbackAnalysis($imageFile),
-                'timestamp' => now()->toIso8601String(),
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ];
         }
     }
@@ -199,18 +202,18 @@ final readonly class GadgetVisionRecommendationService
             ->where('availability_status', 'in_stock')
             ->where('is_active', true);
 
-        if (!empty($profile['preferred_brands'])) {
+        if (! empty($profile['preferred_brands'])) {
             $query->whereIn('brand', $profile['preferred_brands']);
         }
 
-        if (!empty($profile['budget_max'])) {
+        if (! empty($profile['budget_max'])) {
             $query->where('price_kopecks', '<=', $profile['budget_max']);
         }
 
-        if (!empty($profile['detected_device'])) {
+        if (! empty($profile['detected_device'])) {
             $query->where(function ($q) use ($profile) {
-                $q->where('name', 'like', '%' . $profile['detected_device'] . '%')
-                  ->orWhere('category', 'like', '%' . $profile['detected_device'] . '%');
+                $q->where('name', 'like', '%'.$profile['detected_device'].'%')
+                    ->orWhere('category', 'like', '%'.$profile['detected_device'].'%');
             });
         }
 
@@ -251,15 +254,15 @@ final readonly class GadgetVisionRecommendationService
     {
         $score = 0.5;
 
-        if (!empty($profile['preferred_brands']) && in_array($product->brand, $profile['preferred_brands'])) {
+        if (! empty($profile['preferred_brands']) && in_array($product->brand, $profile['preferred_brands'], true)) {
             $score += 0.2;
         }
 
-        if (!empty($profile['budget_max']) && $product->price_kopecks <= $profile['budget_max']) {
+        if (! empty($profile['budget_max']) && $product->price_kopecks <= $profile['budget_max']) {
             $score += 0.15;
         }
 
-        if (!empty($profile['use_cases'])) {
+        if (! empty($profile['use_cases'])) {
             $productSpecs = json_encode($product->specs);
             foreach ($profile['use_cases'] as $useCase) {
                 if (stripos($productSpecs, $useCase) !== false) {
@@ -310,7 +313,7 @@ final readonly class GadgetVisionRecommendationService
             $pricingInfo['dynamic_factors'][] = 'first_purchase_bonus';
         }
 
-        $currentHour = now()->hour;
+        $currentHour = CarbonImmutable::now()->hour;
         if ($currentHour >= 18 && $currentHour <= 23) {
             $pricingInfo['discount_percentage'] += 3;
             $pricingInfo['dynamic_factors'][] = 'evening_hours';
@@ -326,8 +329,8 @@ final readonly class GadgetVisionRecommendationService
 
     private function getUserLTV(int $userId): int
     {
-        return $this->cache->remember("user_ltv:{$userId}", now()->addHours(6), function () use ($userId) {
-            return (int) DB::table('orders')
+        return $this->cache->remember("user_ltv:{$userId}", CarbonImmutable::now()->addHours(6), function () use ($userId) {
+            return (int) $this->db->table('orders')
                 ->where('user_id', $userId)
                 ->where('status', 'completed')
                 ->sum('total_kopecks');
@@ -336,20 +339,20 @@ final readonly class GadgetVisionRecommendationService
 
     private function prepareVideoCallIntegration(int $userId, array $recommendations): array
     {
-        $hasExpensiveItems = collect($recommendations)->contains(function ($product) {
+        $hasExpensiveItems = new Collection($recommendations)->contains(function ($product) {
             return $product['price_kopecks'] > 10000000;
         });
 
-        if (!$hasExpensiveItems) {
+        if (! $hasExpensiveItems) {
             return ['available' => false, 'token' => null];
         }
 
-        $videoCallToken = hash('sha256', $userId . now()->timestamp . Str::random(32));
+        $videoCallToken = hash('sha256', $userId.CarbonImmutable::now()->timestamp.Str::random(32));
 
         $this->cache->put(
             "video_call_token:{$videoCallToken}",
-            ['user_id' => $userId, 'expires_at' => now()->addMinutes(30)],
-            now()->addMinutes(30)
+            ['user_id' => $userId, 'expires_at' => CarbonImmutable::now()->addMinutes(30)],
+            CarbonImmutable::now()->addMinutes(30)
         );
 
         return [
@@ -364,14 +367,14 @@ final readonly class GadgetVisionRecommendationService
     {
         $flashSaleActive = $this->cache->get('flash_sale:electronics:active', false);
 
-        if (!$flashSaleActive) {
+        if (! $flashSaleActive) {
             return null;
         }
 
         $flashSaleData = $this->cache->get('flash_sale:electronics:data', []);
 
         $eligibleProducts = array_filter($recommendations, function ($product) use ($flashSaleData) {
-            return in_array($product['id'], $flashSaleData['product_ids'] ?? []);
+            return in_array($product['id'], $flashSaleData['product_ids'] ?? [], true);
         });
 
         if (empty($eligibleProducts)) {
@@ -393,8 +396,8 @@ final readonly class GadgetVisionRecommendationService
             'vertical' => 'electronics',
             'design_data' => json_encode($result),
             'correlation_id' => $correlationId,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 }

@@ -1,8 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Services;
-
-use Illuminate\Support\Facades\Log;
 
 final class BodyMeasurementsService
 {
@@ -15,7 +15,7 @@ final class BodyMeasurementsService
         $hips = $measurements['hips'] ?? 0;
         $bust = $measurements['bust'] ?? 0;
 
-        if (!$waist || !$hips || !$bust) {
+        if (! $waist || ! $hips || ! $bust) {
             return 'unknown';
         }
 
@@ -58,7 +58,7 @@ final class BodyMeasurementsService
         $bust = $measurements['bust'] ?? 0;
         $underbust = $measurements['underbust'] ?? 0;
 
-        if (!$bust || !$underbust) {
+        if (! $bust || ! $underbust) {
             return 'unknown';
         }
 
@@ -68,7 +68,7 @@ final class BodyMeasurementsService
         $cupLetters = ['AA', 'A', 'B', 'C', 'D', 'DD', 'E', 'F', 'G', 'H', 'I'];
         $cupIndex = min(max($cupSize - 10, 0), count($cupLetters) - 1);
 
-        return $bandSize . $cupLetters[$cupIndex];
+        return $bandSize.$cupLetters[$cupIndex];
     }
 
     /**
@@ -79,7 +79,7 @@ final class BodyMeasurementsService
         $waist = $measurements['waist'] ?? 0;
         $hips = $measurements['hips'] ?? 0;
 
-        if (!$waist || !$hips) {
+        if (! $waist || ! $hips) {
             return 'unknown';
         }
 
@@ -104,7 +104,7 @@ final class BodyMeasurementsService
         $waist = $measurements['waist'] ?? 0;
         $shoulderWidth = $measurements['shoulder_width'] ?? 0;
 
-        if (!$bust && !$shoulderWidth) {
+        if (! $bust && ! $shoulderWidth) {
             return 'unknown';
         }
 
@@ -132,7 +132,7 @@ final class BodyMeasurementsService
         $waist = $measurements['waist'] ?? 0;
         $hips = $measurements['hips'] ?? 0;
 
-        if (!$waist || !$hips) {
+        if (! $waist || ! $hips) {
             return 'unknown';
         }
 
@@ -157,7 +157,7 @@ final class BodyMeasurementsService
         $waist = $measurements['waist'] ?? 0;
         $hips = $measurements['hips'] ?? 0;
 
-        if (!$bust || !$waist || !$hips) {
+        if (! $bust || ! $waist || ! $hips) {
             return 'unknown';
         }
 
@@ -180,13 +180,13 @@ final class BodyMeasurementsService
     {
         $footLength = ($measurements['leg_length'] ?? 0) * 0.15;
 
-        if (!$footLength) {
+        if (! $footLength) {
             return 'unknown';
         }
 
         $euSize = round($footLength * 1.5 + 2);
 
-        return $euSize . ' EU';
+        return $euSize.' EU';
     }
 
     /**
@@ -197,7 +197,7 @@ final class BodyMeasurementsService
         $height = $measurements['height'] ?? 0;
         $weight = $measurements['weight'] ?? 0;
 
-        if (!$height || !$weight) {
+        if (! $height || ! $weight) {
             return [
                 'value' => null,
                 'status' => 'unknown',
@@ -303,12 +303,12 @@ final class BodyMeasurementsService
 
         // Проверка типа фигуры
         $figureType = $this->calculateFigureType($measurements);
-        if (in_array($figureType, $productSpecs['suitable_figure_types'] ?? [])) {
+        if (in_array($figureType, $productSpecs['suitable_figure_types'] ?? [], true)) {
             $score += 30;
         }
 
         // Проверка материала
-        if (in_array($productSpecs['material'] ?? '', $this->getRecommendedMaterials($figureType))) {
+        if (in_array($productSpecs['material'] ?? '', $this->getRecommendedMaterials($figureType), true)) {
             $score += 15;
         }
 
@@ -318,37 +318,6 @@ final class BodyMeasurementsService
         }
 
         return min($score, $maxScore);
-    }
-
-    /**
-     * Получает рекомендации по материалам для типа фигуры
-     */
-    private function getRecommendedMaterials(string $figureType): array
-    {
-        return match ($figureType) {
-            'hourglass' => ['cotton', 'silk', 'viscose'],
-            'pear' => ['cotton', 'linen', 'denim'],
-            'triangle' => ['silk', 'chiffon', 'viscose'],
-            'rectangle' => ['cotton', 'wool', 'knit'],
-            'apple' => ['viscose', 'silk', 'chiffon'],
-            default => ['cotton', 'polyester', 'blend'],
-        };
-    }
-
-    /**
-     * Проверяет, являются ли размеры соседними
-     */
-    private function isAdjacentSize(string $size1, string $size2): bool
-    {
-        $sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-        $index1 = array_search($size1, $sizes);
-        $index2 = array_search($size2, $sizes);
-
-        if ($index1 === false || $index2 === false) {
-            return false;
-        }
-
-        return abs($index1 - $index2) === 1;
     }
 
     /**
@@ -409,13 +378,44 @@ final class BodyMeasurementsService
                 $this->calculateFigureType($measurements)
             ),
             'proportions' => [
-                'waist_to_hip' => $measurements['waist'] && $measurements['hips'] 
-                    ? round($measurements['waist'] / $measurements['hips'], 2) 
+                'waist_to_hip' => $measurements['waist'] && $measurements['hips']
+                    ? round($measurements['waist'] / $measurements['hips'], 2)
                     : null,
                 'bust_to_waist' => $measurements['bust'] && $measurements['waist']
                     ? round($measurements['bust'] / $measurements['waist'], 2)
                     : null,
             ],
         ];
+    }
+
+    /**
+     * Получает рекомендации по материалам для типа фигуры
+     */
+    private function getRecommendedMaterials(string $figureType): array
+    {
+        return match ($figureType) {
+            'hourglass' => ['cotton', 'silk', 'viscose'],
+            'pear' => ['cotton', 'linen', 'denim'],
+            'triangle' => ['silk', 'chiffon', 'viscose'],
+            'rectangle' => ['cotton', 'wool', 'knit'],
+            'apple' => ['viscose', 'silk', 'chiffon'],
+            default => ['cotton', 'polyester', 'blend'],
+        };
+    }
+
+    /**
+     * Проверяет, являются ли размеры соседними
+     */
+    private function isAdjacentSize(string $size1, string $size2): bool
+    {
+        $sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+        $index1 = array_search($size1, $sizes, true);
+        $index2 = array_search($size2, $sizes, true);
+
+        if ($index1 === false || $index2 === false) {
+            return false;
+        }
+
+        return abs($index1 - $index2) === 1;
     }
 }

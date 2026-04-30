@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers\Prometheus;
 
-use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 use Prometheus\CollectorRegistry;
 use Prometheus\Histogram;
 use Prometheus\Gauge;
@@ -25,16 +25,16 @@ use Prometheus\Counter;
  */
 final readonly class PaymentFraudMLMetricsCollector
 {
-    private Histogram $scoreHistogram;
-    private Histogram $latencyHistogram;
-    private Gauge $blockRateGauge;
-    private Gauge $falsePositiveRateGauge;
-    private Counter $emergencyCounter;
-    private Counter $cacheHitCounter;
-    private Counter $cacheMissCounter;
+    private readonly Histogram $scoreHistogram;
+    private readonly Histogram $latencyHistogram;
+    private readonly Gauge $blockRateGauge;
+    private readonly Gauge $falsePositiveRateGauge;
+    private readonly Counter $emergencyCounter;
+    private readonly Counter $cacheHitCounter;
+    private readonly Counter $cacheMissCounter;
 
     public function __construct(
-        private CollectorRegistry $registry
+        private readonly CollectorRegistry $registry
     ) {
         $this->scoreHistogram = $registry->getOrRegisterHistogram(
             'fraud_ml',

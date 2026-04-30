@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
 
-use App\Domains\Beauty\Models\Salon;
 use App\Domains\Beauty\Models\Master;
-use App\Domains\Beauty\Models\BeautyService;
 use App\Domains\Beauty\Models\Appointment;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
@@ -20,9 +18,9 @@ use App\Domains\Beauty\Http\Requests\StaffStoreRequest;
 use App\Domains\Beauty\Http\Requests\StaffUpdateRequest;
 use App\Domains\Beauty\Http\Requests\PromoStoreRequest;
 use App\Domains\Beauty\Http\Requests\LoyaltyUpdateRequest;
+use Carbon\CarbonImmutable;
 use App\Domains\Beauty\Actions\Staff\CreateMasterAction;
 use App\Domains\Beauty\Actions\Staff\UpdateMasterAction;
-
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Auth\Guard;
 
@@ -38,14 +36,14 @@ use Illuminate\Contracts\Auth\Guard;
 final class BeautyPanelController extends Controller
 {
     public function __construct(
-        private DatabaseManager $db,
-        private AuditService $audit,
-        private FraudControlService $fraud,
-        private LoggerInterface $logger,
-        private Guard $guard,
-        private ResponseFactory $response,
-        private CreateMasterAction $createMaster,
-        private UpdateMasterAction $updateMaster,
+        private readonly DatabaseManager $db,
+        private readonly AuditService $audit,
+        private readonly FraudControlService $fraud,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
+        private readonly CreateMasterAction $createMaster,
+        private readonly UpdateMasterAction $updateMaster,
     ) {}
 
     /* ═══════════════════════════════════════════════════
@@ -56,8 +54,8 @@ final class BeautyPanelController extends Controller
         $tenantId = auth()->user()?->tenant_id;
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        $todayStart = now()->startOfDay();
-        $weekStart = now()->startOfWeek();
+        $todayStart = CarbonImmutable::now()->startOfDay();
+        $weekStart = CarbonImmutable::now()->startOfWeek();
 
         $revenueToday = $this->db->table('beauty_appointments')
             ->where('tenant_id', $tenantId)
@@ -75,7 +73,7 @@ final class BeautyPanelController extends Controller
 
         $activeBookings = Appointment::where('tenant_id', $tenantId)
             ->whereIn('status', ['confirmed', 'pending'])
-            ->where('starts_at', '>=', now())
+            ->where('starts_at', '>=', CarbonImmutable::now())
             ->count();
 
         $totalMasters = Master::whereHas('salon', fn ($q) => $q->where('tenant_id', $tenantId))
@@ -85,8 +83,8 @@ final class BeautyPanelController extends Controller
         $busyMasters = $this->db->table('beauty_appointments')
             ->where('tenant_id', $tenantId)
             ->whereIn('status', ['confirmed', 'in_progress'])
-            ->where('starts_at', '<=', now())
-            ->where('ends_at', '>=', now())
+            ->where('starts_at', '<=', CarbonImmutable::now())
+            ->where('ends_at', '>=', CarbonImmutable::now())
             ->distinct('master_id')
             ->count('master_id');
 
@@ -125,11 +123,11 @@ final class BeautyPanelController extends Controller
         $period = $request->input('period', '30d');
 
         $since = match ($period) {
-            '7d' => now()->subDays(7),
-            '30d' => now()->subDays(30),
-            '90d' => now()->subDays(90),
-            'year' => now()->subYear(),
-            default => now()->subDays(30),
+            '7d' => CarbonImmutable::now()->subDays(7),
+            '30d' => CarbonImmutable::now()->subDays(30),
+            '90d' => CarbonImmutable::now()->subDays(90),
+            'year' => CarbonImmutable::now()->subYear(),
+            default => CarbonImmutable::now()->subDays(30),
         };
 
         $revenue = $this->db->table('beauty_appointments')
@@ -167,7 +165,7 @@ final class BeautyPanelController extends Controller
             ->get()
             ->toArray();
 
-        $this->logger->info('Beauty finance stats loaded', [
+        $this->logger->$this->logger->info('Beauty finance stats loaded', [
             'tenant_id' => $tenantId,
             'period' => $period,
             'correlation_id' => $correlationId,
@@ -208,7 +206,7 @@ final class BeautyPanelController extends Controller
                 'is_active' => $m->is_active,
             ]);
 
-        $this->logger->info('Beauty staff loaded', [
+        $this->logger->$this->logger->info('Beauty staff loaded', [
             'tenant_id' => $tenantId,
             'count' => $staff->count(),
             'correlation_id' => $correlationId,
@@ -279,7 +277,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId
         );
 
-        $this->logger->info('Staff payout processed', [
+        $this->logger->$this->logger->info('Staff payout processed', [
             'master_id' => $id,
             'amount' => $request->input('amount'),
             'correlation_id' => $correlationId,
@@ -357,7 +355,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Bonus awarded', [
+        $this->logger->$this->logger->info('Bonus awarded', [
             'user_id' => $request->input('user_id'),
             'amount' => $request->input('amount'),
             'correlation_id' => $correlationId,
@@ -701,9 +699,9 @@ final class BeautyPanelController extends Controller
         $period = $request->input('period', 'month');
 
         $startDate = match ($period) {
-            'week' => now()->startOfWeek(),
-            'year' => now()->startOfYear(),
-            default => now()->startOfMonth(),
+            'week' => CarbonImmutable::now()->startOfWeek(),
+            'year' => CarbonImmutable::now()->startOfYear(),
+            default => CarbonImmutable::now()->startOfMonth(),
         };
 
         $revenueByDay = $this->db->table('beauty_appointments')
@@ -776,7 +774,7 @@ final class BeautyPanelController extends Controller
             correlationId: $correlationId,
         );
 
-        $this->logger->info('AI try-on requested', [
+        $this->logger->$this->logger->info('AI try-on requested', [
             'user_id' => $request->user()?->id,
             'correlation_id' => $correlationId,
         ]);
@@ -790,4 +788,3 @@ final class BeautyPanelController extends Controller
         ]);
     }
 }
-

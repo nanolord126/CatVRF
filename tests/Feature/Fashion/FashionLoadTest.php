@@ -1,45 +1,40 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Fashion;
 
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
 
-final class FashionLoadTest extends \Tests\TestCase
+final class FashionLoadTest extends TestCase
 {
     use RefreshDatabase;
 
     private User $user;
+
     private Tenant $tenant;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-    }
 
     public function test_handles_100_concurrent_product_requests(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 100; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->getJson('/api/fashion/products');
         }
 
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
-        
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
+
         $this->assertGreaterThan(80, $successfulResponses, 'Should handle at least 80% of concurrent requests');
     }
 
     public function test_handles_50_concurrent_order_creations(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 50; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->postJson('/api/fashion/orders', [
@@ -48,8 +43,8 @@ final class FashionLoadTest extends \Tests\TestCase
                 ]);
         }
 
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 200 || $r->status() === 201)->count();
-        
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 200 || $r->status() === 201)->count();
+
         $this->assertGreaterThan(40, $successfulResponses, 'Should handle at least 80% of concurrent orders');
     }
 
@@ -63,60 +58,60 @@ final class FashionLoadTest extends \Tests\TestCase
                 ->getJson("/api/fashion/search?q={$term}");
         }
 
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
-        
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
+
         $this->assertEquals(count($searchTerms), $successfulResponses, 'All search queries should succeed');
     }
 
     public function test_handles_concurrent_recommendation_requests(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 20; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->getJson('/api/fashion/ml/cross-vertical-recommendations');
         }
 
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
-        
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
+
         $this->assertGreaterThan(15, $successfulResponses, 'Should handle most recommendation requests');
     }
 
     public function test_handles_concurrent_size_calculations(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 30; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->getJson('/api/fashion/ml/size-recommendation/1');
         }
 
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
-        
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
+
         $this->assertGreaterThan(25, $successfulResponses, 'Should handle most size calculation requests');
     }
 
     public function test_handles_concurrent_review_submissions(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 40; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->postJson('/api/fashion/products/1/reviews', [
                     'rating' => rand(1, 5),
-                    'comment' => 'Test review ' . $i,
+                    'comment' => 'Test review '.$i,
                 ]);
         }
 
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 201 || $r->status() === 429)->count();
-        
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 201 || $r->status() === 429)->count();
+
         $this->assertGreaterThan(30, $successfulResponses, 'Should handle most review submissions (success or rate-limited)');
     }
 
     public function test_handles_concurrent_return_requests(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 20; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->postJson('/api/fashion/returns', [
@@ -126,25 +121,25 @@ final class FashionLoadTest extends \Tests\TestCase
                 ]);
         }
 
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 200 || $r->status() === 422)->count();
-        
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 200 || $r->status() === 422)->count();
+
         $this->assertGreaterThan(15, $successfulResponses, 'Should handle most return requests');
     }
 
     public function test_handles_concurrent_inventory_operations(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 50; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->postJson('/api/fashion/products/1/reserve', [
                     'quantity' => 1,
-                    'order_id' => 'order_' . $i,
+                    'order_id' => 'order_'.$i,
                 ]);
         }
 
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 200 || $r->status() === 422)->count();
-        
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 200 || $r->status() === 422)->count();
+
         $this->assertGreaterThan(40, $successfulResponses, 'Should handle most inventory operations');
     }
 
@@ -161,8 +156,8 @@ final class FashionLoadTest extends \Tests\TestCase
         $endTime = microtime(true);
         $duration = $endTime - $startTime;
 
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
-        
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
+
         $this->assertGreaterThan(180, $successfulResponses, 'Connection pool should handle load');
         $this->assertLessThan(30, $duration, '200 requests should complete in under 30 seconds');
     }
@@ -184,8 +179,8 @@ final class FashionLoadTest extends \Tests\TestCase
         $endTime = microtime(true);
         $duration = $endTime - $startTime;
 
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
-        
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
+
         $this->assertEquals(100, $successfulResponses, 'All cached requests should succeed');
         $this->assertLessThan(5, $duration, '100 cached requests should be fast (< 5s)');
     }
@@ -193,15 +188,15 @@ final class FashionLoadTest extends \Tests\TestCase
     public function test_rate_limiting_under_load(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 100; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->getJson('/api/fashion/products');
         }
 
-        $rateLimitedResponses = collect($responses)->filter(fn($r) => $r->status() === 429)->count();
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
-        
+        $rateLimitedResponses = collect($responses)->filter(fn ($r) => $r->status() === 429)->count();
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
+
         $this->assertGreaterThan(0, $rateLimitedResponses, 'Some requests should be rate-limited');
         $this->assertGreaterThan(50, $successfulResponses, 'Most requests should still succeed');
     }
@@ -209,7 +204,7 @@ final class FashionLoadTest extends \Tests\TestCase
     public function test_memory_usage_stability(): void
     {
         $initialMemory = memory_get_usage(true);
-        
+
         for ($i = 0; $i < 500; $i++) {
             $this->actingAs($this->user)
                 ->getJson('/api/fashion/products');
@@ -231,8 +226,16 @@ final class FashionLoadTest extends \Tests\TestCase
                 ->getJson('/api/fashion/orders');
         }
 
-        $successfulResponses = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
-        
+        $successfulResponses = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
+
         $this->assertEquals(count($users), $successfulResponses, 'All concurrent user sessions should work');
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
     }
 }

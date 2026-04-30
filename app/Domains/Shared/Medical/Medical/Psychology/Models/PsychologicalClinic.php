@@ -1,0 +1,66 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Shared\Medical\Psychology\Models;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+
+final class PsychologicalClinic extends Model
+{
+    protected $table = 'psy_clinics';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'name',
+        'description',
+        'metadata',
+        'rating',
+        'tags',
+        'correlation_id',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'metadata' => 'json',
+        'tags' => 'json',
+        'rating' => 'float',
+        'is_active' => 'boolean',
+    ];
+
+    /**
+     * Специалисты клиники.
+     */
+    public function psychologists(): HasMany
+    {
+        return $this->hasMany(Psychologist::class, 'clinic_id');
+    }
+
+    /**
+     * Бронирования клиники через специалистов.
+     */
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(PsychologicalBooking::class, 'clinic_id');
+    }
+
+    /**
+     * Глобальный скопинг по тенанту.
+     */
+    protected static function booted_disabled(): void
+    {
+        self::addGlobalScope('tenant', function (Builder $builder) {
+            if (function_exists('tenant') && tenant()) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(function (self $model) {
+            $model->uuid = (string) Str::uuid();
+            $model->correlation_id = (string) Str::uuid();
+            $model->tenant_id = tenant()->id ?? 0;
+        });
+    }
+}

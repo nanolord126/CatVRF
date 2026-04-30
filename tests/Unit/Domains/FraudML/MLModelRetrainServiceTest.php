@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\FraudML;
 
@@ -11,13 +13,11 @@ use App\Services\Tenancy\TenantQuotaService;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\LogManager;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 /**
  * MLModelRetrainServiceTest — unit tests for ML model retraining service
- * 
+ *
  * @covers \App\Domains\FraudML\Services\MLModelRetrainService
  */
 final class MLModelRetrainServiceTest extends TestCase
@@ -25,30 +25,16 @@ final class MLModelRetrainServiceTest extends TestCase
     use RefreshDatabase;
 
     private MLModelRetrainService $service;
+
     private RedisFactory $redis;
+
     private TenantQuotaService $quotaService;
+
     private LogManager $logger;
+
     private MLModelValidationService $validationService;
+
     private PrometheusMetricsService $prometheus;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->redis = $this->app->make(RedisFactory::class);
-        $this->quotaService = $this->app->make(TenantQuotaService::class);
-        $this->logger = $this->app->make(LogManager::class);
-        $this->validationService = $this->app->make(MLModelValidationService::class);
-        $this->prometheus = $this->app->make(PrometheusMetricsService::class);
-
-        $this->service = new MLModelRetrainService(
-            $this->redis,
-            $this->quotaService,
-            $this->logger,
-            $this->validationService,
-            $this->prometheus,
-        );
-    }
 
     public function test_acquire_lock_prevents_duplicate_retrain(): void
     {
@@ -156,6 +142,25 @@ final class MLModelRetrainServiceTest extends TestCase
         $shadowModel->refresh();
         $this->assertTrue($shadowModel->is_shadow);
         $this->assertFalse($shadowModel->is_active);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->redis = $this->app->make(RedisFactory::class);
+        $this->quotaService = $this->app->make(TenantQuotaService::class);
+        $this->logger = $this->app->make(LogManager::class);
+        $this->validationService = $this->app->make(MLModelValidationService::class);
+        $this->prometheus = $this->app->make(PrometheusMetricsService::class);
+
+        $this->service = new MLModelRetrainService(
+            $this->redis,
+            $this->quotaService,
+            $this->logger,
+            $this->validationService,
+            $this->prometheus,
+        );
     }
 
     protected function tearDown(): void

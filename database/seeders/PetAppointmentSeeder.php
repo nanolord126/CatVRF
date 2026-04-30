@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
 use App\Domains\Pet\Models\PetAppointment;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 final class PetAppointmentSeeder extends Seeder
 {
@@ -27,7 +30,7 @@ final class PetAppointmentSeeder extends Seeder
             PetAppointment::updateOrCreate(
                 ['owner_phone' => $item['owner_phone'], 'tenant_id' => 1],
                 array_merge($item, [
-                    'uuid' => \Illuminate\Support\Str::uuid(),
+                    'uuid' => Str::uuid(),
                     'tenant_id' => 1,
                     'appointment_date' => $apptDate,
                 ])

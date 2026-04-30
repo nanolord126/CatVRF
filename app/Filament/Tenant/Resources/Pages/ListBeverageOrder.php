@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -18,13 +20,6 @@ use Filament\Tables\Table;
 final class ListBeverageOrder extends ListRecords
 {
     protected static string $resource = BeverageOrderResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()->label('Новый заказ')->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -48,7 +43,7 @@ final class ListBeverageOrder extends ListRecords
                         default      => $state,
                     }),
                 TextColumn::make('total_amount')->label('Сумма')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 0, ',', ' ') . ' ₽')->sortable(),
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 0, ',', ' ').' ₽')->sortable(),
                 BadgeColumn::make('payment_status')->label('Оплата')
                     ->colors(['danger' => 'unpaid', 'success' => 'paid']),
                 TextColumn::make('delivery_type')->label('Тип доставки')
@@ -68,5 +63,12 @@ final class ListBeverageOrder extends ListRecords
             ->actions([ViewAction::make(), EditAction::make(), DeleteAction::make()])
             ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
             ->defaultSort('created_at', 'desc')->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()->label('Новый заказ')->icon('heroicon-o-plus'),
+        ];
     }
 }

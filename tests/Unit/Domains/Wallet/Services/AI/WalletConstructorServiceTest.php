@@ -12,6 +12,7 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Eloquent\Model;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 
 /**
  * Unit-тесты AI WalletConstructorService.
@@ -149,7 +150,7 @@ final class WalletConstructorServiceTest extends TestCase
     {
         return new WalletConstructorService(
             $this->createMock(DatabaseManager::class),
-            $this->createMock(\Psr\Log\LoggerInterface::class),
+            $this->createMock(LoggerInterface::class),
             (new \ReflectionClass(FraudControlService::class))->newInstanceWithoutConstructor(),
             (new \ReflectionClass(AuditService::class))->newInstanceWithoutConstructor(),
             $this->createMock(CacheRepository::class),

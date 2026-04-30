@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Chaos;
 
@@ -12,6 +14,11 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use Tests\BaseTestCase;
+use App\Models\BalanceTransaction;
+use App\Models\InventoryItem;
+use App\Models\Wallet;
+use App\Services\Payment\Gateways\TinkoffGateway;
+use Illuminate\Database\QueryException;
 
 /**
  * ChaosEngineeringAdvancedTest — Расширенные хаос-тесты.
@@ -44,7 +51,7 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
         $walletService = app(WalletService::class);
 
         // Create wallet in DB
-        $wallet = \App\Models\Wallet::factory()->create([
+        $wallet = Wallet::factory()->create([
             'tenant_id'       => $this->tenant->id,
             'current_balance' => 100_000,
         ]);
@@ -77,7 +84,7 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
 
         // Wrap in try-catch — operation should fail fast, not hang
         try {
-            DB::statement("SELECT SLEEP(10)"); // Simulate slow query
+            DB::statement('SELECT SLEEP(10)'); // Simulate slow query
         } catch (\Throwable $e) {
             // Expected: timeout or connection error
         }
@@ -119,7 +126,7 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
     {
         // Simulate all connections in use by holding transactions
         DB::shouldReceive('transaction')
-            ->andThrow(new \Illuminate\Database\QueryException(
+            ->andThrow(new QueryException(
                 'mysql',
                 'SELECT 1',
                 [],
@@ -140,7 +147,7 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
 
     public function test_idempotent_retry_after_partial_failure(): void
     {
-        $key = 'retry-' . Str::uuid();
+        $key = 'retry-'.Str::uuid();
 
         // First attempt — simulate timeout mid-way
         $r1 = $this->authenticatedPost('/api/payments/init', [
@@ -167,7 +174,7 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
 
     public function test_payment_gateway_timeout_handled_gracefully(): void
     {
-        $mockGateway = $this->getMockBuilder(\App\Services\Payment\Gateways\TinkoffGateway::class)
+        $mockGateway = $this->getMockBuilder(TinkoffGateway::class)
             ->disableOriginalConstructor()
             ->onlyMethods(['initPayment'])
             ->getMock();
@@ -175,7 +182,7 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
         $mockGateway->method('initPayment')
             ->willThrowException(new \Exception('cURL timeout: Gateway did not respond in 30s'));
 
-        $this->app->instance(\App\Services\Payment\Gateways\TinkoffGateway::class, $mockGateway);
+        $this->app->instance(TinkoffGateway::class, $mockGateway);
 
         $response = $this->authenticatedPost('/api/payments/init', [
             'amount'   => 10_000,
@@ -205,7 +212,7 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
 
         $inventoryService = app(InventoryManagementService::class);
 
-        $item = \App\Models\InventoryItem::factory()->create([
+        $item = InventoryItem::factory()->create([
             'tenant_id'     => $this->tenant->id,
             'current_stock' => 50,
         ]);
@@ -232,7 +239,7 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
         Log::shouldReceive('warning')->andReturn(null)->byDefault();
 
         // Core wallet operation should NOT fail just because audit log is down
-        $wallet = \App\Models\Wallet::factory()->create([
+        $wallet = Wallet::factory()->create([
             'tenant_id'       => $this->tenant->id,
             'current_balance' => 100_000,
         ]);
@@ -245,7 +252,7 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
             $this->assertIsInt($result);
         } catch (\Throwable $e) {
             // Acceptable only if it's a test mocking issue, not production behavior
-            $this->addWarning('Wallet threw on audit log failure: ' . $e->getMessage());
+            $this->addWarning('Wallet threw on audit log failure: '.$e->getMessage());
         }
     }
 
@@ -253,7 +260,7 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
 
     public function test_concurrent_balance_updates_are_serialized(): void
     {
-        $wallet = \App\Models\Wallet::factory()->create([
+        $wallet = Wallet::factory()->create([
             'tenant_id'       => $this->tenant->id,
             'current_balance' => 100_000,
         ]);
@@ -263,12 +270,12 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
         // Simulate 5 concurrent credit operations
         DB::transaction(function () use ($wallet, $correlationId): void {
             for ($i = 0; $i < 5; $i++) {
-                \App\Models\BalanceTransaction::create([
+                BalanceTransaction::create([
                     'wallet_id'      => $wallet->id,
                     'type'           => 'deposit',
                     'amount'         => 1_000,
                     'status'         => 'completed',
-                    'correlation_id' => $correlationId . '-' . $i,
+                    'correlation_id' => $correlationId.'-'.$i,
                 ]);
             }
 
@@ -278,7 +285,7 @@ final class ChaosEngineeringAdvancedTest extends BaseTestCase
         $wallet->refresh();
         $this->assertSame(105_000, $wallet->current_balance);
 
-        $txCount = \App\Models\BalanceTransaction::where('wallet_id', $wallet->id)->count();
+        $txCount = BalanceTransaction::where('wallet_id', $wallet->id)->count();
         $this->assertSame(5, $txCount);
     }
 }

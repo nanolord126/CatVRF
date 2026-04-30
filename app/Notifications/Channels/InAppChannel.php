@@ -1,11 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Channels;
+
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Carbon\CarbonImmutable;
 
 use Psr\Log\LoggerInterface;
 use Illuminate\Notifications\Notification;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
+use App\Events\InAppNotificationCreated;
 
 /**
  * In-App Notification Channel — сохраняет уведомления в БД для показа в UI.
@@ -25,10 +32,9 @@ final class InAppChannel
     /**
      * Конструктор
      */
-    public function __construct(
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
         private readonly LoggerInterface $logger,
-        private readonly DatabaseManager $db,
-    ) {}
+        private readonly DatabaseManager $db,) {}
 
     /**
      * Отправить in-app уведомление.
@@ -39,11 +45,12 @@ final class InAppChannel
      */
     public function send(object $notifiable, Notification $notification): void
     {
-        if (!method_exists($notification, 'toInApp') && !method_exists($notification, 'toDatabase')) {
+        if (! method_exists($notification, 'toInApp') && ! method_exists($notification, 'toDatabase')) {
             $this->logger->warning('Notification does not have toInApp or toDatabase method', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id ?? null,
             ]);
+
             return;
         }
 
@@ -70,8 +77,8 @@ final class InAppChannel
                     'tenant_id'      => $tenantId,
                 ]), JSON_UNESCAPED_UNICODE),
                 'read_at'         => null,
-                'created_at'      => now(),
-                'updated_at'      => now(),
+                'created_at'      => CarbonImmutable::now(),
+                'updated_at'      => CarbonImmutable::now(),
             ]);
 
             // Очистка старых непрочитанных, если превышен лимит
@@ -80,7 +87,7 @@ final class InAppChannel
             // Broadcast через Echo (если доступен)
             $this->broadcastIfAvailable($userId, $data, $correlationId);
 
-            $this->logger->info('In-app notification created', [
+            $this->logger->$this->logger->info('In-app notification created', [
                 'type'           => method_exists($notification, 'getType') ? $notification->getType() : get_class($notification),
                 'user_id'        => $userId,
                 'correlation_id' => $correlationId,
@@ -105,12 +112,12 @@ final class InAppChannel
      * Используется NotificationChannelService для произвольных уведомлений.
      */
     public function sendDirect(
-        int     $userId,
-        string  $title,
-        string  $message,
-        string  $type = 'info',
+        int $userId,
+        string $title,
+        string $message,
+        string $type = 'info',
         ?string $correlationId = null,
-        ?int    $tenantId = null,
+        ?int $tenantId = null,
         ?string $actionUrl = null,
     ): void {
         $correlationId = $correlationId ?? Str::uuid()->toString();
@@ -129,8 +136,8 @@ final class InAppChannel
                 'tenant_id'      => $tenantId,
             ], JSON_UNESCAPED_UNICODE),
             'read_at'         => null,
-            'created_at'      => now(),
-            'updated_at'      => now(),
+            'created_at'      => CarbonImmutable::now(),
+            'updated_at'      => CarbonImmutable::now(),
         ]);
 
         $this->cleanupOldUnread($userId);
@@ -140,7 +147,7 @@ final class InAppChannel
             'type'    => $type,
         ], $correlationId);
 
-        $this->logger->info('In-app direct notification created', [
+        $this->logger->$this->logger->info('In-app direct notification created', [
             'user_id'        => $userId,
             'type'           => $type,
             'correlation_id' => $correlationId,
@@ -184,17 +191,17 @@ final class InAppChannel
      * Broadcast real-time event через Laravel Echo.
      */
     private function broadcastIfAvailable(
-        ?int    $userId,
-        array   $data,
-        string  $correlationId,
+        ?int $userId,
+        array $data,
+        string $correlationId,
     ): void {
         if ($userId === null) {
             return;
         }
 
         try {
-            if (class_exists(\App\Events\InAppNotificationCreated::class)) {
-                event(new \App\Events\InAppNotificationCreated(
+            if (class_exists(InAppNotificationCreated::class)) {
+                $this->eventDispatcher->dispatch(new InAppNotificationCreated(
                     userId: $userId,
                     data: $data,
                     correlationId: $correlationId,

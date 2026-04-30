@@ -1,17 +1,30 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\ThreeD;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Livewire\Component;
 
 final class Room3DTour extends Component
 {
-    private int $roomId;
-    private string $hotelId;
-    private array $roomData = [];
-    private array $currentView = [];
-    private int $currentFloorIndex = 0;
-    private bool $showFloorPlan = false;
+    private readonly int $roomId;
+
+    private readonly string $hotelId;
+
+    private readonly array $roomData = [];
+
+    private readonly array $currentView = [];
+
+    private readonly int $currentFloorIndex = 0;
+
+    private readonly bool $showFloorPlan = false;
+
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
     public function mount(int $roomId, string $hotelId): void
     {
@@ -49,11 +62,11 @@ final class Room3DTour extends Component
 
     public function toggleFloorPlan(): void
     {
-        $this->showFloorPlan = !$this->showFloorPlan;
+        $this->showFloorPlan = ! $this->showFloorPlan;
     }
 
     public function render()
     {
-        return view('livewire.three-d.room-3d-tour');
+        return $this->viewFactory->make('livewire.three-d.room-3d-tour');
     }
 }

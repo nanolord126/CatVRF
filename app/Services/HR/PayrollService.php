@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\HR;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\Employee;
@@ -9,12 +12,13 @@ use App\Models\Payroll;
 use App\Services\FraudControlService;
 use App\Services\WalletService;
 use Carbon\Carbon;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Auth\Guard;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * PayrollService — начисление и выплата зарплат.
@@ -28,14 +32,18 @@ use Illuminate\Contracts\Auth\Guard;
  */
 final readonly class PayrollService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly LoggerInterface $log,
         private readonly Request $request,
-        private FraudControlService $fraud,
-        private WalletService       $wallet,
-        private EmployeeService     $employeeService,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly EmployeeService $employeeService,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
@@ -43,9 +51,9 @@ final readonly class PayrollService
      */
     public function calculate(
         Employee $employee,
-        Carbon   $periodStart,
-        Carbon   $periodEnd,
-        string   $correlationId,
+        Carbon $periodStart,
+        Carbon $periodEnd,
+        string $correlationId,
     ): Payroll {
         $this->fraud->check(
             (int) $this->guard->id(),
@@ -59,6 +67,10 @@ final readonly class PayrollService
         return $this->db->transaction(function () use ($employee, $periodStart, $periodEnd, $correlationId): Payroll {
             $bonuses = $this->employeeService->calculateKpiBonus($employee, $periodStart, $periodEnd);
 
+            // Tax deduction: 13% (НДФЛ РФ) from (base_salary + bonuses)
+            $gross = (int) $employee->base_salary_kopecks + $bonuses;
+            $taxDeduction = (int) round($gross * 0.13);
+
             $payroll = Payroll::create([
                 'uuid'                 => Str::uuid()->toString(),
                 'tenant_id'            => $employee->tenant_id,
@@ -67,14 +79,16 @@ final readonly class PayrollService
                 'period_end'           => $periodEnd->toDateString(),
                 'base_salary_kopecks'  => $employee->base_salary_kopecks,
                 'bonuses_kopecks'      => $bonuses,
-                'deductions_kopecks'   => 0,
+                'deductions_kopecks'   => $taxDeduction,
                 'status'               => 'draft',
                 'correlation_id'       => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Payroll calculated', [
+            $this->logger->channel('audit')->$this->logger->info('Payroll calculated', [
                 'payroll_id'      => $payroll->id,
                 'employee_id'     => $employee->id,
+                'gross_kopecks'   => $gross,
+                'tax_deduction'   => $taxDeduction,
                 'total_kopecks'   => $payroll->total_kopecks,
                 'correlation_id'  => $correlationId,
             ]);
@@ -93,13 +107,13 @@ final readonly class PayrollService
             throw new \DomainException("Payroll #{$payroll->id} is not in draft status");
         }
 
-        $this->db->transaction(static function () use ($payroll, $correlationId): void {
+        $this->db->transaction(function () use ($payroll, $correlationId): void {
             $payroll->update([
                 'status'         => 'approved',
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Payroll approved', [
+            $this->logger->channel('audit')->$this->logger->info('Payroll approved', [
                 'payroll_id'     => $payroll->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -154,15 +168,15 @@ final readonly class PayrollService
             }
 
             // Списание с tenant
-            $debited = $this->wallet->debit($tenantWalletId, $totalKopecks, \App\Domains\Wallet\Enums\BalanceTransactionType::WITHDRAWAL, $correlationId, null, null, null);
+            $debited = $this->wallet->debit($tenantWalletId, $totalKopecks, (string) BalanceTransactionType::WITHDRAWAL->value, $correlationId, null, null, null);
 
-            if (!$debited) {
+            if (! $debited) {
                 throw new \DomainException("Insufficient funds on tenant wallet for payroll #{$payroll->id}");
             }
 
             // Зачисление сотруднику (если у него есть кошелёк на платформе)
             if ($employeeWalletId !== null) {
-                $this->wallet->credit((int) $employeeWalletId, $totalKopecks, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
+                $this->wallet->credit((int) $employeeWalletId, $totalKopecks, (string) BalanceTransactionType::PAYOUT->value, $correlationId, null, null, [
                     'payroll_id'       => $payroll->id,
                     'correlation_id' => $correlationId,
                 ]);

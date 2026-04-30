@@ -1,18 +1,32 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\ThreeD;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Livewire\Component;
 
 final class ClothingFittingRoom extends Component
 {
-    private int $productId;
-    private string $selectedSize = 'M';
-    private string $selectedColor = 'black';
-    private array $availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-    private array $availableColors = [];
-    private bool $showAvatarOptions = false;
-    private string $selectedBodyType = 'regular';
+    private readonly int $productId;
+
+    private readonly string $selectedSize = 'M';
+
+    private readonly string $selectedColor = 'black';
+
+    private readonly array $availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+
+    private readonly array $availableColors = [];
+
+    private readonly bool $showAvatarOptions = false;
+
+    private readonly string $selectedBodyType = 'regular';
+
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
     public function mount(int $productId): void
     {
@@ -46,7 +60,7 @@ final class ClothingFittingRoom extends Component
 
     public function toggleAvatarOptions(): void
     {
-        $this->showAvatarOptions = !$this->showAvatarOptions;
+        $this->showAvatarOptions = ! $this->showAvatarOptions;
     }
 
     public function addToCart(): void
@@ -63,6 +77,6 @@ final class ClothingFittingRoom extends Component
 
     public function render()
     {
-        return view('livewire.three-d.clothing-fitting-room');
+        return $this->viewFactory->make('livewire.three-d.clothing-fitting-room');
     }
 }

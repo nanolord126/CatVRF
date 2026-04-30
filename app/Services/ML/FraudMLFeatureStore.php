@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ML;
 
-use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\Log;
-use Psr\Log\LoggerInterface;
+use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Database\DatabaseManager;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
+use Psr\Log\LoggerInterface;
 
 /**
  * FraudML Feature Store
@@ -21,12 +23,15 @@ use Carbon\Carbon;
 final readonly class FraudMLFeatureStore
 {
     private const REDIS_PREFIX = 'fraudml:features:';
+
     private const FEATURE_TTL_SECONDS = 86400; // 24 hours
+
     private const CLICKHOUSE_TABLE = 'fraud_features_online';
-    
+
     public function __construct(
         private readonly LoggerInterface $logger,
         private readonly DatabaseManager $db,
+        private readonly RedisFactory $redis,
     ) {}
 
     /**
@@ -37,10 +42,10 @@ final readonly class FraudMLFeatureStore
         string $entityType,
         string $entityId,
         array $features,
-        string $correlationId = null
+        ?string $correlationId = null
     ): void {
         $featureKey = $this->getRedisKey($entityType, $entityId);
-        $timestamp = now()->toIso8601String();
+        $timestamp = CarbonImmutable::now()->toIso8601String();
 
         // 1. Store in Redis for online inference
         $this->storeInRedis($featureKey, $features, $timestamp);
@@ -48,7 +53,7 @@ final readonly class FraudMLFeatureStore
         // 2. Store in ClickHouse for offline training
         $this->storeInClickHouse($entityType, $entityId, $features, $timestamp, $correlationId);
 
-        $this->logger->info('FraudML features stored', [
+        $this->logger->$this->logger->info('FraudML features stored', [
             'entity_type' => $entityType,
             'entity_id' => $entityId,
             'feature_count' => count($features),
@@ -62,13 +67,14 @@ final readonly class FraudMLFeatureStore
     public function getFeatures(string $entityType, string $entityId): ?array
     {
         $featureKey = $this->getRedisKey($entityType, $entityId);
-        $data = Redis::get($featureKey);
+        $data = $this->redis->connection()->get($featureKey);
 
         if ($data === null) {
             $this->logger->debug('FraudML features not found in Redis', [
                 'entity_type' => $entityType,
                 'entity_id' => $entityId,
             ]);
+
             return null;
         }
 
@@ -82,7 +88,7 @@ final readonly class FraudMLFeatureStore
         string $entityType,
         string $entityId,
         callable $computeFn,
-        string $correlationId = null
+        ?string $correlationId = null
     ): array {
         $features = $this->getFeatures($entityType, $entityId);
 
@@ -120,9 +126,9 @@ final readonly class FraudMLFeatureStore
     public function invalidateFeatures(string $entityType, string $entityId): void
     {
         $featureKey = $this->getRedisKey($entityType, $entityId);
-        Redis::del($featureKey);
+        $this->redis->connection()->del($featureKey);
 
-        $this->logger->info('FraudML features invalidated', [
+        $this->logger->$this->logger->info('FraudML features invalidated', [
             'entity_type' => $entityType,
             'entity_id' => $entityId,
         ]);
@@ -133,15 +139,47 @@ final readonly class FraudMLFeatureStore
      */
     public function getFeatureStats(): array
     {
-        $keys = Redis::keys(self::REDIS_PREFIX . '*');
-        
+        $keys = $this->redis->connection()->keys(self::REDIS_PREFIX.'*');
+
         return [
             'total_features_stored' => count($keys),
-            'redis_memory_usage' => Redis::memory('usage'),
-            'avg_feature_size' => count($keys) > 0 
-                ? Redis::memory('usage') / count($keys) 
+            'redis_memory_usage' => $this->redis->connection()->memory('usage'),
+            'avg_feature_size' => count($keys) > 0
+                ? $this->redis->connection()->memory('usage') / count($keys)
                 : 0,
         ];
+    }
+
+    /**
+     * Extract and store features for a fraud detection operation
+     */
+    public function extractAndStoreOperationFeatures(
+        int $tenantId,
+        int $userId,
+        string $operationType,
+        float $amount,
+        array $context = [],
+        ?string $correlationId = null
+    ): array {
+        $features = $this->extractOperationFeatures(
+            $tenantId,
+            $userId,
+            $operationType,
+            $amount,
+            $context
+        );
+
+        // Store for user
+        $this->storeFeatures('user', (string) $userId, $features, $correlationId);
+
+        // Store for tenant
+        $this->storeFeatures('tenant', (string) $tenantId, $features, $correlationId);
+
+        // Store for operation (unique per request)
+        $operationId = $correlationId ?? uniqid('op_', true);
+        $this->storeFeatures('operation', $operationId, $features, $correlationId);
+
+        return $features;
     }
 
     /**
@@ -155,7 +193,7 @@ final readonly class FraudMLFeatureStore
             'version' => '1.0',
         ]);
 
-        Redis::setex($key, self::FEATURE_TTL_SECONDS, $data);
+        $this->redis->connection()->setex($key, self::FEATURE_TTL_SECONDS, $data);
     }
 
     /**
@@ -170,9 +208,9 @@ final readonly class FraudMLFeatureStore
     ): void {
         try {
             $this->db->connection('clickhouse')->statement(
-                "INSERT INTO " . self::CLICKHOUSE_TABLE . " 
+                'INSERT INTO '.self::CLICKHOUSE_TABLE.' 
                 (entity_type, entity_id, features_json, timestamp, correlation_id, created_at)
-                VALUES (?, ?, ?, ?, ?, now())",
+                VALUES (?, ?, ?, ?, ?, CarbonImmutable::now())',
                 [
                     $entityType,
                     $entityId,
@@ -196,39 +234,7 @@ final readonly class FraudMLFeatureStore
      */
     private function getRedisKey(string $entityType, string $entityId): string
     {
-        return self::REDIS_PREFIX . $entityType . ':' . $entityId;
-    }
-
-    /**
-     * Extract and store features for a fraud detection operation
-     */
-    public function extractAndStoreOperationFeatures(
-        int $tenantId,
-        int $userId,
-        string $operationType,
-        float $amount,
-        array $context = [],
-        ?string $correlationId = null
-    ): array {
-        $features = $this->extractOperationFeatures(
-            $tenantId,
-            $userId,
-            $operationType,
-            $amount,
-            $context
-        );
-
-        // Store for user
-        $this->storeFeatures('user', (string)$userId, $features, $correlationId);
-        
-        // Store for tenant
-        $this->storeFeatures('tenant', (string)$tenantId, $features, $correlationId);
-
-        // Store for operation (unique per request)
-        $operationId = $correlationId ?? uniqid('op_', true);
-        $this->storeFeatures('operation', $operationId, $features, $correlationId);
-
-        return $features;
+        return self::REDIS_PREFIX.$entityType.':'.$entityId;
     }
 
     /**
@@ -245,36 +251,36 @@ final readonly class FraudMLFeatureStore
         return [
             // Behavioral features
             'amount_log' => log(max(1, $amount)),
-            'hour_of_day' => Carbon::now()->hour,
-            'day_of_week' => Carbon::now()->dayOfWeek,
-            'is_weekend' => Carbon::now()->isWeekend() ? 1 : 0,
+            'hour_of_day' => CarbonImmutable::now()->hour,
+            'day_of_week' => CarbonImmutable::now()->dayOfWeek,
+            'is_weekend' => CarbonImmutable::now()->isWeekend() ? 1 : 0,
             'operation_type' => $operationType,
-            
+
             // Tenant-specific
             'tenant_id' => $tenantId,
             'tenant_risk_profile' => $context['tenant_risk_profile'] ?? 'medium',
-            
+
             // User-specific
             'user_id' => $userId,
             'account_age_days' => $context['account_age_days'] ?? 0,
-            
+
             // Contextual
             'ip_risk_score' => $context['ip_risk_score'] ?? 0,
             'device_fingerprint' => $context['device_fingerprint'] ?? null,
             'user_agent_risk' => $context['user_agent_risk'] ?? 0,
-            
+
             // Temporal patterns
             'tx_count_1h' => $context['tx_count_1h'] ?? 0,
             'tx_count_24h' => $context['tx_count_24h'] ?? 0,
             'tx_sum_24h' => $context['tx_sum_24h'] ?? 0,
-            
+
             // Geographic
             'country_code' => $context['country_code'] ?? null,
             'is_cross_border' => $context['is_cross_border'] ?? 0,
-            
+
             // Quota-aware feature (critical for multi-tenant)
             'current_quota_usage_ratio' => $this->getQuotaUsageRatio($tenantId, $context),
-            
+
             // Vertical-specific feature (for per-vertical routing)
             'vertical_code' => $context['vertical_code'] ?? $this->inferVerticalFromOperation($operationType),
         ];
@@ -292,7 +298,7 @@ final readonly class FraudMLFeatureStore
         }
 
         // Otherwise fetch from quota service (in real implementation)
-        // For demo: simulate based on tenant ID
+        // Симуляция на основе tenant ID для тестирования
         return min(1.0, max(0.0, ($tenantId % 100) / 100.0));
     }
 

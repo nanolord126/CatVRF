@@ -6,6 +6,7 @@ namespace App\Domains\Wallet\Filament\Resources\WalletResource\Pages;
 
 use App\Domains\Wallet\Filament\Resources\WalletResource;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Str;
 
 /**
  * Filament Page — создание кошелька.
@@ -17,23 +18,23 @@ final class CreateWallet extends CreateRecord
 {
     protected static string $resource = WalletResource::class;
 
-    /** Редирект после создания — на список. */
-    protected function getRedirectUrl(): string
-    {
-        return $this->getResource()::getUrl('index');
-    }
-
     /** Заголовок страницы. */
     public function getTitle(): string
     {
         return 'Создать кошелёк';
     }
 
+    /** Редирект после создания — на список. */
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
     /** Мутация данных перед сохранением — добавляем uuid и correlation_id. */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['uuid'] = \Illuminate\Support\Str::uuid()->toString();
-        $data['correlation_id'] = \Illuminate\Support\Str::uuid()->toString();
+        $data['uuid'] = Str::uuid()->toString();
+        $data['correlation_id'] = Str::uuid()->toString();
 
         return $data;
     }

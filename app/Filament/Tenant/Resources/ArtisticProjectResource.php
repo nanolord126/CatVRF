@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
@@ -14,6 +16,7 @@ final class ArtisticProjectResource extends Resource
     protected static ?string $model = 'App\\Domains\\Archived\\Art\\ArtisticServices\\Models\\ArtisticProject';
 
     protected static ?string $navigationLabel = 'Art Projects';
+
     protected static ?string $navigationIcon = 'heroicon-o-paint-brush';
 
     public static function getPages(): array

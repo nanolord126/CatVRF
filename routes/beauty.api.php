@@ -1,7 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\Beauty\AppointmentController;
+use App\Domains\Beauty\Http\Controllers\ConsumableController;
+use App\Domains\Beauty\Http\Controllers\MasterController;
+use App\Domains\Beauty\Http\Controllers\ProductController;
+use App\Domains\Beauty\Http\Controllers\ReviewController;
+use App\Domains\Beauty\Http\Controllers\SalonController;
+use App\Domains\Beauty\Http\Controllers\ServiceController;
 
 /**
  * Beauty & Wellness API Routes v1
@@ -11,27 +19,27 @@ use App\Http\Controllers\Api\V1\Beauty\AppointmentController;
 // ===== PUBLIC ENDPOINTS (No Auth) =====
 Route::middleware(['api', 'throttle:60,1'])->prefix('api/v1/beauty')->group(function () {
     // ========== Beauty Salons (Public) ==========
-    Route::get('salons', [\App\Domains\Beauty\Http\Controllers\SalonController::class, 'index'])
+    Route::get('salons', [SalonController::class, 'index'])
         ->name('beauty.salons.index');
-    Route::get('salons/{salon}', [\App\Domains\Beauty\Http\Controllers\SalonController::class, 'show'])
+    Route::get('salons/{salon}', [SalonController::class, 'show'])
         ->name('beauty.salons.show');
-    Route::get('salons/{salon}/availability', [\App\Domains\Beauty\Http\Controllers\SalonController::class, 'availability'])
+    Route::get('salons/{salon}/availability', [SalonController::class, 'availability'])
         ->name('beauty.salons.availability');
 
     // ========== Masters (Public) ==========
-    Route::get('masters', [\App\Domains\Beauty\Http\Controllers\MasterController::class, 'index'])
+    Route::get('masters', [MasterController::class, 'index'])
         ->name('beauty.masters.index');
-    Route::get('masters/{master}', [\App\Domains\Beauty\Http\Controllers\MasterController::class, 'show'])
+    Route::get('masters/{master}', [MasterController::class, 'show'])
         ->name('beauty.masters.show');
-    Route::get('masters/{master}/portfolio', [\App\Domains\Beauty\Http\Controllers\MasterController::class, 'portfolio'])
+    Route::get('masters/{master}/portfolio', [MasterController::class, 'portfolio'])
         ->name('beauty.masters.portfolio');
-    Route::get('masters/{master}/schedule', [\App\Domains\Beauty\Http\Controllers\MasterController::class, 'schedule'])
+    Route::get('masters/{master}/schedule', [MasterController::class, 'schedule'])
         ->name('beauty.masters.schedule');
 
     // ========== Services (Public) ==========
-    Route::get('services', [\App\Domains\Beauty\Http\Controllers\ServiceController::class, 'index'])
+    Route::get('services', [ServiceController::class, 'index'])
         ->name('beauty.services.index');
-    Route::get('services/{service}', [\App\Domains\Beauty\Http\Controllers\ServiceController::class, 'show'])
+    Route::get('services/{service}', [ServiceController::class, 'show'])
         ->name('beauty.services.show');
 
     // ========== Appointments (Auth) =====
@@ -39,14 +47,14 @@ Route::middleware(['api', 'throttle:60,1'])->prefix('api/v1/beauty')->group(func
         Route::post('/', [AppointmentController::class, 'store'])
             ->name('api.beauty.appointments.store')
             ->middleware('throttle:50,1');
-        
+
         Route::get('/{appointment}', [AppointmentController::class, 'show'])
             ->name('api.beauty.appointments.show');
-        
+
         Route::post('/{appointment}/cancel', [AppointmentController::class, 'cancel'])
             ->name('api.beauty.appointments.cancel')
             ->middleware('throttle:30,1');
-        
+
         Route::post('/{appointment}/confirm', [AppointmentController::class, 'confirm'])
             ->name('api.beauty.appointments.confirm')
             ->middleware('throttle:30,1');
@@ -54,34 +62,34 @@ Route::middleware(['api', 'throttle:60,1'])->prefix('api/v1/beauty')->group(func
 
     // ========== Reviews (Auth) ==========
     Route::middleware('auth')->group(function () {
-        Route::post('reviews', [\App\Domains\Beauty\Http\Controllers\ReviewController::class, 'store'])
+        Route::post('reviews', [ReviewController::class, 'store'])
             ->name('beauty.reviews.store');
-        Route::put('reviews/{review}', [\App\Domains\Beauty\Http\Controllers\ReviewController::class, 'update'])
+        Route::put('reviews/{review}', [ReviewController::class, 'update'])
             ->name('beauty.reviews.update');
-        Route::delete('reviews/{review}', [\App\Domains\Beauty\Http\Controllers\ReviewController::class, 'destroy'])
+        Route::delete('reviews/{review}', [ReviewController::class, 'destroy'])
             ->name('beauty.reviews.destroy');
     });
 
     // ========== Products (Public) ==========
-    Route::get('products', [\App\Domains\Beauty\Http\Controllers\ProductController::class, 'index'])
+    Route::get('products', [ProductController::class, 'index'])
         ->name('beauty.products.index');
-    Route::get('products/{product}', [\App\Domains\Beauty\Http\Controllers\ProductController::class, 'show'])
+    Route::get('products/{product}', [ProductController::class, 'show'])
         ->name('beauty.products.show');
 
     // ========== Management (Auth + Owner) ==========
     Route::middleware(['auth', 'beauty.owner'])->group(function () {
-        Route::apiResource('salons', \App\Domains\Beauty\Http\Controllers\SalonController::class)
+        Route::apiResource('salons', SalonController::class)
             ->except('index', 'show');
-        Route::apiResource('masters', \App\Domains\Beauty\Http\Controllers\MasterController::class)
+        Route::apiResource('masters', MasterController::class)
             ->except('index', 'show');
-        Route::apiResource('services', \App\Domains\Beauty\Http\Controllers\ServiceController::class)
+        Route::apiResource('services', ServiceController::class)
             ->except('index', 'show');
-        Route::apiResource('products', \App\Domains\Beauty\Http\Controllers\ProductController::class)
+        Route::apiResource('products', ProductController::class)
             ->except('index', 'show');
-        Route::apiResource('consumables', \App\Domains\Beauty\Http\Controllers\ConsumableController::class);
-        
+        Route::apiResource('consumables', ConsumableController::class);
+
         // Consumable deduction logs
-        Route::get('consumables/logs', [\App\Domains\Beauty\Http\Controllers\ConsumableController::class, 'logs'])
+        Route::get('consumables/logs', [ConsumableController::class, 'logs'])
             ->name('beauty.consumables.logs');
     });
 });

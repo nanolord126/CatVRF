@@ -7,7 +7,6 @@ namespace App\Domains\RealEstate\Enums;
 /**
  * Enum PropertyType
  *
- * @package App\Domains\RealEstate\Enums
  *
  * @comment Типы недвижимости для вертикали RealEstate.
  * - APARTMENT: Квартира
@@ -18,16 +17,8 @@ namespace App\Domains\RealEstate\Enums;
  */
 enum PropertyType: string
 {
-    case APARTMENT = 'apartment';
-    case HOUSE = 'house';
-    case LAND_PLOT = 'land_plot';
-    case COMMERCIAL = 'commercial';
-    case READY_BUSINESS = 'ready_business';
-
     /**
      * Получить человекочитаемое название типа.
-     *
-     * @return string
      */
     public function label(): string
     {
@@ -56,8 +47,6 @@ enum PropertyType: string
 
     /**
      * Проверяет, является ли тип жилой недвижимостью.
-     *
-     * @return bool
      */
     public function isResidential(): bool
     {
@@ -66,11 +55,14 @@ enum PropertyType: string
 
     /**
      * Проверяет, является ли тип коммерческой недвижимостью.
-     *
-     * @return bool
      */
     public function isCommercial(): bool
     {
         return in_array($this, [self::COMMERCIAL, self::READY_BUSINESS], true);
     }
+    case APARTMENT = 'apartment';
+    case HOUSE = 'house';
+    case LAND_PLOT = 'land_plot';
+    case COMMERCIAL = 'commercial';
+    case READY_BUSINESS = 'ready_business';
 }

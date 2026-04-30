@@ -15,12 +15,6 @@ final class BeautyLoyaltyServiceTest extends TestCase
 
     private BeautyLoyaltyService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(BeautyLoyaltyService::class);
-    }
-
     public function test_process_loyalty_action(): void
     {
         $dto = new BeautyLoyaltyDto(
@@ -89,5 +83,11 @@ final class BeautyLoyaltyServiceTest extends TestCase
         $this->assertIsString($code);
         $this->assertStringStartsWith('BEAUTY', $code);
         $this->assertStringLength($code, 13);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(BeautyLoyaltyService::class);
     }
 }

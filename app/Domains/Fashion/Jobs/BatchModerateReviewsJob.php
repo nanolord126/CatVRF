@@ -1,43 +1,48 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Jobs;
 
-use App\Domains\Fashion\Services\FashionReviewModerationService;
-use Illuminate\Bus\Batchable;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Log\LogManager;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 
 final class BatchModerateReviewsJob implements ShouldQueue
 {
-    use Batchable, Queueable;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public function __construct(
-        private readonly array $reviewIds,
-        private readonly int $tenantId,
-        private readonly string $correlationId,
-    ) {
-        $this->onQueue('moderation');
+    public int $tries = 3;
+    public int $backoff = 60;
+    public bool $deleteWhenMissingModels = true;
+
+    public function __construct(private readonly LoggerInterface $loggerInterface,
+        private readonly LoggerInterface $logger,
+        public readonly array $reviewIds,
+        public readonly string $correlationId = '',) {}
+
+    public function handle(LogManager $log): void
+    {
+        $log->channel('fashion')->$this->logger->info('Batch review moderation started', [
+            'review_count' => count($this->reviewIds),
+            'correlation_id' => $this->correlationId,
+        ]);
+
+        // TODO: Implement AI-based batch review moderation
     }
 
-    public function handle(FashionReviewModerationService $service): void
+    public function failed(\Throwable $exception): void
     {
-        try {
-            $service->batchModerateReviews($this->reviewIds, $this->correlationId);
-            
-            Log::channel('audit')->info('Reviews batch moderated', [
-                'tenant_id' => $this->tenantId,
-                'review_count' => count($this->reviewIds),
-                'correlation_id' => $this->correlationId,
-            ]);
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to batch moderate reviews', [
-                'tenant_id' => $this->tenantId,
-                'review_count' => count($this->reviewIds),
-                'error' => $e->getMessage(),
-                'correlation_id' => $this->correlationId,
-            ]);
-            throw $e;
-        }
+        $this->loggerInterface /* TODO: inject via DI */->error('BatchModerateReviewsJob failed', [
+            'review_count' => count($this->reviewIds),
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

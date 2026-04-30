@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Tenant;
-use Illuminate\Support\Str;
 
 /**
  * Вертикаль недвижимости (НЕ ЗАПУСКАТЬ В PRODUCTION).
@@ -19,7 +18,7 @@ final class RealEstateVerticalSeeder extends Seeder
         $tenantId = 'royal-estate-group';
         $tenant = Tenant::find($tenantId);
 
-        if (!$tenant) {
+        if (! $tenant) {
             $tenant = Tenant::create([
                 'id' => $tenantId,
                 'name' => 'Royal Estate & Land',
@@ -55,7 +54,7 @@ final class RealEstateVerticalSeeder extends Seeder
                 'area' => 850.00,
                 'price' => 2000000.00,
                 'geo_data' => ['district' => 'Business', 'units' => 15],
-                'amenities' => ['security' => 24/7, 'parking' => 'underground'],
+                'amenities' => ['security' => 24 / 7, 'parking' => 'underground'],
             ],
             [
                 'tenant_id' => $tenantId,

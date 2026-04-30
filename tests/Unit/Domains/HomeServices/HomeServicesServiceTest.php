@@ -1,56 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\HomeServices;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for HomeServicesService.
- *
- * @covers \App\Domains\HomeServices\Domain\Services\HomeServicesService
- */
-final class HomeServicesServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\HomeServices\Domain\Services\HomeServicesService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'HomeServicesService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\HomeServices\Domain\Services\HomeServicesService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'HomeServicesService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('HomeServices');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\HomeServices\Domain\Services\HomeServicesService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'HomeServicesService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('HomeServicesService exists and is instantiable', function () {
+    $this->assertServiceExists('HomeServicesService');
+});
 
-    public function test_bookService_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HomeServices\Domain\Services\HomeServicesService::class, 'bookService'),
-            'HomeServicesService must implement bookService()'
-        );
-    }
+test('HomeServicesService follows clean architecture', function () {
+    $this->assertCleanArchitecture('HomeServicesService');
+});
 
-    public function test_executeInTransaction_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\HomeServices\Domain\Services\HomeServicesService::class, 'executeInTransaction'),
-            'HomeServicesService must implement executeInTransaction()'
-        );
-    }
+test('HomeServicesService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('HomeServicesService', 'process', []);
+});
 
-}
+test('HomeServicesService enforces quota limits', function () {
+    $this->testServiceWithQuota('HomeServicesService', 'process', 1, 10, []);
+});
+
+test('HomeServicesService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('HomeServicesService'));
+        $service->process([]);
+    }, 10);
+});
+
+test('HomeServicesService has proper caching', function () {
+    $cacheKey = 'homeservices:data:1';
+
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('HomeServicesService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('HomeServicesService dispatches proper events', function () {
+    $eventClass = "App\Domains\HomeServices\Events\HomeServicesProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('HomeServicesService'));
+        $service->process([]);
+    });
+});
+
+test('HomeServicesService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\HomeServices\Jobs\ProcessHomeServicesJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('HomeServicesService'));
+        $service->processAsync([]);
+    });
+});
+
+test('HomeServicesService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('HomeServicesService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('HomeServicesService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('HomeServicesService'));
+        $service->process([]);
+    }, 'HomeServicesService processed');
+});
+
+test('HomeServicesService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

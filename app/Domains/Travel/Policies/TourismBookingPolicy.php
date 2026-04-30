@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Policies;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use App\Domains\Travel\Models\TourBooking;
 use App\Models\User;
@@ -8,7 +12,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 
 /**
  * Tourism Booking Policy
- * 
+ *
  * Authorization policy for tourism booking operations.
  * Follows CatVRF canonical rules for policy-based access control.
  */
@@ -19,6 +23,10 @@ final class TourismBookingPolicy
     /**
      * Determine if the user can view any bookings.
      */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return true;
@@ -27,7 +35,7 @@ final class TourismBookingPolicy
     /**
      * Determine if the user can view the booking.
      */
-    public function view(User $user, TourBooking $booking): bool
+    public function $this->viewFactory->make(User $user, TourBooking $booking): bool
     {
         return $user->id === $booking->user_id
             || $user->isAdmin()

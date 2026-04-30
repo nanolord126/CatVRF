@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\AutonomousVehicles\Services;
 
-
 use Illuminate\Contracts\Auth\Guard;
 use App\Domains\Auto\AutonomousVehicles\Models\AVEngineer;
 use App\Domains\Auto\AutonomousVehicles\Models\AVProject;
@@ -13,6 +12,8 @@ use App\Services\WalletService;
 use Illuminate\Cache\RateLimiter;
 use Psr\Log\LoggerInterface;
 use Ramsey\Uuid\Uuid;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Сервис проектов автономных транспортных средств (AV).
@@ -26,15 +27,21 @@ use Ramsey\Uuid\Uuid;
 final readonly class AutonomousVehiclesService
 {
     private const COMMISSION_RATE = 0.14;
+
     private const RATE_LIMIT_KEY = 'av:proj';
+
     private const RATE_LIMIT_MAX = 16;
+
     private const RATE_LIMIT_TTL = 3600;
 
-    public function __construct(private readonly FraudControlService  $fraud,
-        private readonly WalletService        $wallet,
-        private readonly RateLimiter          $rateLimiter,
-        private readonly LoggerInterface      $logger,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly Guard $guard) {}
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly RateLimiter $rateLimiter,
+        private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Создать AV-проект с проверкой фрода, холдом бюджета и аудит-логом.
@@ -42,15 +49,15 @@ final readonly class AutonomousVehiclesService
      * @throws \RuntimeException если rate limit превышен или fraud-блок
      */
     public function createProject(
-        int    $engineerId,
+        int $engineerId,
         string $projectType,
-        int    $hoursSpent,
+        int $hoursSpent,
         string $dueDate,
         string $correlationId = '',
     ): AVProject {
         $correlationId = $correlationId ?: Uuid::uuid4()->toString();
 
-        $key = self::RATE_LIMIT_KEY . ':' . tenant()->id;
+        $key = self::RATE_LIMIT_KEY.':'.tenant()->id;
         if ($this->rateLimiter->tooManyAttempts($key, self::RATE_LIMIT_MAX)) {
             throw new \RuntimeException('Too many AV project requests', 429);
         }
@@ -86,7 +93,7 @@ final readonly class AutonomousVehiclesService
                 'tags'            => ['av' => true],
             ]);
 
-            $this->logger->info('AV project created', [
+            $this->logger->$this->logger->info('AV project created', [
                 'project_id'     => $project->id,
                 'engineer_id'    => $engineerId,
                 'total_kopecks'  => $total,
@@ -128,7 +135,7 @@ final readonly class AutonomousVehiclesService
                 ],
             );
 
-            $this->logger->info('AV project completed', [
+            $this->logger->$this->logger->info('AV project completed', [
                 'project_id'     => $project->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -167,7 +174,7 @@ final readonly class AutonomousVehiclesService
                 );
             }
 
-            $this->logger->info('AV project cancelled', [
+            $this->logger->$this->logger->info('AV project cancelled', [
                 'project_id'     => $project->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -179,7 +186,7 @@ final readonly class AutonomousVehiclesService
     /**
      * Получить последние проекты клиента.
      */
-    public function getClientProjects(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    public function getClientProjects(int $clientId, int $limit = 10): Collection
     {
         return AVProject::where('client_id', $clientId)
             ->orderByDesc('created_at')

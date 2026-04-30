@@ -1,85 +1,85 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 
 final class TravelTour extends Model
 {
-
+    use TenantScoped;
 
-        protected $table = 'travel_tours';
+    protected $table = 'travel_tours';
 
-        protected $fillable = [
-            'tenant_id',
-            'agency_id',
-            'name',
-            'description',
-            'destination',
-            'destination_point',
-            'duration_days',
-            'start_date',
-            'end_date',
-            'price',
-            'cost_price',
-            'max_participants',
-            'current_participants',
-            'itinerary',
-            'inclusions',
-            'tags',
-            'status',
-            'rating',
-            'review_count',
-            'is_active',
-            'correlation_id',
-            'uuid',
-        ];
+    protected $fillable = [
+        'tenant_id',
+        'agency_id',
+        'name',
+        'description',
+        'destination',
+        'destination_point',
+        'duration_days',
+        'start_date',
+        'end_date',
+        'price',
+        'cost_price',
+        'max_participants',
+        'current_participants',
+        'itinerary',
+        'inclusions',
+        'tags',
+        'status',
+        'rating',
+        'review_count',
+        'is_active',
+        'correlation_id',
+        'uuid',
+    ];
 
-        protected $casts = [
-            'itinerary' => 'collection',
-            'inclusions' => 'collection',
-            'tags' => 'collection',
-            'price' => 'float',
-            'cost_price' => 'float',
-            'rating' => 'float',
-            'max_participants' => 'integer',
-            'current_participants' => 'integer',
-            'duration_days' => 'integer',
-            'review_count' => 'integer',
-            'is_active' => 'boolean',
-            'start_date' => 'date',
-            'end_date' => 'date',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-            'deleted_at' => 'datetime',
-        ];
+    protected $casts = [
+        'itinerary' => 'collection',
+        'inclusions' => 'collection',
+        'tags' => 'collection',
+        'price' => 'float',
+        'cost_price' => 'float',
+        'rating' => 'float',
+        'max_participants' => 'integer',
+        'current_participants' => 'integer',
+        'duration_days' => 'integer',
+        'review_count' => 'integer',
+        'is_active' => 'boolean',
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
 
-        protected $hidden = ['correlation_id'];
+    protected $hidden = ['correlation_id'];
 
-        protected static function booted(): void
-        {
-            static::addGlobalScope('tenant', function ($query) {
-                if (function_exists('tenant') && tenant()) {
-                    $query->where('tenant_id', tenant()->id);
-                }
-            });
-        }
+    public function agency(): BelongsTo
+    {
+        return $this->belongsTo(TravelAgency::class);
+    }
 
-        public function agency(): BelongsTo
-        {
-            return $this->belongsTo(TravelAgency::class);
-        }
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(TravelBooking::class, 'tour_id');
+    }
 
-        public function bookings(): HasMany
-        {
-            return $this->hasMany(TravelBooking::class, 'tour_id');
-        }
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(TravelReview::class, 'tour_id');
+    }
 
-        public function reviews(): HasMany
-        {
-            return $this->hasMany(TravelReview::class, 'tour_id');
-        }
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+    }
 }

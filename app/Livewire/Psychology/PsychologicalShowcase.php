@@ -1,30 +1,39 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\Psychology;
+
+use Illuminate\Notifications\ChannelManager;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Illuminate\Support\Collection;
 
 use App\Domains\Psychology\Models\Therapist;
 use App\Services\AI\Psychology\SymptomMatcherService;
 use Filament\Notifications\Notification;
 use Illuminate\Contracts\View\View;
-
 use Livewire\Component;
-use Livewire\WithPagination;
 use Illuminate\Log\LogManager;
 
 final class PsychologicalShowcase extends Component
 {
-    public function __construct(
-        private readonly LogManager $logger,
-    ) {}
-
-
-    private string $search = '';
-    private array $aiSymptoms = [];
-    private bool $isAiMatching = false;
-    private ?array $aiPlan = null;
-    private ?int $selectedTherapistId = null;
-
     protected $queryString = ['search'];
+
+    public string $search = '';
+
+    public array $aiSymptoms = [];
+
+    public bool $isAiMatching = false;
+
+    public ?array $aiPlan = null;
+
+    public ?int $selectedTherapistId = null;
+
+    public function __construct(private readonly ChannelManager $notificationManager,
+        private readonly ViewFactory $viewFactory,
+        private readonly LogManager $logger,) {}
 
     public function mount(): void
     {
@@ -44,7 +53,7 @@ final class PsychologicalShowcase extends Component
                 'error' => $e->getMessage(),
             ]);
 
-            Notification::make()
+            $this->notificationManager->make()
                 ->title('Ошибка анализа')
                 ->body('Не удалось проанализировать симптомы. Попробуйте позже.')
                 ->danger()
@@ -70,7 +79,7 @@ final class PsychologicalShowcase extends Component
             })
             ->paginate(10);
 
-        return view('livewire.psychology.psychological-showcase', [
+        return $this->viewFactory->make('livewire.psychology.psychological-showcase', [
             'therapists' => $therapists,
         ]);
     }

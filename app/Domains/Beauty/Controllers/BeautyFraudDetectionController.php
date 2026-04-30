@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 final class BeautyFraudDetectionController
 {
     public function __construct(
-        private BeautyFraudDetectionService $fraudDetectionService,
+        private readonly BeautyFraudDetectionService $fraudDetectionService,
     ) {}
 
     public function analyze(BeautyFraudDetectionRequest $request): JsonResponse
@@ -23,7 +23,7 @@ final class BeautyFraudDetectionController
 
         $result = $this->fraudDetectionService->analyze($dto);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'data' => new BeautyFraudDetectionResource($result),
             'correlation_id' => $result['correlation_id'],
@@ -34,8 +34,8 @@ final class BeautyFraudDetectionController
     {
         $ip = $request->input('ip_address');
 
-        if (!$ip) {
-            return response()->json([
+        if (! $ip) {
+            return new JsonResponse([
                 'success' => false,
                 'error' => 'IP address is required',
             ], 422);
@@ -43,7 +43,7 @@ final class BeautyFraudDetectionController
 
         $this->fraudDetectionService->addSuspiciousIP($ip);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'message' => 'IP added to suspicious list',
         ]);
@@ -55,7 +55,7 @@ final class BeautyFraudDetectionController
 
         $this->fraudDetectionService->recordFailedPayment($userId);
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'message' => 'Failed payment recorded',
         ]);

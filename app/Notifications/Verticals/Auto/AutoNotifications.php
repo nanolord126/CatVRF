@@ -1,146 +1,151 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Verticals\Auto;
-use Illuminate\Database\Eloquent\Model;
 
-use Illuminate\Notifications\Notification;
+use App\Notifications\BaseMailableNotification;
+use App\Notifications\BasePushNotification;
+use App\Notifications\BaseSmsNotification;
 
-final class RideAcceptedNotification extends Model
+final class RideAcceptedNotification extends BaseMailableNotification
 {
+    private readonly string $type = 'auto.ride.accepted';
 
-    private string $type = 'auto.ride.accepted';
-
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['sms', 'push', 'database']);
-        }
-    }
-
-    /**
-     * DriverArrivingNotification - водитель приближается
-     */
-    final class DriverArrivingNotification extends BasePushNotification
+    public function __construct(int $userId, int $tenantId, array $data = [])
     {
-        private string $type = 'auto.driver.arriving';
-
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-
-            $this->title('Your driver is arriving!')
-                 ->message('Driver ' . ($data['driver_name'] ?? 'will be here soon'))
-                 ->type('info')
-                 ->autoClose(0)
-                 ->deepLink('/ride/' . ($data['ride_id'] ?? ''));
-        }
+        parent::__construct($userId, $tenantId, $data, channels: ['sms', 'push', 'database']);
     }
+}
 
-    /**
-     * RideStartedNotification - поездка начата
-     */
-    final class RideStartedNotification extends BasePushNotification
+/**
+ * DriverArrivingNotification - водитель приближается
+ */
+final class DriverArrivingNotification extends BasePushNotification
+{
+    private readonly string $type = 'auto.driver.arriving';
+
+    public function __construct(int $userId, int $tenantId, array $data = [])
     {
-        private string $type = 'auto.ride.started';
+        parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-
-            $this->title('Ride started')
-                 ->type('info')
-                 ->autoClose(8000);
-        }
+        $this->title('Your driver is arriving!')
+            ->message('Driver '.($data['driver_name'] ?? 'will be here soon'))
+            ->type('info')
+            ->autoClose(0)
+            ->deepLink('/ride/'.($data['ride_id'] ?? ''));
     }
+}
 
-    /**
-     * RideCompletedNotification - поездка завершена
-     */
-    final class RideCompletedNotification extends BaseMailableNotification
+/**
+ * RideStartedNotification - поездка начата
+ */
+final class RideStartedNotification extends BasePushNotification
+{
+    private readonly string $type = 'auto.ride.started';
+
+    public function __construct(int $userId, int $tenantId, array $data = [])
     {
-        private string $type = 'auto.ride.completed';
-        private string $template = 'emails.auto.ride_completed';
+        parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
 
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['mail', 'push', 'database']);
-            $this->subject = 'Ride completed - ₽' . ($data['total_cost'] ?? '0');
-        }
+        $this->title('Ride started')
+            ->type('info')
+            ->autoClose(8000);
     }
+}
 
-    /**
-     * RideRatingRequestNotification - просим оценить поездку
-     */
-    final class RideRatingRequestNotification extends BasePushNotification
+/**
+ * RideCompletedNotification - поездка завершена
+ */
+final class RideCompletedNotification extends BaseMailableNotification
+{
+    private readonly string $type = 'auto.ride.completed';
+
+    private readonly string $template = 'emails.auto.ride_completed';
+
+    public function __construct(int $userId, int $tenantId, array $data = [])
     {
-        private string $type = 'auto.ride.rating_request';
-
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['database', 'push']);
-
-            $this->title('Rate your ride')
-                 ->message('Help us improve by rating ' . ($data['driver_name'] ?? 'your driver'))
-                 ->type('action')
-                 ->autoClose(10000)
-                 ->withAction('Rate', '/ride/' . ($data['ride_id'] ?? '') . '/rate', 'primary');
-        }
+        parent::__construct($userId, $tenantId, $data, channels: ['mail', 'push', 'database']);
+        $this->subject = 'Ride completed - ₽'.($data['total_cost'] ?? '0');
     }
+}
 
-    /**
-     * ServiceBookingConfirmedNotification - запись в автосервис подтверждена
-     */
-    final class ServiceBookingConfirmedNotification extends BaseMailableNotification
+/**
+ * RideRatingRequestNotification - просим оценить поездку
+ */
+final class RideRatingRequestNotification extends BasePushNotification
+{
+    private readonly string $type = 'auto.ride.rating_request';
+
+    public function __construct(int $userId, int $tenantId, array $data = [])
     {
-        private string $type = 'auto.service_booking.confirmed';
-        private string $template = 'emails.auto.service_booking_confirmed';
+        parent::__construct($userId, $tenantId, $data, channels: ['database', 'push']);
 
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['mail', 'sms', 'push', 'database']);
-            $this->subject = 'Service booking confirmed - ' . ($data['service_name'] ?? 'Auto Service');
-        }
+        $this->title('Rate your ride')
+            ->message('Help us improve by rating '.($data['driver_name'] ?? 'your driver'))
+            ->type('action')
+            ->autoClose(10000)
+            ->withAction('Rate', '/ride/'.($data['ride_id'] ?? '').'/rate', 'primary');
     }
+}
 
-    /**
-     * ServiceReminderNotification - напоминание о записи
-     */
-    final class ServiceReminderNotification extends BaseSmsNotification
+/**
+ * ServiceBookingConfirmedNotification - запись в автосервис подтверждена
+ */
+final class ServiceBookingConfirmedNotification extends BaseMailableNotification
+{
+    private readonly string $type = 'auto.service_booking.confirmed';
+
+    private readonly string $template = 'emails.auto.service_booking_confirmed';
+
+    public function __construct(int $userId, int $tenantId, array $data = [])
     {
-        private string $type = 'auto.service.reminder';
-
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['sms', 'push']);
-        }
+        parent::__construct($userId, $tenantId, $data, channels: ['mail', 'sms', 'push', 'database']);
+        $this->subject = 'Service booking confirmed - '.($data['service_name'] ?? 'Auto Service');
     }
+}
 
-    /**
-     * WashBookingConfirmedNotification - запись на мойку подтверждена
-     */
-    final class WashBookingConfirmedNotification extends BasePushNotification
+/**
+ * ServiceReminderNotification - напоминание о записи
+ */
+final class ServiceReminderNotification extends BaseSmsNotification
+{
+    private readonly string $type = 'auto.service.reminder';
+
+    public function __construct(int $userId, int $tenantId, array $data = [])
     {
-        private string $type = 'auto.wash.booking.confirmed';
-
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['mail', 'push', 'database']);
-
-            $this->title('Car wash booking confirmed')
-                 ->body('Your slot at ' . ($data['wash_location'] ?? '') . ' is reserved');
-        }
+        parent::__construct($userId, $tenantId, $data, channels: ['sms', 'push']);
     }
+}
 
-    /**
-     * PayoutProcessedNotification - выплата водителю/автопарку
-     */
-    final class PayoutProcessedNotification extends BaseMailableNotification
+/**
+ * WashBookingConfirmedNotification - запись на мойку подтверждена
+ */
+final class WashBookingConfirmedNotification extends BasePushNotification
+{
+    private readonly string $type = 'auto.wash.booking.confirmed';
+
+    public function __construct(int $userId, int $tenantId, array $data = [])
     {
-        private string $type = 'auto.payout.processed';
-        private string $template = 'emails.auto.payout_processed';
+        parent::__construct($userId, $tenantId, $data, channels: ['mail', 'push', 'database']);
 
-        public function __construct(int $userId, int $tenantId, array $data = [])
-        {
-            parent::__construct($userId, $tenantId, $data, channels: ['mail', 'database']);
-            $this->subject = 'Payout processed - ₽' . ($data['payout_amount'] ?? '0');
-        }
+        $this->title('Car wash booking confirmed')
+            ->body('Your slot at '.($data['wash_location'] ?? '').' is reserved');
+    }
+}
+
+/**
+ * PayoutProcessedNotification - выплата водителю/автопарку
+ */
+final class PayoutProcessedNotification extends BaseMailableNotification
+{
+    private readonly string $type = 'auto.payout.processed';
+
+    private readonly string $template = 'emails.auto.payout_processed';
+
+    public function __construct(int $userId, int $tenantId, array $data = [])
+    {
+        parent::__construct($userId, $tenantId, $data, channels: ['mail', 'database']);
+        $this->subject = 'Payout processed - ₽'.($data['payout_amount'] ?? '0');
+    }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Fashion;
 
@@ -6,7 +8,6 @@ use App\Domains\Fashion\Services\FashionOnlineStylistService;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\DatabaseManager;
 use Tests\TestCase;
 
@@ -15,21 +16,10 @@ final class FashionOnlineStylistAccessoriesTest extends TestCase
     use RefreshDatabase;
 
     private FashionOnlineStylistService $stylistService;
+
     private AuditService $auditService;
+
     private FraudControlService $fraudService;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->auditService = $this->app->make(AuditService::class);
-        $this->fraudService = $this->app->make(FraudControlService::class);
-        $this->stylistService = new FashionOnlineStylistService(
-            $this->auditService,
-            $this->fraudService,
-            $this->app->make(DatabaseManager::class),
-        );
-    }
 
     public function test_get_scarves_and_accessories_returns_valid_structure(): void
     {
@@ -262,5 +252,18 @@ final class FashionOnlineStylistAccessoriesTest extends TestCase
         $result = $this->stylistService->getScarvesAndAccessories($userId, $customCorrelationId);
 
         $this->assertEquals($customCorrelationId, $result['correlation_id']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->auditService = $this->app->make(AuditService::class);
+        $this->fraudService = $this->app->make(FraudControlService::class);
+        $this->stylistService = new FashionOnlineStylistService(
+            $this->auditService,
+            $this->fraudService,
+            $this->app->make(DatabaseManager::class),
+        );
     }
 }

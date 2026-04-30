@@ -12,15 +12,14 @@ final class Vehicle extends Entity
 {
     public function __construct(
         private readonly VehicleId $id,
-        private string $brand,
-        private string $model,
-        private string $licensePlate,
-        private VehicleClassEnum $class,
-        private bool $isInUse,
+        private readonly string $brand,
+        private readonly string $model,
+        private readonly string $licensePlate,
+        private readonly VehicleClassEnum $class,
+        private readonly bool $isInUse,
         private readonly \DateTimeImmutable $createdAt,
-        private \DateTimeImmutable $updatedAt) {
-
-    }
+        private readonly \DateTimeImmutable $updatedAt
+    ) {}
 
     public static function create(
         VehicleId $id,
@@ -30,6 +29,7 @@ final class Vehicle extends Entity
         VehicleClassEnum $class
     ): self {
         $now = new \DateTimeImmutable();
+
         return new self(
             $id,
             $brand,

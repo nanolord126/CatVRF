@@ -1,18 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Filament\Resources;
 
 use App\Domains\Fashion\Models\FashionDemandForecast;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-final class FashionDemandForecastResource extends Resource
+final class FashionDemandForecastResource extends BaseOptimizedResource
 {
     protected static ?string $model = FashionDemandForecast::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+
     protected static ?string $navigationGroup = 'Fashion Advanced';
+
     protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
@@ -35,5 +40,13 @@ final class FashionDemandForecastResource extends Resource
                 Tables\Columns\TextColumn::make('created_at')->dateTime(),
             ])
             ->defaultSort('forecasted_at', 'desc');
+    }
+
+    /**
+     * Relations to eager load for Fashion
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

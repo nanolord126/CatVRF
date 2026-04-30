@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Hotels;
 
@@ -16,7 +18,7 @@ use Tests\TestCase;
 
 /**
  * КАНОН 2026: Hotel Booking Flow Test (Layer 9)
- * 
+ *
  * Тестирование основных сценариев бронирования.
  * Прoвeрка: tenant scoping, correlation_id, audit logs.
  */
@@ -26,22 +28,9 @@ final class HotelBookingFlowTest extends TestCase
 
     private HotelBookingService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Мокаем зависимости сервиса
-        $fraud = Mockery::mock(FraudControlService::class);
-        $fraud->shouldReceive('checkOperation')->andReturn(true);
-
-        $wallet = Mockery::mock(WalletService::class);
-        $payment = Mockery::mock(PaymentService::class);
-
-        $this->service = new HotelBookingService($fraud, $wallet, $payment, (string) Str::uuid());
-    }
-
     /**
      * @test
+     *
      * @testdox Прoвeрка инициaции бронирования с correlation_id
      */
     public function it_initiates_booking_successfully(): void
@@ -51,7 +40,7 @@ final class HotelBookingFlowTest extends TestCase
 
         // Создаем отель и номер (фабрики или моки)
         // Для теста используем реальные модели с tenant() контекстом
-        
+
         $hotel = Hotel::factory()->create([
             'tenant_id' => 1,
             'is_active' => true,
@@ -82,8 +71,22 @@ final class HotelBookingFlowTest extends TestCase
         $this->assertEquals(1, $booking->tenant_id);
         $this->assertNotNull($booking->uuid);
         $this->assertNotNull($booking->correlation_id);
-        
+
         // Прoвeрка инвентаря
         $this->assertEquals(4, $room->fresh()->total_stock);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Мокаем зависимости сервиса
+        $fraud = Mockery::mock(FraudControlService::class);
+        $fraud->shouldReceive('checkOperation')->andReturn(true);
+
+        $wallet = Mockery::mock(WalletService::class);
+        $payment = Mockery::mock(PaymentService::class);
+
+        $this->service = new HotelBookingService($fraud, $wallet, $payment, (string) Str::uuid());
     }
 }

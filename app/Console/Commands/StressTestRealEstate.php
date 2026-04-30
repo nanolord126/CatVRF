@@ -1,21 +1,28 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Modules\RealEstate\Models\Property;
-use Modules\RealEstate\Models\PropertyBooking;
 use Modules\RealEstate\Services\PropertyBookingService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use Illuminate\Support\Promise;
 
 final class StressTestRealEstate extends Command
 {
+    public function __construct(
+        private readonly LogManager $log,
+    ) {
+        parent::__construct();
+    }
     protected $signature = 'stress-test:real-estate 
                             {--concurrent=50 : Number of concurrent requests}
                             {--total=1000 : Total number of bookings to create}
                             {--b2b : Include B2B bookings (15%)}';
+
     protected $description = 'Stress test RealEstate booking system with concurrent requests';
 
     public function handle(PropertyBookingService $bookingService): int
@@ -24,17 +31,18 @@ final class StressTestRealEstate extends Command
         $total = (int) $this->option('total');
         $includeB2B = $this->option('b2b');
 
-        $this->info("Starting RealEstate stress test...");
+        $this->info('Starting RealEstate stress test...');
         $this->info("Concurrent requests: {$concurrent}");
         $this->info("Total bookings: {$total}");
-        $this->info("B2B included: " . ($includeB2B ? 'Yes' : 'No'));
+        $this->info('B2B included: '.($includeB2B ? 'Yes' : 'No'));
 
         $startTime = microtime(true);
 
         $property = Property::where('status', 'active')->first();
-        
+
         if ($property === null) {
             $this->error('No active property found. Please seed properties first.');
+
             return Command::FAILURE;
         }
 
@@ -46,15 +54,15 @@ final class StressTestRealEstate extends Command
         $chunks = array_chunk(range(1, $total), $concurrent);
 
         foreach ($chunks as $chunkIndex => $chunk) {
-            $this->line("Processing chunk " . ($chunkIndex + 1) . "/" . count($chunks));
+            $this->line('Processing chunk '.($chunkIndex + 1).'/'.count($chunks));
 
             $promises = [];
-            
+
             foreach ($chunk as $i) {
                 $promises[] = $this->createBookingAsync($bookingService, $property, $includeB2B);
             }
 
-            $results = \Illuminate\Support\Promise::all($promises);
+            $results = Promise::all($promises);
 
             foreach ($results as $result) {
                 if ($result['success']) {
@@ -66,7 +74,7 @@ final class StressTestRealEstate extends Command
             }
 
             $this->line("Chunk completed. Total: {$bookingsCreated}, Errors: {$errors}");
-            
+
             if ($chunkIndex < count($chunks) - 1) {
                 usleep(100000);
             }
@@ -77,20 +85,20 @@ final class StressTestRealEstate extends Command
         $rps = round($total / $duration, 2);
 
         $this->newLine();
-        $this->info("Stress test completed!");
+        $this->info('Stress test completed!');
         $this->table(
             ['Metric', 'Value'],
             [
                 ['Total Bookings', $total],
                 ['Successful', $bookingsCreated],
                 ['Failed', $errors],
-                ['Success Rate', round(($bookingsCreated / $total) * 100, 2) . '%'],
-                ['Duration', $duration . 's'],
+                ['Success Rate', round(($bookingsCreated / $total) * 100, 2).'%'],
+                ['Duration', $duration.'s'],
                 ['Requests/sec', $rps],
             ]
         );
 
-        Log::channel('audit')->info('real_estate.stress_test.completed', [
+        $this->log->channel('audit')->info('real_estate.stress_test.completed', [
             'total' => $total,
             'successful' => $bookingsCreated,
             'failed' => $errors,
@@ -102,12 +110,12 @@ final class StressTestRealEstate extends Command
         return Command::SUCCESS;
     }
 
-    private function createBookingAsync(PropertyBookingService $bookingService, Property $property, bool $includeB2B): \Illuminate\Support\Promise
+    private function createBookingAsync(PropertyBookingService $bookingService, Property $property, bool $includeB2B): Promise
     {
-        return \Illuminate\Support\Promise::resolve(function () use ($bookingService, $property, $includeB2B) {
+        return Promise::resolve(function () use ($bookingService, $property, $includeB2B) {
             try {
                 $isB2B = $includeB2B && rand(1, 100) <= 15;
-                
+
                 $data = [
                     'property_id' => $property->id,
                     'user_id' => rand(1, 100),

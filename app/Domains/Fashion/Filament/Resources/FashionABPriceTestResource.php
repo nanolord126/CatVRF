@@ -1,18 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Filament\Resources;
 
 use App\Domains\Fashion\Models\FashionABPriceTest;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-final class FashionABPriceTestResource extends Resource
+final class FashionABPriceTestResource extends BaseOptimizedResource
 {
     protected static ?string $model = FashionABPriceTest::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-scale';
+
     protected static ?string $navigationGroup = 'Fashion Advanced';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
@@ -51,5 +56,13 @@ final class FashionABPriceTestResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->options(['draft' => 'Draft', 'active' => 'Active', 'completed' => 'Completed']),
             ]);
+    }
+
+    /**
+     * Relations to eager load for Fashion
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Marketplace;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for MarketplaceService.
- *
- * @covers \App\Domains\Marketplace\Domain\Services\MarketplaceService
- */
-final class MarketplaceServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Marketplace\Domain\Services\MarketplaceService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'MarketplaceService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Marketplace\Domain\Services\MarketplaceService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'MarketplaceService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Marketplace');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Marketplace\Domain\Services\MarketplaceService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'MarketplaceService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('MarketplaceService exists and is instantiable', function () {
+    $this->assertServiceExists('MarketplaceService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Marketplace\Domain\Services\MarketplaceService::class, 'create'),
-            'MarketplaceService must implement create()'
-        );
-    }
+test('MarketplaceService follows clean architecture', function () {
+    $this->assertCleanArchitecture('MarketplaceService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Marketplace\Domain\Services\MarketplaceService::class, 'update'),
-            'MarketplaceService must implement update()'
-        );
-    }
+test('MarketplaceService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('MarketplaceService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Marketplace\Domain\Services\MarketplaceService::class, 'delete'),
-            'MarketplaceService must implement delete()'
-        );
-    }
+test('MarketplaceService enforces quota limits', function () {
+    $this->testServiceWithQuota('MarketplaceService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Marketplace\Domain\Services\MarketplaceService::class, 'list'),
-            'MarketplaceService must implement list()'
-        );
-    }
+test('MarketplaceService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('MarketplaceService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Marketplace\Domain\Services\MarketplaceService::class, 'getById'),
-            'MarketplaceService must implement getById()'
-        );
-    }
+test('MarketplaceService has proper caching', function () {
+    $cacheKey = 'marketplace:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('MarketplaceService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('MarketplaceService dispatches proper events', function () {
+    $eventClass = "App\Domains\Marketplace\Events\MarketplaceProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('MarketplaceService'));
+        $service->process([]);
+    });
+});
+
+test('MarketplaceService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Marketplace\Jobs\ProcessMarketplaceJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('MarketplaceService'));
+        $service->processAsync([]);
+    });
+});
+
+test('MarketplaceService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('MarketplaceService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('MarketplaceService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('MarketplaceService'));
+        $service->process([]);
+    }, 'MarketplaceService processed');
+});
+
+test('MarketplaceService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

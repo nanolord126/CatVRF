@@ -26,11 +26,11 @@ final readonly class PaymentConstructorService
     private const CACHE_TTL_SECONDS = 3600;
 
     public function __construct(
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private CacheRepository $cache,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly CacheRepository $cache,
     ) {}
 
     /**
@@ -57,7 +57,7 @@ final readonly class PaymentConstructorService
 
         $this->cache->put($cacheKey, $result, self::CACHE_TTL_SECONDS);
 
-        $this->logger->info('Payment AI analysis completed', [
+        $this->logger->$this->logger->info('Payment AI analysis completed', [
             'tenant_id' => $tenantId,
             'total_transactions' => $analysis['total_count'],
             'recommendations_count' => count($recommendations),
@@ -122,8 +122,7 @@ final readonly class PaymentConstructorService
     /**
      * Сгенерировать рекомендации на основе анализа.
      *
-     * @param array<string, mixed> $analysis
-     *
+     * @param  array<string, mixed>  $analysis
      * @return array<int, array<string, mixed>>
      */
     private function generateRecommendations(array $analysis): array
@@ -181,7 +180,7 @@ final readonly class PaymentConstructorService
     /**
      * Определить провайдера с лучшей конверсией.
      *
-     * @param array<string, array<string, mixed>> $providerStats
+     * @param  array<string, array<string, mixed>>  $providerStats
      */
     private function findBestProvider(array $providerStats): ?string
     {

@@ -1,23 +1,29 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Payment;
 
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Log\LogManager;
-use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Circuit Breaker Service for Payment Gateways
- * 
+ *
  * Implements the Circuit Breaker pattern to prevent cascading failures
  * when payment gateways are experiencing issues.
- * 
+ *
  * States:
  * - CLOSED: Normal operation, requests pass through
  * - OPEN: Gateway is failing, requests are blocked immediately
  * - HALF_OPEN: Testing if gateway has recovered
- * 
+ *
  * Configuration:
  * - failureThreshold: Number of failures before opening circuit
  * - successThreshold: Number of successes before closing circuit
@@ -25,29 +31,39 @@ use Carbon\Carbon;
  */
 final readonly class CircuitBreakerService
 {
+    use WithAuditLogging;
+
     private const STATE_PREFIX = 'circuit_breaker:state:';
+
     private const FAILURE_COUNT_PREFIX = 'circuit_breaker:failures:';
+
     private const LAST_FAILURE_PREFIX = 'circuit_breaker:last_failure:';
-    
+
     private const STATE_CLOSED = 'closed';
+
     private const STATE_OPEN = 'open';
+
     private const STATE_HALF_OPEN = 'half_open';
-    
+
     private const DEFAULT_FAILURE_THRESHOLD = 5;
+
     private const DEFAULT_SUCCESS_THRESHOLD = 2;
+
     private const DEFAULT_TIMEOUT_SECONDS = 60;
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly CacheRepository $cache,
-        private readonly LogManager $logger,
+        private readonly LogManager $log,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
      * Check if circuit is open for a gateway
-     * 
-     * @param string $gateway Gateway name (tinkoff, sber, tochka)
-     * @param int $failureThreshold Number of failures before opening
-     * @param int $timeoutSeconds How long to stay open
+     *
+     * @param  string  $gateway  Gateway name (tinkoff, sber, tochka)
+     * @param  int  $failureThreshold  Number of failures before opening
+     * @param  int  $timeoutSeconds  How long to stay open
      * @return bool True if circuit is OPEN (should block requests)
      */
     public function isOpen(
@@ -64,13 +80,14 @@ final readonly class CircuitBreakerService
         if ($state === self::STATE_OPEN) {
             // Check if timeout has elapsed, try HALF_OPEN
             $lastFailure = $this->getLastFailureTime($gateway);
-            
+
             if ($lastFailure && Carbon::parse($lastFailure)->addSeconds($timeoutSeconds)->isPast()) {
                 $this->setState($gateway, self::STATE_HALF_OPEN);
-                $this->logger->channel('audit')->info('Circuit breaker transitioning to HALF_OPEN', [
+                $this->logger->channel('audit')->$this->logger->info('Circuit breaker transitioning to HALF_OPEN', [
                     'gateway' => $gateway,
-                    'time_since_failure' => Carbon::parse($lastFailure)->diffInSeconds() . 's',
+                    'time_since_failure' => Carbon::parse($lastFailure)->diffInSeconds().'s',
                 ]);
+
                 return false;
             }
 
@@ -83,10 +100,9 @@ final readonly class CircuitBreakerService
 
     /**
      * Record a successful request
-     * 
-     * @param string $gateway Gateway name
-     * @param int $successThreshold Number of successes to close circuit
-     * @return void
+     *
+     * @param  string  $gateway  Gateway name
+     * @param  int  $successThreshold  Number of successes to close circuit
      */
     public function recordSuccess(
         string $gateway,
@@ -97,14 +113,14 @@ final readonly class CircuitBreakerService
         if ($state === self::STATE_HALF_OPEN) {
             // In HALF_OPEN, we need consecutive successes to close
             $successCount = (int) $this->cache->get("{$this->getPrefix()}:{$gateway}:success_count", 0) + 1;
-            $this->cache->put("{$this->getPrefix()}:{$gateway}:success_count", $successCount, now()->addMinutes(5));
+            $this->cache->put("{$this->getPrefix()}:{$gateway}:success_count", $successCount, CarbonImmutable::now()->addMinutes(5));
 
             if ($successCount >= $successThreshold) {
                 $this->setState($gateway, self::STATE_CLOSED);
                 $this->resetFailures($gateway);
                 $this->cache->forget("{$this->getPrefix()}:{$gateway}:success_count");
-                
-                $this->logger->channel('audit')->info('Circuit breaker CLOSED after successful recovery', [
+
+                $this->logger->channel('audit')->$this->logger->info('Circuit breaker CLOSED after successful recovery', [
                     'gateway' => $gateway,
                     'success_count' => $successCount,
                 ]);
@@ -117,18 +133,17 @@ final readonly class CircuitBreakerService
 
     /**
      * Record a failed request
-     * 
-     * @param string $gateway Gateway name
-     * @param int $failureThreshold Number of failures before opening
-     * @return void
+     *
+     * @param  string  $gateway  Gateway name
+     * @param  int  $failureThreshold  Number of failures before opening
      */
     public function recordFailure(
         string $gateway,
         int $failureThreshold = self::DEFAULT_FAILURE_THRESHOLD
     ): void {
         $failureCount = $this->getFailureCount($gateway) + 1;
-        $this->cache->put($this->getFailureKey($gateway), $failureCount, now()->addHours(1));
-        $this->cache->put($this->getLastFailureKey($gateway), now()->toIso8601String(), now()->addHours(1));
+        $this->cache->put($this->getFailureKey($gateway), $failureCount, CarbonImmutable::now()->addHours(1));
+        $this->cache->put($this->getLastFailureKey($gateway), CarbonImmutable::now()->toIso8601String(), CarbonImmutable::now()->addHours(1));
 
         $state = $this->getState($gateway);
 
@@ -136,7 +151,7 @@ final readonly class CircuitBreakerService
             // Failure in HALF_OPEN means not recovered, go back to OPEN
             $this->setState($gateway, self::STATE_OPEN);
             $this->cache->forget("{$this->getPrefix()}:{$gateway}:success_count");
-            
+
             $this->logger->channel('audit')->warning('Circuit breaker returned to OPEN after HALF_OPEN failure', [
                 'gateway' => $gateway,
                 'failure_count' => $failureCount,
@@ -144,7 +159,7 @@ final readonly class CircuitBreakerService
         } elseif ($failureCount >= $failureThreshold) {
             // Threshold reached, open the circuit
             $this->setState($gateway, self::STATE_OPEN);
-            
+
             $this->logger->channel('audit')->critical('Circuit breaker OPENED due to failures', [
                 'gateway' => $gateway,
                 'failure_count' => $failureCount,
@@ -161,8 +176,8 @@ final readonly class CircuitBreakerService
 
     /**
      * Get current state of circuit breaker
-     * 
-     * @param string $gateway Gateway name
+     *
+     * @param  string  $gateway  Gateway name
      * @return string State (closed, open, half_open)
      */
     public function getState(string $gateway): string
@@ -172,41 +187,39 @@ final readonly class CircuitBreakerService
 
     /**
      * Manually close circuit breaker (for admin/recovery)
-     * 
-     * @param string $gateway Gateway name
-     * @return void
+     *
+     * @param  string  $gateway  Gateway name
      */
     public function close(string $gateway): void
     {
         $this->setState($gateway, self::STATE_CLOSED);
         $this->resetFailures($gateway);
         $this->cache->forget("{$this->getPrefix()}:{$gateway}:success_count");
-        
-        $this->logger->channel('audit')->info('Circuit breaker manually CLOSED', [
+
+        $this->logger->channel('audit')->$this->logger->info('Circuit breaker manually CLOSED', [
             'gateway' => $gateway,
         ]);
     }
 
     /**
      * Manually open circuit breaker (for maintenance)
-     * 
-     * @param string $gateway Gateway name
-     * @return void
+     *
+     * @param  string  $gateway  Gateway name
      */
     public function open(string $gateway): void
     {
         $this->setState($gateway, self::STATE_OPEN);
-        $this->cache->put($this->getLastFailureKey($gateway), now()->toIso8601String(), now()->addHours(1));
-        
-        $this->logger->channel('audit')->info('Circuit breaker manually OPENED', [
+        $this->cache->put($this->getLastFailureKey($gateway), CarbonImmutable::now()->toIso8601String(), CarbonImmutable::now()->addHours(1));
+
+        $this->logger->channel('audit')->$this->logger->info('Circuit breaker manually OPENED', [
             'gateway' => $gateway,
         ]);
     }
 
     /**
      * Get circuit breaker stats for monitoring
-     * 
-     * @param string $gateway Gateway name
+     *
+     * @param  string  $gateway  Gateway name
      * @return array Stats array
      */
     public function getStats(string $gateway): array
@@ -224,7 +237,7 @@ final readonly class CircuitBreakerService
      */
     private function setState(string $gateway, string $state): void
     {
-        $this->cache->put($this->getStateKey($gateway), $state, now()->addHours(24));
+        $this->cache->put($this->getStateKey($gateway), $state, CarbonImmutable::now()->addHours(24));
     }
 
     /**
@@ -256,7 +269,7 @@ final readonly class CircuitBreakerService
      */
     private function getStateKey(string $gateway): string
     {
-        return self::STATE_PREFIX . $gateway;
+        return self::STATE_PREFIX.$gateway;
     }
 
     /**
@@ -264,7 +277,7 @@ final readonly class CircuitBreakerService
      */
     private function getFailureKey(string $gateway): string
     {
-        return self::FAILURE_COUNT_PREFIX . $gateway;
+        return self::FAILURE_COUNT_PREFIX.$gateway;
     }
 
     /**
@@ -272,7 +285,7 @@ final readonly class CircuitBreakerService
      */
     private function getLastFailureKey(string $gateway): string
     {
-        return self::LAST_FAILURE_PREFIX . $gateway;
+        return self::LAST_FAILURE_PREFIX.$gateway;
     }
 
     /**

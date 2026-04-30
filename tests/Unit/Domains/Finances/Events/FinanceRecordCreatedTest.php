@@ -17,23 +17,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class FinanceRecordCreatedTest extends TestCase
 {
-    private function makeRecord(
-        int $id = 1,
-        int $tenantId = 10,
-        ?int $businessGroupId = null,
-        string $type = 'deposit',
-        int $amount = 500000,
-    ): FinanceRecord {
-        $record = new FinanceRecord();
-        $record->id = $id;
-        $record->tenant_id = $tenantId;
-        $record->business_group_id = $businessGroupId;
-        $record->type = $type;
-        $record->amount = $amount;
-
-        return $record;
-    }
-
     #[Test]
     public function it_stores_readonly_properties(): void
     {
@@ -46,7 +29,7 @@ final class FinanceRecordCreatedTest extends TestCase
     }
 
     #[Test]
-    public function userId_defaults_to_null(): void
+    public function user_id_defaults_to_null(): void
     {
         $event = new FinanceRecordCreated(
             $this->makeRecord(),
@@ -57,7 +40,7 @@ final class FinanceRecordCreatedTest extends TestCase
     }
 
     #[Test]
-    public function toAuditContext_returns_complete_structure(): void
+    public function to_audit_context_returns_complete_structure(): void
     {
         $record = $this->makeRecord(
             id: 55,
@@ -80,7 +63,7 @@ final class FinanceRecordCreatedTest extends TestCase
     }
 
     #[Test]
-    public function toAuditContext_with_null_business_group(): void
+    public function to_audit_context_with_null_business_group(): void
     {
         $record = $this->makeRecord(businessGroupId: null);
         $event = new FinanceRecordCreated($record, 'corr-b2c');
@@ -92,7 +75,7 @@ final class FinanceRecordCreatedTest extends TestCase
     }
 
     #[Test]
-    public function getTenantId_returns_record_tenant(): void
+    public function get_tenant_id_returns_record_tenant(): void
     {
         $record = $this->makeRecord(tenantId: 42);
         $event = new FinanceRecordCreated($record, 'tid-1');
@@ -101,7 +84,7 @@ final class FinanceRecordCreatedTest extends TestCase
     }
 
     #[Test]
-    public function getBusinessGroupId_returns_record_group(): void
+    public function get_business_group_id_returns_record_group(): void
     {
         $record = $this->makeRecord(businessGroupId: 15);
         $event = new FinanceRecordCreated($record, 'bg-1');
@@ -110,7 +93,7 @@ final class FinanceRecordCreatedTest extends TestCase
     }
 
     #[Test]
-    public function getBusinessGroupId_null_for_b2c(): void
+    public function get_business_group_id_null_for_b2c(): void
     {
         $record = $this->makeRecord(businessGroupId: null);
         $event = new FinanceRecordCreated($record, 'bg-null');
@@ -119,7 +102,7 @@ final class FinanceRecordCreatedTest extends TestCase
     }
 
     #[Test]
-    public function toAuditContext_contains_all_required_keys(): void
+    public function to_audit_context_contains_all_required_keys(): void
     {
         $event = new FinanceRecordCreated(
             $this->makeRecord(),
@@ -136,5 +119,22 @@ final class FinanceRecordCreatedTest extends TestCase
         self::assertContains('amount', $keys);
         self::assertContains('correlation_id', $keys);
         self::assertContains('user_id', $keys);
+    }
+
+    private function makeRecord(
+        int $id = 1,
+        int $tenantId = 10,
+        ?int $businessGroupId = null,
+        string $type = 'deposit',
+        int $amount = 500000,
+    ): FinanceRecord {
+        $record = new FinanceRecord();
+        $record->id = $id;
+        $record->tenant_id = $tenantId;
+        $record->business_group_id = $businessGroupId;
+        $record->type = $type;
+        $record->amount = $amount;
+
+        return $record;
     }
 }

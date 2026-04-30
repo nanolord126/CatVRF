@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Controllers\Api\V1;
 
@@ -18,12 +20,6 @@ final class WalletControllerTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->user = User::factory()->create();
-    }
 
     // ── show ──────────────────────────────────────────────────────────
 
@@ -179,5 +175,11 @@ final class WalletControllerTest extends TestCase
         $response = $this->postJson('/api/v1/wallet/deposit', ['amount' => 1000]);
 
         $response->assertStatus(401);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->user = User::factory()->create();
     }
 }

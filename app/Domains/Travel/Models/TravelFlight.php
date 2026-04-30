@@ -1,62 +1,62 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 
 final class TravelFlight extends Model
 {
-
+    use TenantScoped;
 
-        protected $table = 'travel_flights';
+    protected $table = 'travel_flights';
 
-        protected $fillable = [
-            'tenant_id',
-            'agency_id',
-            'airline',
-            'flight_number',
-            'departure_airport',
-            'arrival_airport',
-            'departure_time',
-            'arrival_time',
-            'duration_minutes',
-            'class',
-            'available_seats',
-            'price',
-            'commission_amount',
-            'status',
-            'correlation_id',
-            'uuid',
-        ];
+    protected $fillable = [
+        'tenant_id',
+        'agency_id',
+        'airline',
+        'flight_number',
+        'departure_airport',
+        'arrival_airport',
+        'departure_time',
+        'arrival_time',
+        'duration_minutes',
+        'class',
+        'available_seats',
+        'price',
+        'commission_amount',
+        'status',
+        'correlation_id',
+        'uuid',
+    ];
 
-        protected $casts = [
-            'price' => 'float',
-            'commission_amount' => 'float',
-            'available_seats' => 'integer',
-            'duration_minutes' => 'integer',
-            'departure_time' => 'datetime',
-            'arrival_time' => 'datetime',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-            'deleted_at' => 'datetime',
-        ];
+    protected $casts = [
+        'price' => 'float',
+        'commission_amount' => 'float',
+        'available_seats' => 'integer',
+        'duration_minutes' => 'integer',
+        'departure_time' => 'datetime',
+        'arrival_time' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
 
-        protected $hidden = ['correlation_id'];
+    protected $hidden = ['correlation_id'];
 
-        protected static function booted(): void
-        {
-            static::addGlobalScope('tenant', function ($query) {
-                if (function_exists('tenant') && tenant()) {
-                    $query->where('tenant_id', tenant()->id);
-                }
-            });
-        }
+    public function agency(): BelongsTo
+    {
+        return $this->belongsTo(TravelAgency::class);
+    }
 
-        public function agency(): BelongsTo
-        {
-            return $this->belongsTo(TravelAgency::class);
-        }
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+    }
 }

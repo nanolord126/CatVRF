@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\GroceryAndDelivery;
 
@@ -11,47 +13,19 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
+use Illuminate\Support\Facades\Log;
 
 final class GroceryOrderFlowTest extends TestCase
 {
     use RefreshDatabase;
 
     private GroceryOrderService $orderService;
+
     private User $user;
+
     private GroceryStore $store;
+
     private array $items;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Инициализация сервиса
-        $this->orderService = app(GroceryOrderService::class);
-
-        // Создание тестовых данных
-        $this->user = User::factory()->create();
-        $this->store = GroceryStore::factory()->create(['tenant_id' => tenant()->id]);
-
-        // Создание тестовых товаров
-        $product1 = GroceryProduct::factory()->create([
-            'store_id' => $this->store->id,
-            'name' => 'Яблоки',
-            'price' => 10000, // 100 руб
-            'current_stock' => 100,
-        ]);
-
-        $product2 = GroceryProduct::factory()->create([
-            'store_id' => $this->store->id,
-            'name' => 'Молоко',
-            'price' => 8000, // 80 руб
-            'current_stock' => 50,
-        ]);
-
-        $this->items = [
-            ['product_id' => $product1->id, 'quantity' => 2],
-            ['product_id' => $product2->id, 'quantity' => 1],
-        ];
-    }
 
     /**
      * Тест: создание заказа успешно
@@ -235,7 +209,7 @@ final class GroceryOrderFlowTest extends TestCase
         $correlationId = (string) Str::uuid();
 
         // Mock логирования
-        \Illuminate\Support\Facades\Log::shouldReceive('channel')
+        Log::shouldReceive('channel')
             ->with('audit')
             ->andReturnSelf()
             ->shouldReceive('info')
@@ -254,5 +228,37 @@ final class GroceryOrderFlowTest extends TestCase
 
         // Assert - корреляционный ID должен быть в логе
         $this->assertEquals($correlationId, $order->correlation_id);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Инициализация сервиса
+        $this->orderService = app(GroceryOrderService::class);
+
+        // Создание тестовых данных
+        $this->user = User::factory()->create();
+        $this->store = GroceryStore::factory()->create(['tenant_id' => tenant()->id]);
+
+        // Создание тестовых товаров
+        $product1 = GroceryProduct::factory()->create([
+            'store_id' => $this->store->id,
+            'name' => 'Яблоки',
+            'price' => 10000, // 100 руб
+            'current_stock' => 100,
+        ]);
+
+        $product2 = GroceryProduct::factory()->create([
+            'store_id' => $this->store->id,
+            'name' => 'Молоко',
+            'price' => 8000, // 80 руб
+            'current_stock' => 50,
+        ]);
+
+        $this->items = [
+            ['product_id' => $product1->id, 'quantity' => 2],
+            ['product_id' => $product2->id, 'quantity' => 1],
+        ];
     }
 }

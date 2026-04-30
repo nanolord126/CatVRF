@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Http\Controllers;
 
@@ -6,18 +8,23 @@ use App\Domains\Electronics\DTOs\SerialNumberValidationDto;
 use App\Domains\Electronics\DTOs\ReturnFraudDetectionDto;
 use App\Domains\Electronics\Services\SerialNumberValidationService;
 use App\Domains\Electronics\Services\ReturnFraudDetectionService;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
 final readonly class FraudDetectionController
 {
     public function __construct(
-        private SerialNumberValidationService $serialValidation,
-        private ReturnFraudDetectionService $returnFraudDetection,
-    ) {
-    }
+        private readonly SerialNumberValidationService $serialValidation,
+        private readonly ReturnFraudDetectionService $returnFraudDetection,
+        private readonly Guard $auth,
+        private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
+    ) {}
 
     public function validateSerialNumber(Request $request): JsonResponse
     {
@@ -30,14 +37,14 @@ final readonly class FraudDetectionController
             'idempotency_key' => 'nullable|string|max:255',
         ]);
 
-        $userId = Auth::id();
+        $userId = $this->auth->id();
         $correlationId = (string) Str::uuid();
         $idempotencyKey = $request->input('idempotency_key');
 
         if ($idempotencyKey) {
             $cachedResponse = $this->getSerialIdempotencyCache($idempotencyKey);
             if ($cachedResponse !== null) {
-                return response()->json($cachedResponse);
+                return new JsonResponse($cachedResponse);
             }
         }
 
@@ -53,7 +60,7 @@ final readonly class FraudDetectionController
             $this->setSerialIdempotencyCache($idempotencyKey, $result->toArray());
         }
 
-        return response()->json($result->toArray());
+        return new JsonResponse($result->toArray());
     }
 
     public function detectReturnFraud(Request $request): JsonResponse
@@ -76,14 +83,14 @@ final readonly class FraudDetectionController
             'idempotency_key' => 'nullable|string|max:255',
         ]);
 
-        $userId = Auth::id();
+        $userId = $this->auth->id();
         $correlationId = (string) Str::uuid();
         $idempotencyKey = $request->input('idempotency_key');
 
         if ($idempotencyKey) {
             $cachedResponse = $this->getReturnIdempotencyCache($idempotencyKey);
             if ($cachedResponse !== null) {
-                return response()->json($cachedResponse);
+                return new JsonResponse($cachedResponse);
             }
         }
 
@@ -99,68 +106,68 @@ final readonly class FraudDetectionController
             $this->setReturnIdempotencyCache($idempotencyKey, $result->toArray());
         }
 
-        return response()->json($result->toArray());
+        return new JsonResponse($result->toArray());
     }
 
     public function getFraudStatistics(Request $request): JsonResponse
     {
-        $userId = Auth::id();
+        $userId = $this->auth->id();
         $tenantId = tenant()->id;
 
         $stats = [
-            'total_serial_validations' => \Illuminate\Support\Facades\DB::table('electronics_serial_validations')
+            'total_serial_validations' => $this->db->table('electronics_serial_validations')
                 ->where('tenant_id', $tenantId)
                 ->count(),
-            'fraudulent_serials' => \Illuminate\Support\Facades\DB::table('electronics_serial_validations')
-                ->where('tenant_id', $tenantId)
-                ->where('is_fraudulent', true)
-                ->count(),
-            'total_return_detections' => \Illuminate\Support\Facades\DB::table('electronics_return_fraud_detections')
-                ->where('tenant_id', $tenantId)
-                ->count(),
-            'fraudulent_returns' => \Illuminate\Support\Facades\DB::table('electronics_return_fraud_detections')
+            'fraudulent_serials' => $this->db->table('electronics_serial_validations')
                 ->where('tenant_id', $tenantId)
                 ->where('is_fraudulent', true)
                 ->count(),
-            'high_risk_returns_7d' => \Illuminate\Support\Facades\DB::table('electronics_return_fraud_detections')
+            'total_return_detections' => $this->db->table('electronics_return_fraud_detections')
+                ->where('tenant_id', $tenantId)
+                ->count(),
+            'fraudulent_returns' => $this->db->table('electronics_return_fraud_detections')
+                ->where('tenant_id', $tenantId)
+                ->where('is_fraudulent', true)
+                ->count(),
+            'high_risk_returns_7d' => $this->db->table('electronics_return_fraud_detections')
                 ->where('tenant_id', $tenantId)
                 ->where('risk_level', 'high')
-                ->where('created_at', '>=', now()->subDays(7))
+                ->where('created_at', '>=', CarbonImmutable::now()->subDays(7))
                 ->count(),
-            'avg_fraud_probability' => \Illuminate\Support\Facades\DB::table('electronics_return_fraud_detections')
+            'avg_fraud_probability' => $this->db->table('electronics_return_fraud_detections')
                 ->where('tenant_id', $tenantId)
-                ->where('created_at', '>=', now()->subDays(30))
+                ->where('created_at', '>=', CarbonImmutable::now()->subDays(30))
                 ->avg('fraud_probability') ?? 0.0,
         ];
 
-        return response()->json($stats);
+        return new JsonResponse($stats);
     }
 
     private function getSerialIdempotencyCache(string $key): ?array
     {
-        return \Illuminate\Support\Facades\Cache::get("idempotency:electronics_serial:{$key}");
+        return $this->cache->get("idempotency:electronics_serial:{$key}");
     }
 
     private function setSerialIdempotencyCache(string $key, array $data): void
     {
-        \Illuminate\Support\Facades\Cache::put(
+        $this->cache->put(
             "idempotency:electronics_serial:{$key}",
             $data,
-            now()->addHours(24)
+            CarbonImmutable::now()->addHours(24)
         );
     }
 
     private function getReturnIdempotencyCache(string $key): ?array
     {
-        return \Illuminate\Support\Facades\Cache::get("idempotency:electronics_return:{$key}");
+        return $this->cache->get("idempotency:electronics_return:{$key}");
     }
 
     private function setReturnIdempotencyCache(string $key, array $data): void
     {
-        \Illuminate\Support\Facades\Cache::put(
+        $this->cache->put(
             "idempotency:electronics_return:{$key}",
             $data,
-            now()->addHours(12)
+            CarbonImmutable::now()->addHours(12)
         );
     }
 }

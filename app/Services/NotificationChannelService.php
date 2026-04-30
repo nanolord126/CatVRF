@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
@@ -10,6 +12,11 @@ use App\Notifications\Channels\SlackChannel;
 use App\Notifications\Channels\InAppChannel;
 use Psr\Log\LoggerInterface;
 use Illuminate\Support\Str;
+use App\Models\User;
+use Carbon\CarbonImmutable;
+use Illuminate\Mail\Mailer;
+use Illuminate\Mail\Message;
+use Illuminate\Notifications\Notification;
 
 /**
  * Единый роутер каналов уведомлений — NotificationChannelService.
@@ -52,30 +59,31 @@ final readonly class NotificationChannelService
      * Конструктор — constructor injection по канону.
      */
     public function __construct(
-        private EmailChannel $emailChannel,
-        private SmsChannel $smsChannel,
-        private PushChannel $pushChannel,
-        private MarketplaceChannel $marketplaceChannel,
-        private SlackChannel $slackChannel,
-        private InAppChannel $inAppChannel,
-        private NotificationPreferencesService $preferencesService,
-        private LoggerInterface $logger,
+        private readonly EmailChannel $emailChannel,
+        private readonly SmsChannel $smsChannel,
+        private readonly PushChannel $pushChannel,
+        private readonly MarketplaceChannel $marketplaceChannel,
+        private readonly SlackChannel $slackChannel,
+        private readonly InAppChannel $inAppChannel,
+        private readonly NotificationPreferencesService $preferencesService,
+        private readonly LoggerInterface $logger,
+        private readonly Mailer $mailer,
     ) {}
 
     /**
      * Отправить уведомление через конкретный канал.
      *
-     * @param string $channel    Имя канала: email, sms, push, telegram, slack, in_app
-     * @param object $notifiable Получатель (User, Tenant и т.д.)
-     * @param \Illuminate\Notifications\Notification $notification Объект уведомления
-     * @param string|null $correlationId Correlation ID для аудита
-     * @param bool $skipDnd Пропустить проверку DND (для critical)
-     * @param bool $skipPreferences Пропустить проверку предпочтений (для security/fraud)
+     * @param  string  $channel  Имя канала: email, sms, push, telegram, slack, in_app
+     * @param  object  $notifiable  Получатель (User, Tenant и т.д.)
+     * @param  Notification  $notification  Объект уведомления
+     * @param  string|null  $correlationId  Correlation ID для аудита
+     * @param  bool  $skipDnd  Пропустить проверку DND (для critical)
+     * @param  bool  $skipPreferences  Пропустить проверку предпочтений (для security/fraud)
      */
     public function send(
         string $channel,
         object $notifiable,
-        \Illuminate\Notifications\Notification $notification,
+        Notification $notification,
         ?string $correlationId = null,
         bool $skipDnd = false,
         bool $skipPreferences = false,
@@ -84,41 +92,45 @@ final readonly class NotificationChannelService
             ?? (method_exists($notification, 'getCorrelationId') ? $notification->getCorrelationId() : null)
             ?? Str::uuid()->toString();
 
-        if (!$this->isValidChannel($channel)) {
+        if (! $this->isValidChannel($channel)) {
             $this->logger->warning('Invalid notification channel requested', [
                 'channel'        => $channel,
                 'correlation_id' => $correlationId,
             ]);
+
             return false;
         }
 
-        if (!$this->isChannelEnabled($channel)) {
+        if (! $this->isChannelEnabled($channel)) {
             $this->logger->debug('Channel is disabled', [
                 'channel'        => $channel,
                 'correlation_id' => $correlationId,
             ]);
+
             return false;
         }
 
         $userId = $notifiable->id ?? null;
 
         // DND проверка
-        if (!$skipDnd && $userId && $this->isInDoNotDisturb($userId, $channel)) {
-            $this->logger->info('Notification blocked by DND', [
+        if (! $skipDnd && $userId && $this->isInDoNotDisturb($userId, $channel)) {
+            $this->logger->$this->logger->info('Notification blocked by DND', [
                 'channel'        => $channel,
                 'user_id'        => $userId,
                 'correlation_id' => $correlationId,
             ]);
+
             return false;
         }
 
         // Preferences opt-out проверка
-        if (!$skipPreferences && $userId && !$this->isChannelAllowedByUser($userId, $channel)) {
-            $this->logger->info('Notification blocked by user preferences', [
+        if (! $skipPreferences && $userId && ! $this->isChannelAllowedByUser($userId, $channel)) {
+            $this->logger->$this->logger->info('Notification blocked by user preferences', [
                 'channel'        => $channel,
                 'user_id'        => $userId,
                 'correlation_id' => $correlationId,
             ]);
+
             return false;
         }
 
@@ -129,6 +141,7 @@ final readonly class NotificationChannelService
                 'user_id'        => $userId,
                 'correlation_id' => $correlationId,
             ]);
+
             return false;
         }
 
@@ -137,7 +150,7 @@ final readonly class NotificationChannelService
 
             $this->incrementRateCounter($userId, $channel);
 
-            $this->logger->info('Notification sent via channel', [
+            $this->logger->$this->logger->info('Notification sent via channel', [
                 'channel'        => $channel,
                 'user_id'        => $userId,
                 'notification'   => get_class($notification),
@@ -160,13 +173,13 @@ final readonly class NotificationChannelService
     /**
      * Отправить через несколько каналов одновременно.
      *
-     * @param array<string> $channels Массив имён каналов
+     * @param  array<string>  $channels  Массив имён каналов
      * @return array<string, bool> Результат по каждому каналу
      */
     public function sendToChannels(
         array $channels,
         object $notifiable,
-        \Illuminate\Notifications\Notification $notification,
+        Notification $notification,
         ?string $correlationId = null,
         bool $skipDnd = false,
         bool $skipPreferences = false,
@@ -188,7 +201,7 @@ final readonly class NotificationChannelService
         $sentCount = count(array_filter($results));
         $totalCount = count($results);
 
-        $this->logger->info('Multi-channel notification completed', [
+        $this->logger->$this->logger->info('Multi-channel notification completed', [
             'channels_sent'    => $sentCount,
             'channels_total'   => $totalCount,
             'results'          => $results,
@@ -203,24 +216,22 @@ final readonly class NotificationChannelService
      *
      * Удобно для fraud alerts, security events, системных уведомлений.
      *
-     * @param string $channel   Канал доставки
-     * @param int $userId       Получатель
-     * @param string $title     Заголовок
-     * @param string $message   Текст
-     * @param string|null $correlationId
-     * @param int|null $tenantId
+     * @param  string  $channel  Канал доставки
+     * @param  int  $userId  Получатель
+     * @param  string  $title  Заголовок
+     * @param  string  $message  Текст
      */
     public function sendDirect(
-        string  $channel,
-        int     $userId,
-        string  $title,
-        string  $message,
+        string $channel,
+        int $userId,
+        string $title,
+        string $message,
         ?string $correlationId = null,
-        ?int    $tenantId = null,
+        ?int $tenantId = null,
     ): bool {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        if (!$this->isValidChannel($channel) || !$this->isChannelEnabled($channel)) {
+        if (! $this->isValidChannel($channel) || ! $this->isChannelEnabled($channel)) {
             return false;
         }
 
@@ -243,7 +254,7 @@ final readonly class NotificationChannelService
                 'push' => $this->sendPushDirect($userId, $title, $message, $correlationId),
             };
 
-            $this->logger->info('Direct notification sent', [
+            $this->logger->$this->logger->info('Direct notification sent', [
                 'channel'        => $channel,
                 'user_id'        => $userId,
                 'title'          => $title,
@@ -266,16 +277,16 @@ final readonly class NotificationChannelService
     /**
      * Отправка через несколько каналов прямым текстом (для fraud/security).
      *
-     * @param array<string> $channels
+     * @param  array<string>  $channels
      * @return array<string, bool>
      */
     public function sendDirectToChannels(
-        array   $channels,
-        int     $userId,
-        string  $title,
-        string  $message,
+        array $channels,
+        int $userId,
+        string $title,
+        string $message,
         ?string $correlationId = null,
-        ?int    $tenantId = null,
+        ?int $tenantId = null,
     ): array {
         $correlationId = $correlationId ?? Str::uuid()->toString();
         $results = [];
@@ -327,7 +338,7 @@ final readonly class NotificationChannelService
     private function dispatchToChannel(
         string $channel,
         object $notifiable,
-        \Illuminate\Notifications\Notification $notification,
+        Notification $notification,
     ): void {
         match ($channel) {
             'email'       => $this->emailChannel->send($notifiable, $notification),
@@ -354,6 +365,7 @@ final readonly class NotificationChannelService
                 message:       $message,
                 correlationId: $correlationId,
             );
+
             return;
         }
 
@@ -369,35 +381,35 @@ final readonly class NotificationChannelService
 
     private function sendEmailDirect(int $userId, string $title, string $message, string $correlationId): void
     {
-        $user = \App\Models\User::find($userId);
+        $user = User::find($userId);
 
-        if (!$user?->email) {
+        if (! $user?->email) {
             return;
         }
 
-        \Illuminate\Support\Facades\Mail::raw($message, function (\Illuminate\Mail\Message $mail) use ($user, $title) {
+        $this->mailer->raw($message, function (Message $mail) use ($user, $title) {
             $mail->to($user->email)->subject($title);
         });
     }
 
     private function sendSmsDirect(int $userId, string $message, string $correlationId): void
     {
-        $user = \App\Models\User::find($userId);
+        $user = User::find($userId);
 
-        if (!$user?->phone) {
+        if (! $user?->phone) {
             return;
         }
 
-        $this->logger->info('SMS direct send (provider integration pending)', [
+        $this->logger->$this->logger->info('SMS direct send (provider integration pending)', [
             'user_id'        => $userId,
-            'phone'          => substr($user->phone, 0, 4) . '****',
+            'phone'          => substr($user->phone, 0, 4).'****',
             'correlation_id' => $correlationId,
         ]);
     }
 
     private function sendPushDirect(int $userId, string $title, string $message, string $correlationId): void
     {
-        $this->logger->info('Push direct send (provider integration pending)', [
+        $this->logger->$this->logger->info('Push direct send (provider integration pending)', [
             'user_id'        => $userId,
             'title'          => $title,
             'correlation_id' => $correlationId,
@@ -425,7 +437,7 @@ final readonly class NotificationChannelService
      */
     private function isInDoNotDisturb(int $userId, string $channel): bool
     {
-        if (!config('notifications.dnd.enabled', false)) {
+        if (! config('notifications.dnd.enabled', false)) {
             return false;
         }
 
@@ -435,18 +447,18 @@ final readonly class NotificationChannelService
         }
 
         $dndEnabled = cache()->get("dnd:user.{$userId}.enabled", false);
-        if (!$dndEnabled) {
+        if (! $dndEnabled) {
             return false;
         }
 
         $startTime = cache()->get("dnd:user.{$userId}.start_time");
         $endTime = cache()->get("dnd:user.{$userId}.end_time");
 
-        if (!$startTime || !$endTime) {
+        if (! $startTime || ! $endTime) {
             return false;
         }
 
-        $now = now()->format('H:i');
+        $now = CarbonImmutable::now()->format('H:i');
 
         // Обработка перехода через полночь (23:00 - 07:00)
         if ($startTime > $endTime) {

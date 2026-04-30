@@ -16,16 +16,13 @@ use Psr\Log\LoggerInterface;
  * - Инвалидация кэша товара и каталога
  * - Логирование изменений
  * - Оповещение поисковых индексов
- *
- * @package App\Domains\VerticalName\Listeners
  */
 final readonly class HandleVerticalItemUpdated
 {
     public function __construct(
-        private LoggerInterface $logger,
-        private CacheRepository $cache,
-    ) {
-    }
+        private readonly LoggerInterface $logger,
+        private readonly CacheRepository $cache,
+    ) {}
 
     /**
      * Обработка события обновления товара.
@@ -40,7 +37,7 @@ final readonly class HandleVerticalItemUpdated
         $this->invalidateItemCache($event->item->id, $event->tenantId);
         $this->invalidateCatalogCache($event->tenantId);
 
-        $this->logger->info('VerticalName item updated event handled', $event->toLogContext());
+        $this->logger->$this->logger->info('VerticalName item updated event handled', $event->toLogContext());
 
         if ($this->shouldUpdateSearchIndex($event->changedFields)) {
             $this->triggerSearchIndexUpdate($event);
@@ -52,7 +49,7 @@ final readonly class HandleVerticalItemUpdated
      */
     private function invalidateItemCache(int $itemId, int $tenantId): void
     {
-        $this->cache->forget('vertical_name_item:' . $tenantId . ':' . $itemId);
+        $this->cache->forget('vertical_name_item:'.$tenantId.':'.$itemId);
 
         $this->logger->debug('VerticalName item cache invalidated', [
             'item_id' => $itemId,
@@ -65,8 +62,8 @@ final readonly class HandleVerticalItemUpdated
      */
     private function invalidateCatalogCache(int $tenantId): void
     {
-        $this->cache->forget('vertical_name_catalog:' . $tenantId);
-        $this->cache->forget('vertical_name_b2b:' . $tenantId);
+        $this->cache->forget('vertical_name_catalog:'.$tenantId);
+        $this->cache->forget('vertical_name_b2b:'.$tenantId);
     }
 
     /**
@@ -86,7 +83,7 @@ final readonly class HandleVerticalItemUpdated
      */
     private function triggerSearchIndexUpdate(VerticalItemUpdatedEvent $event): void
     {
-        $this->logger->info('VerticalName search index update triggered', [
+        $this->logger->$this->logger->info('VerticalName search index update triggered', [
             'item_id' => $event->item->id,
             'changed_fields' => $event->changedFields,
             'correlation_id' => $event->correlationId,

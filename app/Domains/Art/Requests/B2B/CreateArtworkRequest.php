@@ -13,8 +13,6 @@ use Illuminate\Support\Str;
  * CANON 2026 — Layer 7: Requests (B2B namespace).
  * Авторизация проверяет роли tenant_owner / b2b_manager.
  * Валидация включает B2B-специфичные поля: inn, business_card_id, MOQ.
- *
- * @package App\Domains\Art\Requests\B2B
  */
 final class CreateArtworkRequest extends FormRequest
 {

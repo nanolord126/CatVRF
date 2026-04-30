@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Beauty;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\Auth\Guard;
@@ -15,15 +21,14 @@ use App\Services\FraudControlService;
 /**
  * Beauty Service API Controller — услуги салонов красоты.
  */
-class ServiceController extends Controller
+final class ServiceController extends Controller
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly FraudControlService $fraudService,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
         private readonly Guard $guard,
-        private readonly ResponseFactory $response,
-    ) {}
+        private readonly ResponseFactory $response,) {}
 
     /**
      * GET /services — список услуг (публичный).
@@ -133,11 +138,11 @@ class ServiceController extends Controller
                     'price' => $request->integer('price'),
                     'duration_minutes' => $request->integer('duration_minutes', 60),
                     'description' => $request->input('description', ''),
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
-                $this->logger->channel('audit')->info('Beauty service created', [
+                $this->logger->channel('audit')->$this->logger->info('Beauty service created', [
                     'correlation_id' => $correlationId,
                     'service_id' => $serviceId,
                     'user_id' => auth()->id(),
@@ -182,7 +187,7 @@ class ServiceController extends Controller
                         'duration_minutes' => $request->input('duration_minutes'),
                         'description' => $request->input('description'),
                         'correlation_id' => $correlationId,
-                        'updated_at' => now(),
+                        'updated_at' => CarbonImmutable::now(),
                     ]));
 
                 if ($updated === 0) {
@@ -193,7 +198,7 @@ class ServiceController extends Controller
                     ], 404);
                 }
 
-                $this->logger->channel('audit')->info('Beauty service updated', [
+                $this->logger->channel('audit')->$this->logger->info('Beauty service updated', [
                     'correlation_id' => $correlationId,
                     'service_id' => $service,
                 ]);
@@ -237,7 +242,7 @@ class ServiceController extends Controller
                     ], 404);
                 }
 
-                $this->logger->channel('audit')->info('Beauty service deleted', [
+                $this->logger->channel('audit')->$this->logger->info('Beauty service deleted', [
                     'correlation_id' => $correlationId,
                     'service_id' => $service,
                 ]);
@@ -262,4 +267,3 @@ class ServiceController extends Controller
         }
     }
 }
-

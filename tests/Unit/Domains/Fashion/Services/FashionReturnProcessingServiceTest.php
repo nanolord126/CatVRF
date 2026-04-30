@@ -14,12 +14,6 @@ final class FashionReturnProcessingServiceTest extends TestCase
 
     private FashionReturnProcessingService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(FashionReturnProcessingService::class);
-    }
-
     public function test_process_return_request(): void
     {
         $result = $this->service->processReturnRequest(1, 1, 'wrong_size', 'new_with_tags', 1, 1);
@@ -84,5 +78,11 @@ final class FashionReturnProcessingServiceTest extends TestCase
         $result = $this->service->getReturnStatistics(1, 1, '30d');
 
         $this->assertArrayHasKey('top_return_reasons', $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(FashionReturnProcessingService::class);
     }
 }

@@ -12,30 +12,24 @@ use App\Models\User;
 use App\Models\Tenant;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 final class PropertyViewingModelTest extends TestCase
 {
     use RefreshDatabase;
 
     private Tenant $tenant;
+
     private Property $property;
+
     private User $user;
+
     private RealEstateAgent $agent;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->property = Property::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->user = User::factory()->create();
-        $this->agent = RealEstateAgent::factory()->create(['tenant_id' => $this->tenant->id]);
-    }
 
     public function test_property_viewing_has_fillable_fields(): void
     {
         $viewing = PropertyViewing::create([
-            'uuid' => \Illuminate\Support\Str::uuid(),
+            'uuid' => Str::uuid(),
             'tenant_id' => $this->tenant->id,
             'property_id' => $this->property->id,
             'user_id' => $this->user->id,
@@ -43,7 +37,7 @@ final class PropertyViewingModelTest extends TestCase
             'scheduled_at' => Carbon::now()->addDays(2),
             'status' => 'pending',
             'is_b2b' => false,
-            'correlation_id' => \Illuminate\Support\Str::uuid(),
+            'correlation_id' => Str::uuid(),
         ]);
 
         $this->assertDatabaseHas('property_viewings', [
@@ -310,5 +304,15 @@ final class PropertyViewingModelTest extends TestCase
         $this->assertIsArray($viewing->tags);
         $this->assertEquals(['key' => 'value'], $viewing->metadata);
         $this->assertEquals(['tag1', 'tag2'], $viewing->tags);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->property = Property::factory()->create(['tenant_id' => $this->tenant->id]);
+        $this->user = User::factory()->create();
+        $this->agent = RealEstateAgent::factory()->create(['tenant_id' => $this->tenant->id]);
     }
 }

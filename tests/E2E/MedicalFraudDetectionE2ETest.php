@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\E2E;
 
@@ -12,16 +14,10 @@ class MedicalFraudDetectionE2ETest extends TestCase
     use RefreshDatabase;
 
     private Tenant $tenant;
-    private User $user;
-    private string $token;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create();
-        $this->token = $this->user->createToken('test')->plainTextToken;
-    }
+    private User $user;
+
+    private string $token;
 
     public function test_detect_rapid_appointment_attempts(): void
     {
@@ -41,11 +37,11 @@ class MedicalFraudDetectionE2ETest extends TestCase
 
         // First attempts should succeed, later ones should be rate limited or flagged
         $this->assertTrue($responses[0]->status() < 300);
-        
+
         // Later attempts should be rate limited (429) or have fraud score
         $lastResponse = $responses[4];
         $this->assertTrue(
-            $lastResponse->status() === 429 || 
+            $lastResponse->status() === 429 ||
             $lastResponse->status() >= 400 ||
             ($lastResponse->json('data.fraud_score') && $lastResponse->json('data.fraud_score') > 0.5)
         );
@@ -66,7 +62,7 @@ class MedicalFraudDetectionE2ETest extends TestCase
 
         // Should be blocked or flagged as fraud
         $this->assertTrue(
-            $response->status() === 404 || 
+            $response->status() === 404 ||
             $response->status() === 422 ||
             ($response->json('data.fraud_score') && $response->json('data.fraud_score') > 0.7)
         );
@@ -87,12 +83,12 @@ class MedicalFraudDetectionE2ETest extends TestCase
 
         // PII should be detected and either blocked or anonymized
         $this->assertTrue($response->status() < 500);
-        
+
         if ($response->status() === 201) {
             // If created, PII should be anonymized
             $symptoms = $response->json('data.symptoms');
             $this->assertFalse(
-                str_contains($symptoms, '123-45-6789') || 
+                str_contains($symptoms, '123-45-6789') ||
                 str_contains($symptoms, '4111-1111-1111-1111'),
                 'PII should be anonymized'
             );
@@ -154,7 +150,7 @@ class MedicalFraudDetectionE2ETest extends TestCase
 
             // Should be prevented
             $this->assertTrue(
-                $secondAppointment->status() === 409 || 
+                $secondAppointment->status() === 409 ||
                 $secondAppointment->status() === 422 ||
                 str_contains($secondAppointment->json('message'), 'already booked')
             );
@@ -196,7 +192,7 @@ class MedicalFraudDetectionE2ETest extends TestCase
 
         // XSS should be blocked or sanitized
         $this->assertTrue($response->status() < 500);
-        
+
         if ($response->status() === 201) {
             $symptoms = $response->json('data.symptoms');
             $this->assertFalse(
@@ -221,7 +217,7 @@ class MedicalFraudDetectionE2ETest extends TestCase
 
         if ($appointment->status() === 201 && $appointment->json('data.uuid')) {
             $uuid = $appointment->json('data.uuid');
-            
+
             // Attempt to modify medical record with fake data
             $update = $this->withHeader('Authorization', "Bearer {$this->token}")
                 ->putJson("/api/v1/medical/appointments/{$uuid}", [
@@ -231,7 +227,7 @@ class MedicalFraudDetectionE2ETest extends TestCase
 
             // Should be blocked or flagged
             $this->assertTrue(
-                $update->status() === 403 || 
+                $update->status() === 403 ||
                 $update->status() === 422 ||
                 ($update->json('data.fraud_score') && $update->json('data.fraud_score') > 0.8)
             );
@@ -282,13 +278,21 @@ class MedicalFraudDetectionE2ETest extends TestCase
 
         // PII should be anonymized before AI processing
         $this->assertTrue($response->status() < 500);
-        
+
         // Response should not contain PII
         $responseContent = json_encode($response->json());
         $this->assertFalse(
-            str_contains($responseContent, 'John Doe') || 
+            str_contains($responseContent, 'John Doe') ||
             str_contains($responseContent, '555-1234'),
             'PII should not be in response'
         );
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create();
+        $this->token = $this->user->createToken('test')->plainTextToken;
     }
 }

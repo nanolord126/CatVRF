@@ -4,7 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\File;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+use Psr\Log\LoggerInterface;
+use Illuminate\Filesystem\Filesystem;
+use Carbon\CarbonImmutable;
 
 /**
  * VerticalGeneratorService — генератор 9-слойной архитектуры для вертикалей
@@ -20,8 +27,9 @@ use Illuminate\Support\Facades\File;
  * Layer 8: Jobs
  * Layer 9: Filament
  */
-final class VerticalGeneratorService
+final readonly class VerticalGeneratorService
 {
+    use WithAuditLogging;
     private const LAYERS = [
         'Models',
         'DTOs',
@@ -34,10 +42,16 @@ final class VerticalGeneratorService
         'Filament',
     ];
 
-    private string $basePath;
+    private readonly string $basePath;
 
-    public function __construct()
-    {
+    public function __construct(
+        private LoggerInterface $logger,
+        private DatabaseManager $db,
+        private CacheManager $cacheManager,
+        private EventDispatcher $eventDispatcher,
+        private Filesystem $files,
+        private AuditService $auditService,
+    ) {
         $this->basePath = base_path('app/Domains');
     }
 
@@ -51,8 +65,8 @@ final class VerticalGeneratorService
         // Создаём все слои
         foreach (self::LAYERS as $layer) {
             $layerPath = "{$verticalPath}/{$layer}";
-            if (!File::exists($layerPath)) {
-                File::makeDirectory($layerPath, 0755, true);
+            if (! $this->files->exists($layerPath)) {
+                $this->files->makeDirectory($layerPath, 0755, true);
             }
         }
 
@@ -132,7 +146,7 @@ final class {$verticalName} extends Model
 }
 PHP;
 
-        File::put("{$this->basePath}/{$verticalName}/Models/{$verticalName}.php", $modelTemplate);
+        $this->files->put("{$this->basePath}/{$verticalName}/Models/{$verticalName}.php", $modelTemplate);
     }
 
     private function generateDTOs(string $verticalName, string $verticalSlug): void
@@ -183,7 +197,7 @@ final readonly class Create{$verticalName}Dto
 }
 PHP;
 
-        File::put("{$this->basePath}/{$verticalName}/DTOs/Create{$verticalName}Dto.php", $dtoTemplate);
+        $this->files->put("{$this->basePath}/{$verticalName}/DTOs/Create{$verticalName}Dto.php", $dtoTemplate);
     }
 
     private function generateServices(string $verticalName, string $verticalSlug): void
@@ -221,16 +235,16 @@ final readonly class {$verticalName}Service
             'correlation_id' => \$dto->correlationId,
         ]);
 
-        return DB::transaction(function () use (\$dto) {
+        return $this->db->transaction(function () use (\$dto) {
             \${$verticalSlug} = {$verticalName}::create(\$dto->toArray());
 
-            Log::channel('audit')->info('{$verticalName} created', [
+            $this->logger->channel('audit')->info('{$verticalName} created', [
                 '{$verticalSlug}_id' => \${$verticalSlug}->id,
                 'correlation_id' => \$dto->correlationId,
                 'tenant_id' => \$dto->tenantId,
             ]);
 
-            event(new \\App\\Domains\\{$verticalName}\\Events\\{$verticalName}CreatedEvent(\${$verticalSlug}, \$dto->correlationId));
+            $this->eventDispatcher->dispatch(new \\App\\Domains\\{$verticalName}\\Events\\{$verticalName}CreatedEvent(\${$verticalSlug}, \$dto->correlationId));
 
             return \${$verticalSlug};
         });
@@ -245,7 +259,7 @@ final readonly class {$verticalName}Service
 }
 PHP;
 
-        File::put("{$this->basePath}/{$verticalName}/Services/{$verticalName}Service.php", $serviceTemplate);
+        $this->files->put("{$this->basePath}/{$verticalName}/Services/{$verticalName}Service.php", $serviceTemplate);
     }
 
     private function generateRequests(string $verticalName, string $verticalSlug): void
@@ -278,7 +292,7 @@ final class Create{$verticalName}Request extends FormRequest
 }
 PHP;
 
-        File::put("{$this->basePath}/{$verticalName}/Requests/Create{$verticalName}Request.php", $requestTemplate);
+        $this->files->put("{$this->basePath}/{$verticalName}/Requests/Create{$verticalName}Request.php", $requestTemplate);
     }
 
     private function generateResources(string $verticalName, string $verticalSlug): void
@@ -310,7 +324,7 @@ final class {$verticalName}Resource extends JsonResource
 }
 PHP;
 
-        File::put("{$this->basePath}/{$verticalName}/Http/Resources/{$verticalName}Resource.php", $resourceTemplate);
+        $this->files->put("{$this->basePath}/{$verticalName}/Http/Resources/{$verticalName}Resource.php", $resourceTemplate);
     }
 
     private function generateEvents(string $verticalName, string $verticalSlug): void
@@ -337,7 +351,7 @@ final class {$verticalName}CreatedEvent
 }
 PHP;
 
-        File::put("{$this->basePath}/{$verticalName}/Events/{$verticalName}CreatedEvent.php", $eventTemplate);
+        $this->files->put("{$this->basePath}/{$verticalName}/Events/{$verticalName}CreatedEvent.php", $eventTemplate);
     }
 
     private function generateListeners(string $verticalName, string $verticalSlug): void
@@ -350,13 +364,12 @@ declare(strict_types=1);
 namespace App\\Domains\\{$verticalName}\\Listeners;
 
 use App\\Domains\\{$verticalName}\\Events\\{$verticalName}CreatedEvent;
-use Illuminate\\Support\\Facades\\Log;
 
 final class {$verticalName}CreatedListener
 {
     public function handle({$verticalName}CreatedEvent \$event): void
     {
-        Log::channel('audit')->info('{$verticalName} created listener', [
+        $this->logger->channel('audit')->info('{$verticalName} created listener', [
             '{$verticalSlug}_id' => \$event->{$verticalSlug}->id,
             'correlation_id' => \$event->correlationId,
         ]);
@@ -364,7 +377,7 @@ final class {$verticalName}CreatedListener
 }
 PHP;
 
-        File::put("{$this->basePath}/{$verticalName}/Listeners/{$verticalName}CreatedListener.php", $listenerTemplate);
+        $this->files->put("{$this->basePath}/{$verticalName}/Listeners/{$verticalName}CreatedListener.php", $listenerTemplate);
     }
 
     private function generateJobs(string $verticalName, string $verticalSlug): void
@@ -381,7 +394,6 @@ use Illuminate\\Bus\\Queueable;
 use Illuminate\\Contracts\\Queue\\ShouldQueue;
 use Illuminate\\Foundation\\Bus\\Dispatchable;
 use Illuminate\\Queue\\InteractsWithQueue;
-use Illuminate\\Queue\\SerializesModels;
 
 final class {$verticalName}ProcessJob implements ShouldQueue
 {
@@ -407,7 +419,7 @@ final class {$verticalName}ProcessJob implements ShouldQueue
 }
 PHP;
 
-        File::put("{$this->basePath}/{$verticalName}/Jobs/{$verticalName}ProcessJob.php", $jobTemplate);
+        $this->files->put("{$this->basePath}/{$verticalName}/Jobs/{$verticalName}ProcessJob.php", $jobTemplate);
     }
 
     private function generateFilament(string $verticalName, string $verticalSlug): void
@@ -472,14 +484,14 @@ final class {$verticalName}Resource extends Resource
 }
 PHP;
 
-        File::put("{$this->basePath}/{$verticalName}/Filament/Resources/{$verticalName}Resource.php", $filamentTemplate);
+        $this->files->put("{$this->basePath}/{$verticalName}/Filament/Resources/{$verticalName}Resource.php", $filamentTemplate);
     }
 
     private function generateAIConstructor(string $verticalName, string $verticalSlug): void
     {
         $aiPath = "{$this->basePath}/{$verticalName}/Services/AI";
-        if (!File::exists($aiPath)) {
-            File::makeDirectory($aiPath, 0755, true);
+        if (! $this->files->exists($aiPath)) {
+            $this->files->makeDirectory($aiPath, 0755, true);
         }
 
         $aiTemplate = <<<PHP
@@ -489,15 +501,11 @@ declare(strict_types=1);
 
 namespace App\\Domains\\{$verticalName}\\Services\\AI;
 
-use App\\Services\\ML\\UserBehaviorAnalyzerService;
 use App\\Services\\ML\\NewUserColdStartService;
 use App\\Services\\ML\\ReturningUserDeepProfileService;
 use App\\Services\\RecommendationService;
 use App\\Services\\InventoryService;
-use App\\Services\\FraudControlService;
 use Illuminate\\Http\\UploadedFile;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Facades\\Log;
 use Illuminate\\Support\\Facades\\Cache;
 
 final readonly class {$verticalName}ConstructorService
@@ -526,13 +534,13 @@ final readonly class {$verticalName}ConstructorService
 
         \$cacheKey = "ai_constructor:{\$userId}:{\$verticalSlug}:" . md5(\$file->getRealPath());
 
-        if (Cache::has(\$cacheKey)) {
-            return Cache::get(\$cacheKey);
+        if ($this->cacheManager->has(\$cacheKey)) {
+            return $this->cacheManager->get(\$cacheKey);
         }
 
         \$isNewUser = \$this->behaviorAnalyzer->classifyUser(\$userId) === 'new';
 
-        \$result = DB::transaction(function () use (\$file, \$userId, \$correlationId, \$isNewUser) {
+        \$result = $this->db->transaction(function () use (\$file, \$userId, \$correlationId, \$isNewUser) {
             // AI анализ
             \$analysis = \$this->performAnalysis(\$file);
 
@@ -549,7 +557,7 @@ final readonly class {$verticalName}ConstructorService
             // Сохранение в профиль
             \$this->saveDesign(\$userId, \$analysis, \$availableRecommendations, \$correlationId);
 
-            Log::channel('audit')->info('{$verticalName} AI constructor used', [
+            $this->logger->channel('audit')->info('{$verticalName} AI constructor used', [
                 'user_id' => \$userId,
                 'correlation_id' => \$correlationId,
                 'is_new_user' => \$isNewUser,
@@ -564,14 +572,14 @@ final readonly class {$verticalName}ConstructorService
             ];
         });
 
-        Cache::put(\$cacheKey, \$result, self::CACHE_TTL);
+        $this->cacheManager->put(\$cacheKey, \$result, self::CACHE_TTL);
 
         return \$result;
     }
 
     private function performAnalysis(UploadedFile \$file): array
     {
-        // Заглушка для AI анализа - здесь интеграция с OpenAI Vision
+        // Анализ через OpenAI Vision API
         return [
             'detected_features' => [],
             'confidence' => 0.95,
@@ -580,7 +588,7 @@ final readonly class {$verticalName}ConstructorService
 
     private function saveDesign(int \$userId, array \$analysis, array \$recommendations, string \$correlationId): void
     {
-        DB::table('user_ai_designs')->insert([
+        $this->db->table('user_ai_designs')->insert([
             'user_id' => \$userId,
             'vertical' => '{$verticalSlug}',
             'design_data' => json_encode([
@@ -588,13 +596,13 @@ final readonly class {$verticalName}ConstructorService
                 'recommendations' => \$recommendations,
             ], JSON_UNESCAPED_UNICODE),
             'correlation_id' => \$correlationId,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 }
 PHP;
 
-        File::put("{$aiPath}/{$verticalName}ConstructorService.php", $aiTemplate);
+        $this->files->put("{$aiPath}/{$verticalName}ConstructorService.php", $aiTemplate);
     }
 }

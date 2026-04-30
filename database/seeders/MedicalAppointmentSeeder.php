@@ -1,9 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
 use App\Domains\Medical\MedicalHealthcare\Models\MedicalAppointment;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 final class MedicalAppointmentSeeder extends Seeder
 {
@@ -27,7 +30,7 @@ final class MedicalAppointmentSeeder extends Seeder
             MedicalAppointment::updateOrCreate(
                 ['patient_phone' => $item['patient_phone'], 'tenant_id' => 1],
                 array_merge($item, [
-                    'uuid' => \Illuminate\Support\Str::uuid(),
+                    'uuid' => Str::uuid(),
                     'tenant_id' => 1,
                     'appointment_date' => $apptDate,
                 ])

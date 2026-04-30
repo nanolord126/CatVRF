@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreateDentalService — CatVRF 2026 Component.
@@ -7,22 +9,25 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createdentalservice
  */
 
-
 namespace App\Filament\Tenant\Resources\Pages;
 
-
 use Psr\Log\LoggerInterface;
+
 use App\Filament\Tenant\Resources\DentalServiceResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use Illuminate\Support\Str;
 
 /**
  * Class CreateDentalService
@@ -34,30 +39,28 @@ use Illuminate\Support\Facades\Log;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Filament\Tenant\Resources\Pages
+ * @see FraudControlService
+ * @see AuditService
  */
 final class CreateDentalService extends CreateRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
     protected static string $resource = DentalServiceResource::class;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['tenant_id']      = tenant()->id ?? null;
-        $data['correlation_id'] = (string) \Illuminate\Support\Str::uuid();
-        $data['uuid']           = (string) \Illuminate\Support\Str::uuid();
+        $data['correlation_id'] = (string) Str::uuid();
+        $data['uuid']           = (string) Str::uuid();
 
         return $data;
     }
 
     protected function afterCreate(): void
     {
-        \Illuminate\Support\Facades\Log::channel('audit')->info('DentalService created', [
+        $this->log->channel('audit')->$this->logger->info('DentalService created', [
             'service_id'     => $this->record->id,
             'name'           => $this->record->name,
             'category'       => $this->record->category,

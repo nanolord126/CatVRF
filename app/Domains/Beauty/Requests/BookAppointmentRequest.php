@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Requests;
+
+use Illuminate\Http\JsonResponse;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
@@ -55,18 +59,6 @@ final class BookAppointmentRequest extends FormRequest
         ];
     }
 
-    protected function failedValidation(Validator $validator): void
-    {
-        throw new HttpResponseException(
-            response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-                'correlation_id' => $this->header('X-Correlation-ID') ?? Str::uuid()->toString(),
-            ], 422)
-        );
-    }
-
     public function getCorrelationId(): string
     {
         return $this->header('X-Correlation-ID') ?? Str::uuid()->toString();
@@ -90,5 +82,17 @@ final class BookAppointmentRequest extends FormRequest
     public function getBiometricToken(): ?string
     {
         return $this->input('biometric_token');
+    }
+
+    protected function failedValidation(Validator $validator): void
+    {
+        throw new HttpResponseException(
+            new JsonResponse([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+                'correlation_id' => $this->header('X-Correlation-ID') ?? Str::uuid()->toString(),
+            ], 422)
+        );
     }
 }

@@ -27,12 +27,6 @@ final class CrmCoreServicesTest extends TestCase
 
     private string $correlationId;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->correlationId = $this->faker->uuid();
-    }
-
     // ═══════════════════════════════════════════════════════
     //  SEGMENTATION SERVICE
     // ═══════════════════════════════════════════════════════
@@ -213,5 +207,11 @@ final class CrmCoreServicesTest extends TestCase
 
         $this->assertIsArray($dashboard);
         $this->assertEquals(0, $dashboard['total_clients'] ?? 0);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->correlationId = $this->faker->uuid();
     }
 }

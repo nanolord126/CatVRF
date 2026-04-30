@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Notifications\Channels;
+
+use Carbon\CarbonImmutable;
 
 use Psr\Log\LoggerInterface;
 use Illuminate\Notifications\Notification;
@@ -48,11 +52,12 @@ final class MarketplaceChannel
      */
     public function send(object $notifiable, Notification $notification): void
     {
-        if (!method_exists($notification, 'toMarketplace')) {
+        if (! method_exists($notification, 'toMarketplace')) {
             $this->logger->warning('Notification does not have toMarketplace method', [
                 'notification_class' => get_class($notification),
                 'notifiable_id'      => $notifiable->id ?? null,
             ]);
+
             return;
         }
 
@@ -79,10 +84,11 @@ final class MarketplaceChannel
                 ->first();
 
             if ($channel === null) {
-                $this->logger->info('No active marketplace channel for tenant, skipping', [
+                $this->logger->$this->logger->info('No active marketplace channel for tenant, skipping', [
                     'tenant_id'      => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
+
                 return;
             }
 
@@ -92,7 +98,7 @@ final class MarketplaceChannel
             // Рассылаем in-app уведомления подписчикам
             $subscriberCount = $this->notifySubscribers($channel, $data, $correlationId);
 
-            $this->logger->info('Marketplace channel notification sent', [
+            $this->logger->$this->logger->info('Marketplace channel notification sent', [
                 'type'             => method_exists($notification, 'getType') ? $notification->getType() : get_class($notification),
                 'tenant_id'        => $tenantId,
                 'channel_id'       => $channel->id,
@@ -119,10 +125,10 @@ final class MarketplaceChannel
      * Создаёт пост в канале тенанта и рассылает in-app подписчикам.
      */
     public function sendDirect(
-        int     $tenantId,
-        string  $title,
-        string  $message,
-        bool    $isPromo = false,
+        int $tenantId,
+        string $title,
+        string $message,
+        bool $isPromo = false,
         ?string $correlationId = null,
     ): void {
         $correlationId = $correlationId ?? Str::uuid()->toString();
@@ -137,6 +143,7 @@ final class MarketplaceChannel
                 'tenant_id'      => $tenantId,
                 'correlation_id' => $correlationId,
             ]);
+
             return;
         }
 
@@ -149,7 +156,7 @@ final class MarketplaceChannel
         $postId = $this->createChannelPost($channel, $data, $correlationId, $tenantId);
         $subscriberCount = $this->notifySubscribers($channel, $data, $correlationId);
 
-        $this->logger->info('Marketplace direct notification sent', [
+        $this->logger->$this->logger->info('Marketplace direct notification sent', [
             'tenant_id'        => $tenantId,
             'channel_id'       => $channel->id,
             'post_id'          => $postId,
@@ -162,10 +169,10 @@ final class MarketplaceChannel
      * Отправить уведомление конкретному подписчику канала.
      */
     public function sendToSubscriber(
-        int     $userId,
-        int     $tenantId,
-        string  $title,
-        string  $message,
+        int $userId,
+        int $tenantId,
+        string $title,
+        string $message,
         ?string $correlationId = null,
     ): void {
         $correlationId = $correlationId ?? Str::uuid()->toString();
@@ -189,9 +196,9 @@ final class MarketplaceChannel
      */
     private function createChannelPost(
         BusinessChannel $channel,
-        array           $data,
-        string          $correlationId,
-        int|string      $tenantId,
+        array $data,
+        string $correlationId,
+        int|string $tenantId,
     ): int|string {
         $postId = $this->db->table('posts')->insertGetId([
             'uuid'           => Str::uuid()->toString(),
@@ -200,22 +207,22 @@ final class MarketplaceChannel
             'tenant_id'      => $tenantId,
             'title'          => $data['title'] ?? '',
             'content'        => $data['content'] ?? $data['message'] ?? '',
-            'slug'           => Str::slug($data['title'] ?? 'notification') . '-' . Str::random(6),
+            'slug'           => Str::slug($data['title'] ?? 'notification').'-'.Str::random(6),
             'status'         => 'published',
             'visibility'     => 'public',
-            'published_at'   => now(),
+            'published_at'   => CarbonImmutable::now(),
             'is_promo'       => $data['is_promo'] ?? false,
             'is_moderated'   => true,
             'views_count'    => 0,
             'reactions_count' => 0,
             'tags'           => json_encode(['type' => 'notification', 'correlation_id' => $correlationId]),
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'created_at'     => CarbonImmutable::now(),
+            'updated_at'     => CarbonImmutable::now(),
         ]);
 
         // Обновляем счётчик постов в канале
         $channel->increment('posts_count');
-        $channel->update(['last_post_at' => now()]);
+        $channel->update(['last_post_at' => CarbonImmutable::now()]);
 
         return $postId;
     }
@@ -227,8 +234,8 @@ final class MarketplaceChannel
      */
     private function notifySubscribers(
         BusinessChannel $channel,
-        array           $data,
-        string          $correlationId,
+        array $data,
+        string $correlationId,
     ): int {
         $subscribers = ChannelSubscriber::withoutGlobalScopes()
             ->where('channel_id', $channel->id)

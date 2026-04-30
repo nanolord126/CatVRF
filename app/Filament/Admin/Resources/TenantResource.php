@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Admin\Resources;
 
@@ -19,15 +21,24 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
+use App\Filament\Admin\Resources\TenantResource\Pages\EditTenant;
+use App\Filament\Admin\Resources\TenantResource\Pages\ListTenants;
+use App\Filament\Admin\Resources\TenantResource\Pages\ViewTenant;
 
 final class TenantResource extends Resource
 {
     protected static ?string $model = Tenant::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
+
     protected static ?string $navigationGroup = 'Управление';
+
     protected static ?string $navigationLabel = 'Тенанты';
+
     protected static ?string $modelLabel = 'Тенант';
+
     protected static ?string $pluralModelLabel = 'Тенанты';
+
     protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form
@@ -158,12 +169,12 @@ final class TenantResource extends Resource
                     ->icon(fn (Tenant $record): string => $record->is_active ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
                     ->color(fn (Tenant $record): string => $record->is_active ? 'danger' : 'success')
                     ->requiresConfirmation()
-                    ->action(fn (Tenant $record) => $record->update(['is_active' => !$record->is_active])),
+                    ->action(fn (Tenant $record) => $record->update(['is_active' => ! $record->is_active])),
                 Action::make('verify')
                     ->label('Верифицировать')
                     ->icon('heroicon-o-shield-check')
                     ->color('success')
-                    ->visible(fn (Tenant $record): bool => !$record->is_verified)
+                    ->visible(fn (Tenant $record): bool => ! $record->is_verified)
                     ->requiresConfirmation()
                     ->action(fn (Tenant $record) => $record->update(['is_verified' => true])),
             ])
@@ -189,9 +200,9 @@ final class TenantResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Admin\Resources\TenantResource\Pages\ListTenants::route('/'),
-            'view'  => \App\Filament\Admin\Resources\TenantResource\Pages\ViewTenant::route('/{record}'),
-            'edit'  => \App\Filament\Admin\Resources\TenantResource\Pages\EditTenant::route('/{record}/edit'),
+            'index' => ListTenants::route('/'),
+            'view'  => ViewTenant::route('/{record}'),
+            'edit'  => EditTenant::route('/{record}/edit'),
         ];
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Filament;
 
@@ -9,13 +11,20 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Str;
+use App\Domains\Beauty\Filament\AppointmentResource\Pages\CreateAppointment;
+use App\Domains\Beauty\Filament\AppointmentResource\Pages\EditAppointment;
+use App\Domains\Beauty\Filament\AppointmentResource\Pages\ListAppointments;
+use App\Domains\Beauty\Filament\AppointmentResource\Pages\ViewAppointment;
+use Carbon\CarbonImmutable;
 
 final class AppointmentResource extends Resource
 {
     protected static ?string $model = Appointment::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-calendar';
+
     protected static ?string $navigationGroup = 'Beauty';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
@@ -46,10 +55,10 @@ final class AppointmentResource extends Resource
                             ->preload(),
                         Forms\Components\DateTimePicker::make('starts_at')
                             ->required()
-                            ->minDate(now()),
+                            ->minDate(CarbonImmutable::now()),
                         Forms\Components\DateTimePicker::make('ends_at')
                             ->required()
-                            ->minDate(now()),
+                            ->minDate(CarbonImmutable::now()),
                         Forms\Components\TextInput::make('total_price')
                             ->required()
                             ->numeric()
@@ -190,10 +199,10 @@ final class AppointmentResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Beauty\Filament\AppointmentResource\Pages\ListAppointments::route('/'),
-            'create' => \App\Domains\Beauty\Filament\AppointmentResource\Pages\CreateAppointment::route('/create'),
-            'view' => \App\Domains\Beauty\Filament\AppointmentResource\Pages\ViewAppointment::route('/{record}'),
-            'edit' => \App\Domains\Beauty\Filament\AppointmentResource\Pages\EditAppointment::route('/{record}/edit'),
+            'index' => ListAppointments::route('/'),
+            'create' => CreateAppointment::route('/create'),
+            'view' => ViewAppointment::route('/{record}'),
+            'edit' => EditAppointment::route('/{record}/edit'),
         ];
     }
 }

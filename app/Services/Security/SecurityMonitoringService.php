@@ -1,14 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Security;
 
+use Psr\Log\LoggerInterface;
 
-use Illuminate\Http\Request;
+use App\Events\SecurityEventOccurred;
 use App\Services\Fraud\FraudNotificationService;
-
-use Illuminate\Support\Str;
-use Illuminate\Log\LogManager;
+use App\Services\ML\BigDataAggregatorService;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Http\Request;
+use Illuminate\Log\LogManager;
+use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
 /**
  * Сервис мониторинга безопасности.
@@ -28,34 +34,33 @@ use Illuminate\Database\DatabaseManager;
  */
 final readonly class SecurityMonitoringService
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private FraudNotificationService $notification,
+        private readonly FraudNotificationService $notification,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-    ) {}
+        private readonly BigDataAggregatorService $bigData,
+        private readonly Dispatcher $events,) {}
 
     /**
      * Записать security-событие.
      *
-     * @param  string $eventType  login_failed | rate_limit_exceeded | fraud_attempt | brute_force | suspicious_login | 2fa_failed | suspicious_payment | suspicious_ai_usage
-     * @param  int    $userId
-     * @param  array  $details    Дополнительный контекст
-     * @param  string $correlationId
-     * @param  float  $score      Fraud-score (0–1), если применимо
+     * @param  string  $eventType  login_failed | rate_limit_exceeded | fraud_attempt | brute_force | suspicious_login | 2fa_failed | suspicious_payment | suspicious_ai_usage
+     * @param  array  $details  Дополнительный контекст
+     * @param  float  $score  Fraud-score (0–1), если применимо
      */
     public function logEvent(
         string $eventType,
-        int    $userId,
-        array  $details        = [],
+        int $userId,
+        array $details        = [],
         string $correlationId  = '',
-        float  $score          = 0.0,
+        float $score          = 0.0,
     ): void {
         $correlationId = $correlationId ?: Str::uuid()->toString();
         $severity      = $this->calculateSeverity($eventType, $score, $details);
 
         // 1. Логируем в security канал
-        $this->logger->channel('security')->info("Security event: {$eventType}", [
+        $this->logger->channel('security')->$this->logger->info("Security event: {$eventType}", [
             'event_type'     => $eventType,
             'user_id'        => $userId,
             'severity'       => $severity,
@@ -68,6 +73,9 @@ final readonly class SecurityMonitoringService
 
         // 2. Сохраняем в БД (PostgreSQL)
         $this->persistEvent($eventType, $userId, $severity, $score, $details, $correlationId);
+
+        // 2.5. Записываем в ClickHouse через BigDataAggregatorService
+        $this->persistToClickHouse($eventType, $userId, $severity, $score, $details, $correlationId);
 
         // 3. Реал-тайм broadcast (Laravel Echo → Filament SecurityDashboard)
         $this->broadcast($eventType, $userId, $severity, $correlationId);
@@ -135,10 +143,10 @@ final readonly class SecurityMonitoringService
 
     private function persistEvent(
         string $eventType,
-        int    $userId,
+        int $userId,
         string $severity,
-        float  $score,
-        array  $details,
+        float $score,
+        array $details,
         string $correlationId,
     ): void {
         try {
@@ -149,11 +157,11 @@ final readonly class SecurityMonitoringService
                 'severity'           => $severity,
                 'score'              => $score,
                 'ip_address'         => $this->request->ip(),
-                'device_fingerprint' => hash('sha256', $this->request->ip() . $this->request->userAgent()),
+                'device_fingerprint' => hash('sha256', $this->request->ip().$this->request->userAgent()),
                 'details'            => json_encode($details, JSON_UNESCAPED_UNICODE),
                 'correlation_id'     => $correlationId,
-                'created_at'         => now(),
-                'updated_at'         => now(),
+                'created_at'         => CarbonImmutable::now(),
+                'updated_at'         => CarbonImmutable::now(),
             ]);
         } catch (\Throwable $e) {
             // Не ломаем основной поток если security_events таблица недоступна
@@ -164,9 +172,39 @@ final readonly class SecurityMonitoringService
         }
     }
 
+    private function persistToClickHouse(
+        string $eventType,
+        int $userId,
+        string $severity,
+        float $score,
+        array $details,
+        string $correlationId,
+    ): void {
+        try {
+            // Анонимизируем userId перед отправкой в ClickHouse
+            $this->bigData->insertSecurityEvent([
+                'event_type'         => $eventType,
+                'user_hash'          => hash('sha256', $userId.config('app.key')),
+                'severity'           => $severity,
+                'score'              => $score,
+                'tenant_id'          => function_exists('tenant') && tenant() ? tenant()->id : null,
+                'ip_address'         => $this->request->ip(),
+                'details'            => json_encode($details, JSON_UNESCAPED_UNICODE),
+                'correlation_id'     => $correlationId,
+                'created_at'         => CarbonImmutable::now()->toIso8601String(),
+            ]);
+        } catch (\Throwable $e) {
+            // ClickHouse недоступен — не ломаем основной поток
+            $this->logger->channel('security')->warning('Failed to persist security event to ClickHouse', [
+                'error'          => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+        }
+    }
+
     private function broadcast(
         string $eventType,
-        int    $userId,
+        int $userId,
         string $severity,
         string $correlationId,
     ): void {
@@ -174,8 +212,8 @@ final readonly class SecurityMonitoringService
             // Канал для Admin/Tenant Panel (SecurityDashboard Filament)
             $tenantId = function_exists('tenant') && tenant() ? tenant()->id : 0;
 
-            \Illuminate\Support\Facades\Event::dispatch(
-                \App\Events\SecurityEventOccurred::now(
+            $this->events->dispatch(
+                SecurityEventOccurred::now(
                     eventType:     $eventType,
                     userId:        $userId,
                     severity:      $severity,

@@ -6,6 +6,7 @@ namespace App\Filament\Tenant\Resources\Beauty\MasterResource\Pages;
 
 use App\Filament\Tenant\Resources\Beauty\MasterResource;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Str;
 
 final class CreateMaster extends CreateRecord
 {
@@ -14,7 +15,7 @@ final class CreateMaster extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['tenant_id'] = tenant()->id;
-        $data['correlation_id'] = \Illuminate\Support\Str::uuid()->toString();
+        $data['correlation_id'] = Str::uuid()->toString();
 
         return $data;
     }

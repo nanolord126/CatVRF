@@ -52,6 +52,7 @@ final class TenantPanelProvider extends PanelProvider
                 DispatchServingFilamentEvent::class,
                 InitializeTenancyByDomain::class,
                 PreventAccessFromCentralDomains::class,
+                \App\Http\Middleware\FilamentTenantScope::class,
             ])
             ->authMiddleware([
                 Authenticate::class,

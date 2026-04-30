@@ -12,7 +12,6 @@ use App\Models\Coach;
 use App\Models\TrainingSchedule;
 use App\Models\Course;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 /**
  * Вертикали маркетплейса (НЕ ЗАПУСКАТЬ В PRODUCTION).
@@ -56,7 +55,7 @@ final class MarketplaceVerticalsSeeder extends Seeder
             'geo_location' => ['lat' => 55.7512, 'lng' => 37.6297],
             'occupancy_data' => [
                 'monday' => ['08:00' => 45, '12:00' => 80, '18:00' => 95],
-                'tuesday' => ['08:00' => 30, '12:00' => 60, '18:00' => 85]
+                'tuesday' => ['08:00' => 30, '12:00' => 60, '18:00' => 85],
             ],
         ]);
 

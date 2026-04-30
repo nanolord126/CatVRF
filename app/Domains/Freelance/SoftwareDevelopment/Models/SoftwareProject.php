@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * SoftwareProject — CatVRF 2026 Component.
@@ -7,58 +9,27 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/softwareproject
  */
 
-
 namespace App\Domains\Freelance\SoftwareDevelopment\Models;
+
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\TenantScoped;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 final class SoftwareProject extends Model
 {
-
-    use HasUuids, SoftDeletes, TenantScoped;
-
-        protected $table = 'software_projects';
-
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'developer_id',
-            'client_id',
-            'correlation_id',
-            'status',
-            'total_kopecks',
-            'payout_kopecks',
-            'payment_status',
-            'project_type',
-            'development_hours',
-            'due_date',
-            'tags',
-        ];
-
-        protected $casts = [
-            'total_kopecks' => 'integer',
-            'payout_kopecks' => 'integer',
-            'development_hours' => 'integer',
-            'due_date' => 'datetime',
-            'tags' => 'json',
-        ];
-
-        protected static function booted(): void
-        {
-            static::addGlobalScope('tenant', fn($q) => $q->where('software_projects.tenant_id', tenant()->id));
-        }
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
 
     /**
      * Version identifier for this component.
@@ -70,4 +41,34 @@ final class SoftwareProject extends Model
      */
     private const MAX_RETRIES = 3;
 
+    protected $table = 'software_projects';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'developer_id',
+        'client_id',
+        'correlation_id',
+        'status',
+        'total_kopecks',
+        'payout_kopecks',
+        'payment_status',
+        'project_type',
+        'development_hours',
+        'due_date',
+        'tags',
+    ];
+
+    protected $casts = [
+        'total_kopecks' => 'integer',
+        'payout_kopecks' => 'integer',
+        'development_hours' => 'integer',
+        'due_date' => 'datetime',
+        'tags' => 'json',
+    ];
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', fn ($q) => $q->where('software_projects.tenant_id', tenant()->id));
+    }
 }

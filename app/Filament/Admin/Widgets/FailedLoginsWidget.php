@@ -1,12 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Admin\Widgets;
 
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Виджет — неудачные попытки входа за 24 часа.
@@ -14,16 +16,16 @@ use Illuminate\Support\Facades\DB;
  */
 final class FailedLoginsWidget extends StatsOverviewWidget
 {
+    protected static ?int $sort = 1;
+
     public function __construct(
         private readonly DatabaseManager $db,
     ) {}
 
-    protected static ?int $sort = 1;
-
     protected function getStats(): array
     {
-        $last24h = now()->subHours(24);
-        $last1h  = now()->subHour();
+        $last24h = CarbonImmutable::now()->subHours(24);
+        $last1h  = CarbonImmutable::now()->subHour();
 
         $total24h = $this->db->table('fraud_attempts')
             ->where('operation_type', 'login')
@@ -47,8 +49,8 @@ final class FailedLoginsWidget extends StatsOverviewWidget
         $trend = $this->db->table('fraud_attempts')
             ->where('operation_type', 'login')
             ->where('decision', 'block')
-            ->where('created_at', '>=', now()->subDays(7))
-            ->selectRaw("DATE(created_at) as day, COUNT(*) as cnt")
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(7))
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as cnt')
             ->groupBy('day')
             ->orderBy('day')
             ->pluck('cnt')

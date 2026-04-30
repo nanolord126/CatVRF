@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Fashion;
 
@@ -14,17 +16,6 @@ final class FashionProductCategorizationServiceTest extends BaseTestCase
     use RefreshDatabase;
 
     private FashionProductCategorizationService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = new FashionProductCategorizationService(
-            $this->app->make(AuditService::class),
-            $this->app->make(FraudControlService::class),
-            $this->app->make('Illuminate\Database\DatabaseManager'),
-        );
-    }
 
     public function test_auto_categorize_product_determines_primary_category(): void
     {
@@ -165,6 +156,17 @@ final class FashionProductCategorizationServiceTest extends BaseTestCase
         $this->assertArrayHasKey('user_preferences', $suggestions['reasoning']);
         $this->assertArrayHasKey('trending', $suggestions['reasoning']);
         $this->assertArrayHasKey('seasonal', $suggestions['reasoning']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = new FashionProductCategorizationService(
+            $this->app->make(AuditService::class),
+            $this->app->make(FraudControlService::class),
+            $this->app->make('Illuminate\Database\DatabaseManager'),
+        );
     }
 
     private function createFashionProduct(array $overrides = []): int

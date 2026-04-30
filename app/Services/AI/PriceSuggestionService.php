@@ -1,11 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\AI;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Connection;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
 /**
  * Dynamic Price Suggestion Service (CANON 2026)
@@ -23,30 +28,33 @@ use Illuminate\Support\Str;
 final readonly class PriceSuggestionService
 {
     private const CACHE_TTL_SHORT = 300;      // 5 min for volatile data
+
     private const CACHE_TTL_MEDIUM = 1800;    // 30 min for demand data
+
     private const CACHE_TTL_LONG = 3600;      // 1 hour for seasonal data
 
     private const MIN_PRICE_THRESHOLD = 0.70;  // Never below 70% of cost
+
     private const MAX_PRICE_THRESHOLD = 3.0;   // Never above 300% of cost
+
     private const PRICE_CHANGE_MAX = 0.30;     // Max 30% change per suggestion
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Connection $db,
         private readonly LogManager $log,
         private readonly Repository $cache,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     /**
      * Get price suggestion for a product/service
      * Combines demand, competition, inventory, and seasonality
      *
-     * @param int $itemId Product/service ID
-     * @param int $currentPrice Current price in kopeks
-     * @param int $costPrice Cost price in kopeks
-     * @param int $tenantId Tenant ID (for tenant-specific rules)
-     * @param array $context Additional context (inventory, min_margin, etc.)
-     * @param string|null $correlationId For distributed tracing
+     * @param  int  $itemId  Product/service ID
+     * @param  int  $currentPrice  Current price in kopeks
+     * @param  int  $costPrice  Cost price in kopeks
+     * @param  int  $tenantId  Tenant ID (for tenant-specific rules)
+     * @param  array  $context  Additional context (inventory, min_margin, etc.)
+     * @param  string|null  $correlationId  For distributed tracing
      * @return array ['suggested_price', 'lower_bound', 'upper_bound', 'confidence', 'factors', 'correlation_id']
      */
     public function suggestPrice(
@@ -93,14 +101,14 @@ final readonly class PriceSuggestionService
             );
 
             // 7. Calculate suggested price
-            $suggestedPrice = (int)($currentPrice * $blendedFactor);
+            $suggestedPrice = (int) ($currentPrice * $blendedFactor);
 
             // 8. Apply bounds
-            $lowerBound = max((int)($costPrice * self::MIN_PRICE_THRESHOLD), (int)($currentPrice * 0.75));
-            $upperBound = min((int)($costPrice * self::MAX_PRICE_THRESHOLD), (int)($currentPrice * 1.30));
+            $lowerBound = max((int) ($costPrice * self::MIN_PRICE_THRESHOLD), (int) ($currentPrice * 0.75));
+            $upperBound = min((int) ($costPrice * self::MAX_PRICE_THRESHOLD), (int) ($currentPrice * 1.30));
 
             // 9. Apply maximum change limit
-            $maxChange = (int)($currentPrice * self::PRICE_CHANGE_MAX);
+            $maxChange = (int) ($currentPrice * self::PRICE_CHANGE_MAX);
             $finalPrice = max(
                 $currentPrice - $maxChange,
                 min($upperBound, max($lowerBound, $suggestedPrice)),
@@ -144,7 +152,7 @@ final readonly class PriceSuggestionService
                 $confidence,
                 $correlationId,
             ) {
-                $this->logger->channel('audit')->info('PriceML: suggestion generated', [
+                $this->logger->channel('audit')->$this->logger->info('PriceML: suggestion generated', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'item_id' => $itemId,
@@ -170,8 +178,8 @@ final readonly class PriceSuggestionService
             return [
                 'current_price' => $currentPrice,
                 'suggested_price' => $currentPrice,
-                'lower_bound' => (int)($currentPrice * 0.90),
-                'upper_bound' => (int)($currentPrice * 1.10),
+                'lower_bound' => (int) ($currentPrice * 0.90),
+                'upper_bound' => (int) ($currentPrice * 1.10),
                 'confidence' => 0.1,
                 'reason' => 'Pricing engine unavailable - keeping current price',
                 'error' => $e->getMessage(),
@@ -182,12 +190,69 @@ final readonly class PriceSuggestionService
     }
 
     /**
+     * Invalidate price suggestion cache for item
+     */
+    public function invalidateCache(int $itemId, int $tenantId): void
+    {
+        $cacheKey = "price_suggestion:tenant:{$tenantId}:item:{$itemId}";
+        $this->cache->forget($cacheKey);
+
+        $this->logger->channel('audit')->debug('PriceML: cache invalidated', [
+            'tenant_id' => $tenantId,
+            'item_id' => $itemId,
+        ]);
+    }
+
+    /**
+     * Get historical price elasticity for item
+     * Helps understand how quantity responds to price changes
+     */
+    public function getElasticity(int $itemId, int $days = 60): array
+    {
+        $priceChanges = $this->db->table('price_history')
+            ->where('product_id', $itemId)
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays($days))
+            ->orderBy('created_at')
+            ->get();
+
+        if ($priceChanges->count() < 2) {
+            return ['elasticity' => 0, 'confidence' => 0, 'samples' => 0];
+        }
+
+        // Calculate elasticity = % change in quantity / % change in price
+        $elasticity = 0;
+        $count = 0;
+
+        foreach ($priceChanges as $i => $change) {
+            if ($i === 0) {
+                continue;
+            }
+
+            $prevChange = $priceChanges[$i - 1];
+            $priceDelta = (($change->price - $prevChange->price) / $prevChange->price) * 100;
+            $qtyDelta = (($change->quantity - $prevChange->quantity) / $prevChange->quantity) * 100;
+
+            if ($priceDelta !== 0) {
+                $elasticity += $qtyDelta / $priceDelta;
+                $count++;
+            }
+        }
+
+        return [
+            'elasticity' => round($count > 0 ? $elasticity / $count : 0, 2),
+            'confidence' => round(min(1.0, $count / 10), 2),
+            'samples' => $count,
+            'period_days' => $days,
+        ];
+    }
+
+    /**
      * Calculate demand factor based on conversion rate and velocity
      * Returns 0.5-1.5 (1.0 = average demand)
      */
     private function calculateDemandFactor(int $itemId, array $context): float
     {
-        $last30Days = now()->subDays(30)->startOfDay();
+        $last30Days = CarbonImmutable::now()->subDays(30)->startOfDay();
 
         // Views in last 30 days
         $views = $context['views_30d'] ?? $this->db->table('product_views')
@@ -207,13 +272,13 @@ final readonly class PriceSuggestionService
         // Trend (sales last 7 days vs previous 7 days)
         $salesLast7 = $this->db->table('order_items')
             ->where('product_id', $itemId)
-            ->where('created_at', '>=', now()->subDays(7))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(7))
             ->count();
 
         $salesPrev7 = $this->db->table('order_items')
             ->where('product_id', $itemId)
-            ->where('created_at', '>=', now()->subDays(14))
-            ->where('created_at', '<', now()->subDays(7))
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(14))
+            ->where('created_at', '<', CarbonImmutable::now()->subDays(7))
             ->count();
 
         $trend = $salesPrev7 > 0 ? ($salesLast7 / $salesPrev7) : 1.0;
@@ -242,7 +307,7 @@ final readonly class PriceSuggestionService
     private function calculateCompetitionFactor(int $itemId, int $currentPrice, array $context): float
     {
         $product = $this->db->table('products')->find($itemId);
-        if (!$product) {
+        if (! $product) {
             return 1.0;
         }
 
@@ -253,7 +318,7 @@ final readonly class PriceSuggestionService
             ->where('status', 'active')
             ->avg('price');
 
-        if (!$competitorAvgPrice) {
+        if (! $competitorAvgPrice) {
             return 1.0;
         }
 
@@ -304,19 +369,19 @@ final readonly class PriceSuggestionService
      */
     private function calculateSeasonalityFactor(int $itemId, array $context): float
     {
-        $month = (int)now()->format('m');
-        $quarter = (int)ceil($month / 3);
+        $month = (int) CarbonImmutable::now()->format('m');
+        $quarter = (int) ceil($month / 3);
 
         // Historical sales for this month vs average
         $historyMonthSales = $this->db->table('order_items')
             ->where('product_id', $itemId)
             ->whereRaw('MONTH(created_at) = ?', [$month])
-            ->where('created_at', '>=', now()->subYears(2))
+            ->where('created_at', '>=', CarbonImmutable::now()->subYears(2))
             ->count();
 
         $totalSales = $this->db->table('order_items')
             ->where('product_id', $itemId)
-            ->where('created_at', '>=', now()->subYears(2))
+            ->where('created_at', '>=', CarbonImmutable::now()->subYears(2))
             ->count();
 
         if ($totalSales === 0) {
@@ -391,12 +456,12 @@ final readonly class PriceSuggestionService
         $change = (($suggested - $current) / $current) * 100;
 
         if ($change > 5) {
-            return "High demand detected - " . ($demandFactor > 1.2 ? "very strong" : "good") . " market opportunity";
+            return 'High demand detected - '.($demandFactor > 1.2 ? 'very strong' : 'good').' market opportunity';
         } elseif ($change < -5) {
-            return "Low demand or high competition - price reduction recommended";
+            return 'Low demand or high competition - price reduction recommended';
         }
 
-        return "Current price is near optimal market position";
+        return 'Current price is near optimal market position';
     }
 
     /**
@@ -416,60 +481,5 @@ final readonly class PriceSuggestionService
 
         // Stable conditions = longer cache
         return self::CACHE_TTL_LONG;  // 1 hour
-    }
-
-    /**
-     * Invalidate price suggestion cache for item
-     */
-    public function invalidateCache(int $itemId, int $tenantId): void
-    {
-        $cacheKey = "price_suggestion:tenant:{$tenantId}:item:{$itemId}";
-        $this->cache->forget($cacheKey);
-
-        $this->logger->channel('audit')->debug('PriceML: cache invalidated', [
-            'tenant_id' => $tenantId,
-            'item_id' => $itemId,
-        ]);
-    }
-
-    /**
-     * Get historical price elasticity for item
-     * Helps understand how quantity responds to price changes
-     */
-    public function getElasticity(int $itemId, int $days = 60): array
-    {
-        $priceChanges = $this->db->table('price_history')
-            ->where('product_id', $itemId)
-            ->where('created_at', '>=', now()->subDays($days))
-            ->orderBy('created_at')
-            ->get();
-
-        if ($priceChanges->count() < 2) {
-            return ['elasticity' => 0, 'confidence' => 0, 'samples' => 0];
-        }
-
-        // Calculate elasticity = % change in quantity / % change in price
-        $elasticity = 0;
-        $count = 0;
-
-        foreach ($priceChanges as $i => $change) {
-            if ($i === 0) continue;
-
-            $prevChange = $priceChanges[$i - 1];
-            $priceDelta = (($change->price - $prevChange->price) / $prevChange->price) * 100;
-            $qtyDelta = (($change->quantity - $prevChange->quantity) / $prevChange->quantity) * 100;
-
-            if ($priceDelta !== 0) {
-                $elasticity += $qtyDelta / $priceDelta;
-                $count++;
-            }
-        }
-
-        return [
-            'elasticity' => round($count > 0 ? $elasticity / $count : 0, 2),
-            'confidence' => round(min(1.0, $count / 10), 2),
-            'samples' => $count,
-            'period_days' => $days,
-        ];
     }
 }

@@ -6,6 +6,7 @@ namespace App\Domains\RealEstate\DTOs;
 
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 final readonly class BookViewingDto
 {
@@ -29,7 +30,7 @@ final readonly class BookViewingDto
             tenantId: (int) tenant()?->id ?? $validated['tenant_id'],
             businessGroupId: $request->input('business_group_id') ? (int) $request->input('business_group_id') : null,
             userId: (int) $request->user()?->id ?? $validated['user_id'],
-            correlationId: $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            correlationId: $request->header('X-Correlation-ID', Str::uuid()->toString()),
             propertyId: (int) $validated['property_id'],
             scheduledAt: Carbon::parse($validated['scheduled_at']),
             isB2B: $request->has('inn') && $request->has('business_card_id'),

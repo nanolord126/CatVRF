@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\GeoLogistics;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\GeoLogistics\Domain\Services\GeoLogisticsCoordinatorService;
 
 /**
  * Unit tests for GeoLogisticsCoordinatorService.
@@ -14,7 +17,7 @@ final class GeoLogisticsCoordinatorServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\GeoLogistics\Domain\Services\GeoLogisticsCoordinatorService::class
+            GeoLogisticsCoordinatorService::class
         );
         $this->assertTrue($reflection->isFinal(), 'GeoLogisticsCoordinatorService must be final');
     }
@@ -22,7 +25,7 @@ final class GeoLogisticsCoordinatorServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\GeoLogistics\Domain\Services\GeoLogisticsCoordinatorService::class
+            GeoLogisticsCoordinatorService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'GeoLogisticsCoordinatorService must be readonly');
     }
@@ -30,7 +33,7 @@ final class GeoLogisticsCoordinatorServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\GeoLogistics\Domain\Services\GeoLogisticsCoordinatorService::class
+            GeoLogisticsCoordinatorService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'GeoLogisticsCoordinatorService must have __construct');
@@ -40,7 +43,7 @@ final class GeoLogisticsCoordinatorServiceTest extends TestCase
     public function test_create_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\GeoLogistics\Domain\Services\GeoLogisticsCoordinatorService::class, 'create'),
+            method_exists(GeoLogisticsCoordinatorService::class, 'create'),
             'GeoLogisticsCoordinatorService must implement create()'
         );
     }
@@ -48,7 +51,7 @@ final class GeoLogisticsCoordinatorServiceTest extends TestCase
     public function test_update_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\GeoLogistics\Domain\Services\GeoLogisticsCoordinatorService::class, 'update'),
+            method_exists(GeoLogisticsCoordinatorService::class, 'update'),
             'GeoLogisticsCoordinatorService must implement update()'
         );
     }
@@ -56,7 +59,7 @@ final class GeoLogisticsCoordinatorServiceTest extends TestCase
     public function test_delete_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\GeoLogistics\Domain\Services\GeoLogisticsCoordinatorService::class, 'delete'),
+            method_exists(GeoLogisticsCoordinatorService::class, 'delete'),
             'GeoLogisticsCoordinatorService must implement delete()'
         );
     }
@@ -64,17 +67,16 @@ final class GeoLogisticsCoordinatorServiceTest extends TestCase
     public function test_list_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\GeoLogistics\Domain\Services\GeoLogisticsCoordinatorService::class, 'list'),
+            method_exists(GeoLogisticsCoordinatorService::class, 'list'),
             'GeoLogisticsCoordinatorService must implement list()'
         );
     }
 
-    public function test_getById_method_exists(): void
+    public function test_get_by_id_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\GeoLogistics\Domain\Services\GeoLogisticsCoordinatorService::class, 'getById'),
+            method_exists(GeoLogisticsCoordinatorService::class, 'getById'),
             'GeoLogisticsCoordinatorService must implement getById()'
         );
     }
-
 }

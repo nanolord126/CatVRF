@@ -4,21 +4,28 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Services\Cache\CacheService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
+use Illuminate\Contracts\Filesystem\Filesystem as FilesystemContract;
+use Illuminate\Support\Collection;
 
 /**
  * Apply Feature Drift Detection to All Verticals
- * 
+ *
  * This command automatically adds drift detection to AI Constructor Services
  * across all 64 business verticals in CatVRF.
- * 
+ *
  * Usage:
  * php artisan drift:detect:apply-verticals [--dry-run] [--vertical=medical]
  */
-class ApplyDriftDetectionToVerticals extends Command
+final class ApplyDriftDetectionToVerticals extends Command
 {
+    public function __construct(
+        private readonly FilesystemContract $files,
+        private readonly CacheService $cacheService,
+    ) {
+        parent::__construct();
+    }
     protected $signature = 'drift:detect:apply-verticals 
                             {--dry-run : Preview changes without applying}
                             {--vertical= : Apply to specific vertical only}';
@@ -26,7 +33,9 @@ class ApplyDriftDetectionToVerticals extends Command
     protected $description = 'Apply Feature Drift Detection to AI Constructor Services in all verticals';
 
     private int $filesModified = 0;
+
     private int $filesSkipped = 0;
+
     private int $filesErrored = 0;
 
     public function handle(): int
@@ -34,7 +43,7 @@ class ApplyDriftDetectionToVerticals extends Command
         $this->info('Starting Feature Drift Detection application to verticals...');
         $this->newLine();
 
-        $verticalPath = base_path('app/Domains');
+        $verticalPath = app_path('Domains');
         $targetVertical = $this->option('vertical');
         $isDryRun = $this->option('dry-run');
 
@@ -48,10 +57,12 @@ class ApplyDriftDetectionToVerticals extends Command
 
         if ($verticals->isEmpty()) {
             $this->error('No vertical directories found');
+
             return Command::FAILURE;
         }
 
-        $this->info("Found {$verticals->count()} vertical(s) to process");
+        $verticalCount = $verticals->count();
+        $this->info("Found {$verticalCount} vertical(s) to process");
         $this->newLine();
 
         // Process each vertical
@@ -72,21 +83,21 @@ class ApplyDriftDetectionToVerticals extends Command
         return Command::SUCCESS;
     }
 
-    private function findVerticalDirectories(string $basePath, ?string $targetVertical): \Illuminate\Support\Collection
+    private function findVerticalDirectories(string $basePath, ?string $targetVertical): Collection
     {
-        $directories = collect(File::directories($basePath));
+        $directories = new Collection($this->files->directories($basePath));
 
         if ($targetVertical) {
-            return $directories->filter(fn($dir) => basename($dir) === $targetVertical);
+            return $directories->filter(fn ($dir) => basename($dir) === $targetVertical);
         }
 
         // Filter out technical directories
-        $excludeDirs = ['AI', 'Audit', 'B2B', 'BigData', 'Bonuses', 'Cart', 'Commissions', 
-                       'Common', 'Compliance', 'DemandForecast', 'FraudML', 'ML', 'Notifications', 
-                       'Payout', 'PromoCampaigns', 'Realtime', 'Recommendation', 'Referral', 
-                       'Search', 'Security', 'UserProfile', 'VerticalName', 'Webhooks'];
+        $excludeDirs = ['AI', 'Audit', 'B2B', 'BigData', 'Bonuses', 'Cart', 'Commissions',
+            'Common', 'Compliance', 'DemandForecast', 'FraudML', 'ML', 'Notifications',
+            'Payout', 'PromoCampaigns', 'Realtime', 'Recommendation', 'Referral',
+            'Search', 'Security', 'UserProfile', 'VerticalName', 'Webhooks'];
 
-        return $directories->reject(fn($dir) => in_array(basename($dir), $excludeDirs));
+        return $directories->reject(fn ($dir) => in_array(basename($dir), $excludeDirs, true));
     }
 
     private function processVertical(string $verticalPath, bool $isDryRun): void
@@ -98,8 +109,9 @@ class ApplyDriftDetectionToVerticals extends Command
         $aiServices = $this->findAIServices($verticalPath);
 
         if ($aiServices->isEmpty()) {
-            $this->line("  - No AI services found");
+            $this->line('  - No AI services found');
             $this->filesSkipped++;
+
             return;
         }
 
@@ -108,17 +120,17 @@ class ApplyDriftDetectionToVerticals extends Command
         }
     }
 
-    private function findAIServices(string $verticalPath): \Illuminate\Support\Collection
+    private function findAIServices(string $verticalPath): Collection
     {
-        $aiPath = $verticalPath . '/Services/AI';
-        
-        if (!File::exists($aiPath)) {
-            return collect();
+        $aiPath = $verticalPath.'/Services/AI';
+
+        if (! $this->files->exists($aiPath)) {
+            return new Collection();
         }
 
-        return collect(File::files($aiPath))
-            ->filter(fn($file) => $file->getExtension() === 'php')
-            ->map(fn($file) => $file->getPathname());
+        return (new Collection($this->files->files($aiPath)))
+            ->filter(fn (\SplFileInfo $file) => $file->getExtension() === 'php')
+            ->map(fn (\SplFileInfo $file) => $file->getPathname());
     }
 
     private function processAIService(string $servicePath, string $verticalName, bool $isDryRun): void
@@ -127,12 +139,13 @@ class ApplyDriftDetectionToVerticals extends Command
         $this->line("  - Processing: {$serviceName}");
 
         try {
-            $content = File::get($servicePath);
+            $content = $this->files->get($servicePath);
 
             // Check if already has drift detection
             if ($this->hasDriftDetection($content)) {
-                $this->line("    Already has drift detection - skipping");
+                $this->line('    Already has drift detection - skipping');
                 $this->filesSkipped++;
+
                 return;
             }
 
@@ -140,10 +153,10 @@ class ApplyDriftDetectionToVerticals extends Command
             $modifiedContent = $this->applyDriftDetection($content, $verticalName, $serviceName);
 
             if ($isDryRun) {
-                $this->line("    [DRY RUN] Would modify: " . $this->getChangeSummary($content, $modifiedContent));
+                $this->line('    [DRY RUN] Would modify: '.$this->getChangeSummary($content, $modifiedContent));
             } else {
-                File::put($servicePath, $modifiedContent);
-                $this->line("    Modified successfully");
+                $this->files->put($servicePath, $modifiedContent);
+                $this->line('    Modified successfully');
                 $this->filesModified++;
             }
         } catch (\Exception $e) {
@@ -154,7 +167,7 @@ class ApplyDriftDetectionToVerticals extends Command
 
     private function hasDriftDetection(string $content): bool
     {
-        return str_contains($content, 'HasFeatureDriftDetection') || 
+        return str_contains($content, 'HasFeatureDriftDetection') ||
                str_contains($content, 'AbstractAIConstructorService');
     }
 
@@ -190,11 +203,11 @@ class ApplyDriftDetectionToVerticals extends Command
     {
         // Find the namespace line and add use statements after it
         $namespacePattern = '/(namespace\s+[^\n;]+;\n)/';
-        
+
         if (preg_match($namespacePattern, $content, $matches)) {
             return str_replace(
                 $matches[0],
-                $matches[0] . $useStatements . "\n",
+                $matches[0].$useStatements."\n",
                 $content
             );
         }
@@ -205,14 +218,14 @@ class ApplyDriftDetectionToVerticals extends Command
     private function addTraitOrExtendClass(string $content, string $serviceName): string
     {
         // Add trait to class
-        $classPattern = '/(final\s+class\s+' . preg_quote($serviceName) . '\s+)/';
-        
+        $classPattern = '/(final\s+class\s+'.preg_quote($serviceName).'\s+)/';
+
         $traitDeclaration = "\n{\n    use \App\Services\ML\Traits\HasFeatureDriftDetection;\n";
-        
+
         if (preg_match($classPattern, $content, $matches)) {
             return str_replace(
-                $matches[0] . "{\n",
-                $matches[0] . $traitDeclaration,
+                $matches[0]."{\n",
+                $matches[0].$traitDeclaration,
                 $content
             );
         }
@@ -224,13 +237,13 @@ class ApplyDriftDetectionToVerticals extends Command
     {
         // Find constructor and add drift detection dependencies
         $constructorPattern = '/(public\s+function\s+__construct\([^)]*)\)/';
-        
+
         $dependencies = ",\n        private readonly FeatureDriftDetectorService \$driftDetector";
-        
+
         if (preg_match($constructorPattern, $content, $matches)) {
             return str_replace(
                 $matches[0],
-                $matches[1] . $dependencies . ")",
+                $matches[1].$dependencies.')',
                 $content
             );
         }
@@ -242,9 +255,9 @@ class ApplyDriftDetectionToVerticals extends Command
     {
         // Find constructor body and add initialization
         $constructorBodyPattern = '/(public\s+function\s+__construct\([^)]*\)\s*\{[^}]*\n)/';
-        
+
         $initialization = "\n        \$this->verticalCode = '{$this->getVerticalCodeFromService()}';\n        \$this->driftDetector = \$driftDetector;\n        \$this->initializeDriftDetection();\n";
-        
+
         // This is simplified - in production would need more sophisticated parsing
         return $content;
     }
@@ -261,6 +274,7 @@ class ApplyDriftDetectionToVerticals extends Command
         // Convert vertical name to code (e.g., MedicalHealthcare -> medical)
         $code = strtolower($verticalName);
         $code = str_replace([' ', '_'], '', $code);
+
         return $code;
     }
 
@@ -272,9 +286,9 @@ class ApplyDriftDetectionToVerticals extends Command
 
     private function getChangeSummary(string $original, string $modified): string
     {
-        $originalLines = count(explode("\n", $original));
-        $modifiedLines = count(explode("\n", $modified));
-        
-        return "+".($modifiedLines - $originalLines)." lines";
+        $originalLines = (new Collection(explode("\n", $original)))->count();
+        $modifiedLines = (new Collection(explode("\n", $modified)))->count();
+
+        return '+'.($modifiedLines - $originalLines).' lines';
     }
 }

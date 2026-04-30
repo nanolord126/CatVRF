@@ -1,10 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Exceptions;
 
-
 use Illuminate\Contracts\Routing\ResponseFactory;
 use RuntimeException;
+use Illuminate\Http\JsonResponse;
 
 /**
  * Выбрасывается FraudControlService когда операция заблокирована.
@@ -19,17 +21,15 @@ use RuntimeException;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Exceptions
  */
 final class FraudBlockedException extends RuntimeException
 {
     public function __construct(
         private readonly ResponseFactory $responseFactory,
-        string              $message       = 'Operation blocked by fraud control',
-        private string $correlationId = '',
-        int                 $code          = 423,
-        ?\Throwable         $previous      = null,
+        string $message       = 'Operation blocked by fraud control',
+        private readonly string $correlationId = '',
+        int $code          = 423,
+        ?\Throwable $previous      = null,
     ) {
         parent::__construct($message, $code, $previous);
     }
@@ -39,7 +39,7 @@ final class FraudBlockedException extends RuntimeException
      *
      * @throws \DomainException
      */
-    public function render(): \Illuminate\Http\JsonResponse
+    public function render(): JsonResponse
     {
         return $this->responseFactory->json([
             'error'          => 'fraud_blocked',
@@ -50,11 +50,9 @@ final class FraudBlockedException extends RuntimeException
 
     /**
      * Get the string representation of this object.
-     *
-     * @return string
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new');
+        return self::class.'::'.($this->id ?? 'new');
     }
 }

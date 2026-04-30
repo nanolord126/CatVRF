@@ -1,177 +1,178 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Services\RecommendationService;
-
-
-use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
+use Carbon\CarbonImmutable;
 
 final readonly class InteriorConstructor
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
-            private RecommendationService $recommendation,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly RecommendationService $recommendation,
+        private readonly LogManager $logger,) {}
 
-        /**
-         * Построить рекомендации интерьера
-         */
-        public function construct(
-            array $analysis,
-            array $explicit,
-            array $implicit,
-            array $params,
-        ): array {
-            try {
-                $styles = $analysis['styles'] ?? [];
-                $colors = $analysis['colors'] ?? [];
+    /**
+     * Построить рекомендации интерьера
+     */
+    public function construct(
+        array $analysis,
+        array $explicit,
+        array $implicit,
+        array $params,
+    ): array {
+        try {
+            $styles = $analysis['styles'] ?? [];
+            $colors = $analysis['colors'] ?? [];
 
-                // 1. Определить основной стиль
-                $mainStyle = $this->determineStyle($styles, $explicit);
+            // 1. Определить основной стиль
+            $mainStyle = $this->determineStyle($styles, $explicit);
 
-                // 2. Выбрать цветовую палитру
-                $colorPalette = $this->buildColorPalette($colors, $explicit);
+            // 2. Выбрать цветовую палитру
+            $colorPalette = $this->buildColorPalette($colors, $explicit);
 
-                // 3. Получить рекомендации мебели
-                $furniture = $this->recommendFurniture($mainStyle, $colorPalette);
+            // 3. Получить рекомендации мебели
+            $furniture = $this->recommendFurniture($mainStyle, $colorPalette);
 
-                // 4. Получить рекомендации декора
-                $decor = $this->recommendDecor($mainStyle, $colorPalette);
+            // 4. Получить рекомендации декора
+            $decor = $this->recommendDecor($mainStyle, $colorPalette);
 
-                // 5. Получить рекомендации освещения
-                $lighting = $this->recommendLighting($mainStyle);
+            // 5. Получить рекомендации освещения
+            $lighting = $this->recommendLighting($mainStyle);
 
-                // 6. Собрать все товары
-                $allItems = \array_merge($furniture, $decor, $lighting);
+            // 6. Собрать все товары
+            $allItems = \array_merge($furniture, $decor, $lighting);
 
-                // 7. Рассчитать общую цену
-                $totalPrice = \array_sum(\array_column($allItems, 'price'));
+            // 7. Рассчитать общую цену
+            $totalPrice = \array_sum(\array_column($allItems, 'price'));
 
-                $this->logger->channel('audit')->info('Interior construction completed', [
+            $this->logger->channel('audit')->$this->logger->info('Interior construction completed', [
+                'style' => $mainStyle,
+                'items_count' => \count($allItems),
+                'total_price' => $totalPrice,
+                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+            ]);
+
+            return [
+                'data' => [
                     'style' => $mainStyle,
-                    'items_count' => \count($allItems),
-                    'total_price' => $totalPrice,
-                'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
-            ]);
-
-                return [
-                    'data' => [
-                        'style' => $mainStyle,
-                        'color_palette' => $colorPalette,
-                        'furniture_count' => \count($furniture),
-                        'decor_count' => \count($decor),
-                        'lighting_count' => \count($lighting),
-                        'total_items' => \count($allItems),
-                        'estimated_total' => $totalPrice,
-                        'analysis_summary' => [
-                            'description' => $analysis['description'],
-                            'recommendations' => $analysis['recommendations'] ?? [],
-                        ],
+                    'color_palette' => $colorPalette,
+                    'furniture_count' => \count($furniture),
+                    'decor_count' => \count($decor),
+                    'lighting_count' => \count($lighting),
+                    'total_items' => \count($allItems),
+                    'estimated_total' => $totalPrice,
+                    'analysis_summary' => [
+                        'description' => $analysis['description'],
+                        'recommendations' => $analysis['recommendations'] ?? [],
                     ],
-                    'items' => $allItems,
-                    'confidence' => $this->calculateConfidence($analysis, $explicit, $implicit),
-                    'confidence_breakdown' => [
-                        'style_detection' => $analysis['confidence'] ?? 0.5,
-                        'color_matching' => 0.85,
-                        'furniture_relevance' => 0.8,
-                    ],
-                ];
-            } catch (\Throwable $e) {
-                $this->logger->channel('audit')->error('Interior construction failed', [
-                    'error' => $e->getMessage(),
+                ],
+                'items' => $allItems,
+                'confidence' => $this->calculateConfidence($analysis, $explicit, $implicit),
+                'confidence_breakdown' => [
+                    'style_detection' => $analysis['confidence'] ?? 0.5,
+                    'color_matching' => 0.85,
+                    'furniture_relevance' => 0.8,
+                ],
+            ];
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Interior construction failed', [
+                'error' => $e->getMessage(),
                 'correlation_id' => $this->request->header('X-Correlation-ID', $this->correlationId ?? ''),
+                'timestamp' => CarbonImmutable::now(),
             ]);
-                throw $e;
-            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Определить основной стиль интерьера
+     */
+    private function determineStyle(array $detectedStyles, array $explicit): string
+    {
+        // Явное предпочтение имеет приоритет
+        if (! empty($explicit['preferred_styles'])) {
+            return $explicit['preferred_styles'][0];
         }
 
-        /**
-         * Определить основной стиль интерьера
-         */
-        private function determineStyle(array $detectedStyles, array $explicit): string
-        {
-            // Явное предпочтение имеет приоритет
-            if (!empty($explicit['preferred_styles'])) {
-                return $explicit['preferred_styles'][0];
-            }
-
-            // Использовать детектированные стили
-            if (!empty($detectedStyles)) {
-                return $detectedStyles[0];
-            }
-
-            return 'modern';
+        // Использовать детектированные стили
+        if (! empty($detectedStyles)) {
+            return $detectedStyles[0];
         }
 
-        /**
-         * Построить цветовую палитру
-         */
-        private function buildColorPalette(array $detectedColors, array $explicit): array
-        {
-            $colors = $detectedColors;
+        return 'modern';
+    }
 
-            // Добавить явные предпочтения цветов
-            if (!empty($explicit['preferred_colors'])) {
-                $colors = \array_merge($colors, $explicit['preferred_colors']);
-            }
+    /**
+     * Построить цветовую палитру
+     */
+    private function buildColorPalette(array $detectedColors, array $explicit): array
+    {
+        $colors = $detectedColors;
 
-            // Оставить топ-5 цветов
-            return \array_slice(\array_unique($colors), 0, 5);
+        // Добавить явные предпочтения цветов
+        if (! empty($explicit['preferred_colors'])) {
+            $colors = \array_merge($colors, $explicit['preferred_colors']);
         }
 
-        /**
-         * Получить рекомендации мебели
-         */
-        private function recommendFurniture(string $style, array $colors): array
-        {
-            // Получить товары через RecommendationService
-            return $this->recommendation->getByAnalysis([
-                'category' => 'furniture',
-                'style' => $style,
-                'colors' => $colors,
-                'limit' => 8,
-            ]);
-        }
+        // Оставить топ-5 цветов
+        return \array_slice(\array_unique($colors), 0, 5);
+    }
 
-        /**
-         * Получить рекомендации декора
-         */
-        private function recommendDecor(string $style, array $colors): array
-        {
-            return $this->recommendation->getByAnalysis([
-                'category' => 'decor',
-                'style' => $style,
-                'colors' => $colors,
-                'limit' => 5,
-            ]);
-        }
+    /**
+     * Получить рекомендации мебели
+     */
+    private function recommendFurniture(string $style, array $colors): array
+    {
+        // Получить товары через RecommendationService
+        return $this->recommendation->getByAnalysis([
+            'category' => 'furniture',
+            'style' => $style,
+            'colors' => $colors,
+            'limit' => 8,
+        ]);
+    }
 
-        /**
-         * Получить рекомендации освещения
-         */
-        private function recommendLighting(string $style): array
-        {
-            return $this->recommendation->getByAnalysis([
-                'category' => 'lighting',
-                'style' => $style,
-                'limit' => 3,
-            ]);
-        }
+    /**
+     * Получить рекомендации декора
+     */
+    private function recommendDecor(string $style, array $colors): array
+    {
+        return $this->recommendation->getByAnalysis([
+            'category' => 'decor',
+            'style' => $style,
+            'colors' => $colors,
+            'limit' => 5,
+        ]);
+    }
 
-        /**
-         * Рассчитать уверенность конструктора
-         */
-        private function calculateConfidence(array $analysis, array $explicit, array $implicit): float
-        {
-            $analysisConfidence = $analysis['confidence'] ?? 0.5;
-            $hasExplicit = !empty($explicit) ? 0.1 : 0;
-            $hasImplicit = !empty($implicit) ? 0.05 : 0;
+    /**
+     * Получить рекомендации освещения
+     */
+    private function recommendLighting(string $style): array
+    {
+        return $this->recommendation->getByAnalysis([
+            'category' => 'lighting',
+            'style' => $style,
+            'limit' => 3,
+        ]);
+    }
 
-            return \min(1.0, $analysisConfidence + $hasExplicit + $hasImplicit);
-        }
+    /**
+     * Рассчитать уверенность конструктора
+     */
+    private function calculateConfidence(array $analysis, array $explicit, array $implicit): float
+    {
+        $analysisConfidence = $analysis['confidence'] ?? 0.5;
+        $hasExplicit = ! empty($explicit) ? 0.1 : 0;
+        $hasImplicit = ! empty($implicit) ? 0.05 : 0;
+
+        return \min(1.0, $analysisConfidence + $hasExplicit + $hasImplicit);
+    }
 }

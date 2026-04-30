@@ -1,46 +1,38 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Models;
 
+use Carbon\CarbonImmutable;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 final class B2BTravelOrder extends Model
 {
+    use TenantScoped;
 
-
+    protected $table = 'b2b_travel_orders';
 
-        protected $table = 'b2b_travel_orders';
+    protected $fillable = [
+        'uuid', 'tenant_id', 'b2b_travel_storefront_id', 'user_id', 'order_number',
+        'company_contact_person', 'company_phone', 'items', 'total_amount',
+        'commission_amount', 'status', 'rejection_reason', 'correlation_id', 'tags',
+    ];
 
-        protected $fillable = [
-            'uuid', 'tenant_id', 'b2b_travel_storefront_id', 'user_id', 'order_number',
-            'company_contact_person', 'company_phone', 'items', 'total_amount',
-            'commission_amount', 'status', 'rejection_reason', 'correlation_id', 'tags'
-        ];
+    protected $casts = [
+        'items' => 'json',
+        'total_amount' => 'decimal:2',
+        'commission_amount' => 'decimal:2',
+        'tags' => 'json',
+    ];
 
-        protected $casts = [
-            'items' => 'json',
-            'total_amount' => 'decimal:2',
-            'commission_amount' => 'decimal:2',
-            'tags' => 'json',
-        ];
-
-        protected static function booted(): void
-        {
-            static::addGlobalScope('tenant', function ($query) {
-                if (function_exists('tenant') && tenant() && tenant()->id) {
-                    $query->where('tenant_id', tenant()->id);
-                }
-            });
-        }
-
-        public function storefront(): BelongsTo
-        {
-            return $this->belongsTo(B2BTravelStorefront::class, 'b2b_travel_storefront_id');
-        }
+    public function storefront(): BelongsTo
+    {
+        return $this->belongsTo(B2BTravelStorefront::class, 'b2b_travel_storefront_id');
+    }
 
     /**
      * Get the string representation of this instance.
@@ -49,7 +41,7 @@ final class B2BTravelOrder extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -60,8 +52,17 @@ final class B2BTravelOrder extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant() && tenant()->id) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Medical\Psychology\Http\Controllers;
@@ -9,6 +10,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
 
 final class PsychologicalApiController extends Controller
 {
@@ -27,7 +29,7 @@ final class PsychologicalApiController extends Controller
             ->orderByDesc('rating')
             ->paginate(20);
 
-        $this->logger->info('Therapists listed', ['correlation_id' => $correlationId, 'count' => $therapists->total()]);
+        $this->logger->$this->logger->info('Therapists listed', ['correlation_id' => $correlationId, 'count' => $therapists->total()]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -65,7 +67,7 @@ final class PsychologicalApiController extends Controller
             ->limit(5)
             ->get();
 
-        $this->logger->info('AI therapist match', ['correlation_id' => $correlationId, 'symptoms_count' => count($validated['symptoms'])]);
+        $this->logger->$this->logger->info('AI therapist match', ['correlation_id' => $correlationId, 'symptoms_count' => count($validated['symptoms'])]);
 
         return new JsonResponse([
             'correlation_id' => $correlationId,
@@ -96,12 +98,12 @@ final class PsychologicalApiController extends Controller
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
                 'status' => 'pending',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
         });
 
-        $this->logger->info('Psychology booking created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Psychology booking created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'Запись создана'], 201);
     }

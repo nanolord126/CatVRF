@@ -1,16 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Filament\Resources;
-
 
 use App\Domains\Pharmacy\Models\Pharmacy;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Domains\Pharmacy\Filament\Resources\PharmacyResource\Pages\CreatePharmacy;
+use App\Domains\Pharmacy\Filament\Resources\PharmacyResource\Pages\EditPharmacy;
+use App\Domains\Pharmacy\Filament\Resources\PharmacyResource\Pages\ListPharmacys;
+use Illuminate\Support\Str;
 
-final class PharmacyResource extends Resource
+final class PharmacyResource extends BaseOptimizedResource
 {
     protected static ?string $model = Pharmacy::class;
 
@@ -37,7 +42,7 @@ final class PharmacyResource extends Resource
                 ->default(fn (): ?int => function_exists('tenant') && tenant() ? tenant()->id : null),
 
             Forms\Components\Hidden::make('correlation_id')
-                ->default(fn (): string => \Illuminate\Support\Str::uuid()->toString()),
+                ->default(fn (): string => Str::uuid()->toString()),
         ]);
     }
 
@@ -90,9 +95,17 @@ final class PharmacyResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Pharmacy\Filament\Resources\PharmacyResource\Pages\ListPharmacys::route('/'),
-            'create' => \App\Domains\Pharmacy\Filament\Resources\PharmacyResource\Pages\CreatePharmacy::route('/create'),
-            'edit' => \App\Domains\Pharmacy\Filament\Resources\PharmacyResource\Pages\EditPharmacy::route('/{record}/edit'),
+            'index' => ListPharmacys::route('/'),
+            'create' => CreatePharmacy::route('/create'),
+            'edit' => EditPharmacy::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Pharmacy
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

@@ -21,7 +21,7 @@ final class TaxiVerticalSeeder extends Seeder
         $companyName = 'City Taxi & Logistic';
 
         $tenant = Tenant::find($tenantId);
-        if (!$tenant) {
+        if (! $tenant) {
             $tenant = Tenant::create([
                 'id' => $tenantId,
                 'name' => $companyName,
@@ -35,7 +35,7 @@ final class TaxiVerticalSeeder extends Seeder
         // 2. Создание водителя
         $driverEmail = 'driver@city-taxi.local';
         $driver = User::where('email', $driverEmail)->first();
-        if (!$driver) {
+        if (! $driver) {
             $driver = User::create([
                 'name' => 'Michael Schumacher Jr.',
                 'email' => $driverEmail,
@@ -53,7 +53,7 @@ final class TaxiVerticalSeeder extends Seeder
                     'status' => 'active',
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]
+                ],
             ]);
         }
 
@@ -66,7 +66,7 @@ final class TaxiVerticalSeeder extends Seeder
                     'to_address' => 'Elite Spa & Beauty Center',
                     'fare' => 1200.00,
                     'status' => 'completed',
-                    'correlation_id' => (string) \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => (string) Str::uuid(),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ],
@@ -76,10 +76,10 @@ final class TaxiVerticalSeeder extends Seeder
                     'to_address' => 'Grand Hotel Luxury',
                     'fare' => 3500.00,
                     'status' => 'active',
-                    'correlation_id' => (string) \Illuminate\Support\Str::uuid(),
+                    'correlation_id' => (string) Str::uuid(),
                     'created_at' => now(),
                     'updated_at' => now(),
-                ]
+                ],
             ]);
         }
 

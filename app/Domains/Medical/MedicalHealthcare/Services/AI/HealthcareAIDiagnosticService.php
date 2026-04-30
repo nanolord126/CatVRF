@@ -2,6 +2,8 @@
 
 namespace App\Domains\Medical\MedicalHealthcare\Services\AI;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
 use App\Domains\Medical\MedicalHealthcare\DTOs\AIDiagnosticRequestDto;
 use App\Domains\Medical\MedicalHealthcare\DTOs\AIDiagnosticResultDto;
 use App\Domains\Medical\MedicalHealthcare\DTOs\HealthScorePredictionDto;
@@ -10,6 +12,7 @@ use App\Domains\Medical\Models\MedicalAppointment;
 use App\Domains\Medical\Models\Clinic;
 use App\Domains\Medical\Models\Doctor;
 use App\Domains\Medical\Models\MedicalRecord;
+use App\Octane\Services\SwooleCoroutineService;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\ML\FraudMLService;
@@ -17,6 +20,7 @@ use App\Services\Payment\PaymentService;
 use App\Services\Wallet\WalletService;
 use App\Services\Resilience\CircuitBreaker;
 use App\Services\AI\OpenAIClientService;
+use Carbon\CarbonImmutable;
 use App\Services\ML\FeatureDriftDetectorService;
 use App\Services\ML\FeatureDriftMetricsService;
 use App\Services\ML\Traits\HasFeatureDriftDetection;
@@ -37,21 +41,22 @@ final class HealthcareAIDiagnosticService
     private const SLOT_HOLD_MINUTES = 15;
     private const SLOT_HOLD_EXTENDED_MINUTES = 60;
 
-    private OpenAIClientService $openai;
+    private readonly OpenAIClientService $openai;
 
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private FraudMLService $fraudML,
-        private WalletService $wallet,
-        private PaymentService $payment,
-        private DatabaseManager $db,
-        private Cache $cache,
-        private LoggerInterface $logger,
-        private RedisConnection $redis,
-        private Guard $guard,
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly FraudMLService $fraudML,
+        private readonly WalletService $wallet,
+        private readonly PaymentService $payment,
+        private readonly DatabaseManager $db,
+        private readonly Cache $cache,
+        private readonly LoggerInterface $logger,
+        private readonly RedisConnection $redis,
+        private readonly Guard $guard,
         OpenAIClientService $openai,
-        private CircuitBreaker $circuitBreaker,
+        private readonly CircuitBreaker $circuitBreaker,
+        private readonly ?SwooleCoroutineService $coroutineService = null,) {
         $this->openai = $openai;
     }
 
@@ -63,12 +68,8 @@ final class HealthcareAIDiagnosticService
             amount: 0,
             correlationId: $dto->correlationId,
         );
-        );
 
-    $cacheKey="healthcare:diagnosis:{$dto->userId}:".md5(json_encode($dto->symptoms)
-
-        $cached =  this->cache->get($cacheKey);
-        if       $cacheKey = "healthcare:diagnosis:{$dto->userId}:" . md5(json_encode($dto->symptoms));
+        $cacheKey = "healthcare:diagnosis:{$dto->userId}:" . md5(json_encode($dto->symptoms));
 
         $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
@@ -106,9 +107,18 @@ final class HealthcareAIDiagnosticService
         }
 
         $healthScore = $this->calculateHealthScore($diagnosticData, $dto->symptoms);
-        $embedding = $this->generateEmbedding($symptomsText);
 
-        return $this->db->transaction(function () use ($dto, $cacheKey, $diagnosticData, $healthScore, $embedding, $symptomsText) {
+        // Use coroutines for parallel AI calls if available
+        if ($this->coroutineService !== null) {
+            $parallelResults = $this->coroutineService->runParallel([
+                'embedding' => fn() => $this->generateEmbedding($symptomsText),
+            ], timeout: 30.0);
+            $embedding = $parallelResults['embedding'];
+        } else {
+            $embedding = $this->generateEmbedding($symptomsText);
+        }
+
+        return $this->db->transaction(function () use ($dto, $cacheKey, $diagnosticData, $healthScore, $embedding, $symptomsText, $response) {
             $result = new AIDiagnosticResultDto(
                 primaryDiagnosis: $diagnosticData['primary_diagnosis'] ?? 'Не удалось определить',
                 differentialDiagnoses: $diagnosticData['differential_diagnoses'] ?? [],
@@ -139,9 +149,15 @@ final class HealthcareAIDiagnosticService
                 'health_score' => $healthScore,
                 'urgency_level' => $result->urgencyLevel,
                 'requires_emergency' => $result->requiresEmergency,
-                'tokens_used' => $response['usage']['total_tokens'] ?? 0, 
+                'tokens_used' => $response['usage']['total_tokens'] ?? 0,
+                'execution_mode' => $this->coroutineService !== null ? 'coroutine' : 'sequential',
+            ]);
 
-   }
+            $this->cache->put($cacheKey, json_encode($result->toArray()), self::CACHE_TTL);
+
+            return $result;
+        });
+    }
     public function predictHealthScore(int $userId, array $labResults = []): HealthScorePredictionDto
     {
         $this->fraud->check(
@@ -211,13 +227,12 @@ final class HealthcareAIDiagnosticService
                 'tokens_used' => $response['usage']['total_tokens'] ?? 0,
             ]);
 
-            $this->cache->put($cacheKey, json_encode($result->toArray()),
-            ]);
+            $this->cache->put($cacheKey, json_encode($result->toArray()), self::CACHE_TTL);
 
-            // Record actual AI token usage self::CACHE_TTL);
-  $tokensUsed=$response['usage'['total_tokens'] ?? 0;
+            // Record actual AI token usage
+            $tokensUsed = $response['usage']['total_tokens'] ?? 0;
             if ($tokensUsed > 0) {
-                $this->quotaLimiter->checkAIQuota($tenantId, $tokensUsed
+                $this->quotaLimiter->checkAIQuota($tenantId, $tokensUsed);
             }
             return $result;
         });
@@ -310,10 +325,10 @@ final class HealthcareAIDiagnosticService
             ];
         }
 
-        $holdUntil = now()->addMinutes($holdMinutes);
+        $holdUntil = CarbonImmutable::now()->addMinutes($holdMinutes);
         $this->redis->setex($holdKey, $holdMinutes * 60, json_encode([
             'user_id' => $userId,
-            'held_at' => now()->toIso8601String(),
+            'held_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ]));
 
@@ -424,7 +439,7 @@ final class HealthcareAIDiagnosticService
 
         $this->redis->setex(
             "healthcare:webrtc:token:{$token}",
-            $expiresAt->diffInSeconds(now()),
+            $expiresAt->diffInSeconds(CarbonImmutable::now()),
             json_encode([
                 'appointment_id' => $appointmentId,
                 'user_id' => $appointment->user_id,
@@ -474,8 +489,8 @@ final class HealthcareAIDiagnosticService
             throw new \RuntimeException('Консультация не подтверждена или уже завершена.');
         }
 
-        $allowedTimeWindow = now()->subMinutes(30)->lte($appointment->appointment_datetime) 
-            && now()->addMinutes(15)->gte($appointment->appointment_datetime);
+        $allowedTimeWindow = CarbonImmutable::now()->subMinutes(30)->lte($appointment->appointment_datetime) 
+            && CarbonImmutable::now()->addMinutes(15)->gte($appointment->appointment_datetime);
         
         if (!$allowedTimeWindow) {
             throw new \RuntimeException('Чек-ин доступен только за 30 минут до начала и в течение 15 минут после.');
@@ -483,7 +498,7 @@ final class HealthcareAIDiagnosticService
 
         $appointment->update([
             'status' => 'checked_in',
-            'check_in_time' => now(),
+            'check_in_time' => CarbonImmutable::now(),
             'check_in_method' => $nfcData !== '' ? 'nfc' : 'qr',
         ]);
 
@@ -662,7 +677,7 @@ PROMPT;
     private function saveHealthScorePrediction(int $userId, HealthScorePredictionDto $result): void
     {
         $this->redis->setex(
-            "healthcare:healthscore:history:{$userId}:" . now()->format('Y-m-d'),
+            "healthcare:healthscore:history:{$userId}:" . CarbonImmutable::now()->format('Y-m-d'),
             31536000,
             json_encode($result->toArray())
         );
@@ -677,7 +692,16 @@ PROMPT;
             'correlation_id' => $correlationId,
         ]);
 
-        event(new \App\Domains\Medical\MedicalHealthcare\Events\EmergencyDetectedEvent($userId, $result, $correlationId));
+        // Dispatch emergency notification job asynchronously (instead of synchronous event)
+        \App\Jobs\EmergencyNotificationJob::dispatch(
+            userId: $userId,
+            diagnosticResult: $result,
+            tenantId: $this->tenantId ?? null,
+            correlationId: $correlationId,
+        );
+
+        // Still dispatch event for other listeners (if any)
+        $this->eventDispatcher->dispatch(new \App\Domains\Medical\MedicalHealthcare\Events\EmergencyDetectedEvent($userId, $result, $correlationId));
     }
 
     private function calculateDoctorMatchScore(Doctor $doctor, AIDiagnosticResultDto $diagnostic, int $userId): float
@@ -755,7 +779,7 @@ PROMPT;
     {
         $loadFactor = $this->getClinicLoadFactor($clinicId);
         
-        return $loadFactor < 0.3 && now()->hour >= 14 && now()->hour <= 17;
+        return $loadFactor < 0.3 && CarbonImmutable::now()->hour >= 14 && CarbonImmutable::now()->hour <= 17;
     }
 
     private function calculateEstimatedWaitTime(int $doctorId): int
@@ -809,7 +833,7 @@ PROMPT;
 
     private function syncDiagnosticResult(int $userId, array $data, string $correlationId): void
     {
-        $this->logger->info('CRM sync: diagnostic result', [
+        $this->logger->$this->logger->info('CRM sync: diagnostic result', [
             'user_id' => $userId,
             'correlation_id' => $correlationId,
         ]);
@@ -817,7 +841,7 @@ PROMPT;
 
     private function syncAppointmentBooking(array $appointment, string $correlationId): void
     {
-        $this->logger->info('CRM sync: appointment booking', [
+        $this->logger->$this->logger->info('CRM sync: appointment booking', [
             'appointment_id' => $appointment['id'] ?? null,
             'correlation_id' => $correlationId,
         ]);
@@ -825,7 +849,7 @@ PROMPT;
 
     private function syncCheckIn(array $appointment, string $correlationId): void
     {
-        $this->logger->info('CRM sync: check-in', [
+        $this->logger->$this->logger->info('CRM sync: check-in', [
             'appointment_id' => $appointment['id'] ?? null,
             'correlation_id' => $correlationId,
         ]);

@@ -1,12 +1,20 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
-
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use App\Domains\Wallet\Enums\BalanceTransactionType;
+use App\Services\Wallet\WalletService;
+use Carbon\CarbonImmutable;
+use Illuminate\Routing\UrlGenerator;
 
 /**
  * Referral Program Service
@@ -20,17 +28,17 @@ use Illuminate\Database\DatabaseManager;
  * - Migration source tracking
  *
  * @author CatVRF Team
+ *
  * @version 2026.03.24
  */
 final class ReferralService
 {
-    public function __construct(
-        private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
-    ) {}
+    use WithAuditLogging;
 
     private const QUALIFICATION_THRESHOLD = 500000; // 5000₽ in kopeks
+
     private const REFERRER_BONUS = 20000; // 200₽ in kopeks
+
     private const MIGRATION_BENEFITS = [
         'dikidi' => ['rate' => 10, 'months' => 4],
         'booking' => ['rate' => 12, 'months' => 24],
@@ -39,17 +47,26 @@ final class ReferralService
         'flowwow' => ['rate' => 10, 'months' => 4],
     ];
 
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly WalletService $walletService,
+        private readonly UrlGenerator $url,
+        private readonly AuditService $audit,
+    ) {}
+
     /**
      * Generate referral link
      *
-     * @param int $referrerId User ID of referrer
-     * @param string $correlationId Tracing ID
+     * @param  int  $referrerId  User ID of referrer
+     * @param  string  $correlationId  Tracing ID
      * @return array {code, link, created_at}
+     *
      * @throws \Exception
      */
     public function generateReferralLink(int $referrerId, string $correlationId): array
     {
-        $this->logger->channel('audit')->info('Method generateReferralLink() called', [
+        $this->logger->channel('audit')->$this->logger->info('Method generateReferralLink() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
@@ -62,15 +79,15 @@ final class ReferralService
             $referral = $this->db->table('referrals')->insertGetId([
                 'referrer_id' => $referrerId,
                 'referral_code' => $code,
-                'referral_link' => route('referral.register', ['code' => $code]),
+                'referral_link' => $this->url->route('referral.register', ['code' => $code]),
                 'status' => 'pending',
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
+                'created_at' => CarbonImmutable::now(),
             ]);
 
             $link = route('referral.register', ['code' => $code]);
 
-            $this->logger->channel('referral')->info('Referral link generated', [
+            $this->logger->channel('referral')->$this->logger->info('Referral link generated', [
                 'correlation_id' => $correlationId,
                 'referrer_id' => $referrerId,
                 'code' => $code,
@@ -80,7 +97,7 @@ final class ReferralService
             return [
                 'code' => $code,
                 'link' => $link,
-                'created_at' => now(),
+                'created_at' => CarbonImmutable::now(),
             ];
         });
     }
@@ -88,11 +105,12 @@ final class ReferralService
     /**
      * Register new user with referral code
      *
-     * @param string $code Referral code
-     * @param int $newUserId New user ID
-     * @param string|null $sourcePlatform Migration source (dikidi, booking, etc.)
-     * @param string $correlationId Tracing ID
+     * @param  string  $code  Referral code
+     * @param  int  $newUserId  New user ID
+     * @param  string|null  $sourcePlatform  Migration source (dikidi, booking, etc.)
+     * @param  string  $correlationId  Tracing ID
      * @return array {referral_id, status, referrer_id}
+     *
      * @throws \Exception
      */
     public function registerReferral(string $code, int $newUserId, ?string $sourcePlatform, string $correlationId): array
@@ -105,7 +123,7 @@ final class ReferralService
         ]);
 
 
-        $this->logger->channel('audit')->info('Method registerReferral() called', [
+        $this->logger->channel('audit')->$this->logger->info('Method registerReferral() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
@@ -118,7 +136,7 @@ final class ReferralService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$referral) {
+            if (! $referral) {
                 throw new \DomainException('Referral code not found');
             }
 
@@ -139,12 +157,12 @@ final class ReferralService
                     'referee_id' => $newUserId,
                     'status' => 'registered',
                     'source_platform' => $sourcePlatform,
-                    'migrated_at' => now(),
+                    'migrated_at' => CarbonImmutable::now(),
                     'correlation_id' => $correlationId,
-                    'updated_at' => now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
-            $this->logger->channel('referral')->info('Referral registered', [
+            $this->logger->channel('referral')->$this->logger->info('Referral registered', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referral->id,
                 'referrer_id' => $referral->referrer_id,
@@ -163,14 +181,15 @@ final class ReferralService
     /**
      * Check if referral qualifies and award bonus
      *
-     * @param int $referralId Referral ID
-     * @param string $correlationId Tracing ID
+     * @param  int  $referralId  Referral ID
+     * @param  string  $correlationId  Tracing ID
      * @return array {qualified: bool, bonus_amount, qualified_at}
+     *
      * @throws \Exception
      */
     public function checkQualification(int $referralId, string $correlationId): array
     {
-        $this->logger->channel('audit')->info('Method checkQualification() called', [
+        $this->logger->channel('audit')->$this->logger->info('Method checkQualification() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
@@ -181,7 +200,7 @@ final class ReferralService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$referral || !$referral->referee_id) {
+            if (! $referral || ! $referral->referee_id) {
                 throw new \DomainException('Referral not found or not registered');
             }
 
@@ -210,13 +229,17 @@ final class ReferralService
             }
 
             // Award bonus
-            $walletService = app(WalletService::class);
-            $walletService->credit(
+            $this->walletService->credit(
                 $referral->referrer_id, // referrer's wallet
                 self::REFERRER_BONUS,
-                \App\Domains\Wallet\Enums\BalanceTransactionType::BONUS, $correlationId, null, null, [
+                BalanceTransactionType::BONUS,
+                $correlationId,
+                null,
+                null,
+                [
                     'correlation_id' => $correlationId,
-                ]);
+                ]
+            );
 
             $referral->update(['status' => 'rewarded']);
 

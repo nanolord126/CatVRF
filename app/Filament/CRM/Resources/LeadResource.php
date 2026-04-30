@@ -1,6 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\CRM\Resources;
+
+use AuditService;
+
+use Illuminate\Notifications\ChannelManager;
+
+use Carbon\CarbonImmutable;
 
 use App\Services\AuditService;
 use Filament\Forms\Components\DateTimePicker;
@@ -17,6 +25,10 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use App\Filament\CRM\Resources\LeadResource\Pages\CreateLead;
+use App\Filament\CRM\Resources\LeadResource\Pages\EditLead;
+use App\Filament\CRM\Resources\LeadResource\Pages\ListLeads;
+use App\Models\CrmLead;
 
 /**
  * CRM: Лиды — потенциальные клиенты, которых обрабатывают менеджеры.
@@ -27,12 +39,18 @@ use Filament\Tables\Table;
  */
 final class LeadResource extends Resource
 {
-    protected static ?string $model = \App\Models\CrmLead::class;
+    protected static ?string $model = CrmLead::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-funnel';
+
     protected static ?string $navigationGroup = 'Клиенты';
+
     protected static ?string $navigationLabel = 'Лиды';
+
     protected static ?string $modelLabel = 'Лид';
+
     protected static ?string $pluralModelLabel = 'Лиды';
+
     protected static ?int $navigationSort = 20;
 
     public static function form(Form $form): Form
@@ -147,7 +165,7 @@ final class LeadResource extends Resource
                     ->label('Следующий контакт')
                     ->dateTime('d.m.Y H:i')
                     ->sortable()
-                    ->color(fn ($state): string => $state && $state < now() ? 'danger' : 'gray'),
+                    ->color(fn ($state): string => $state && $state < CarbonImmutable::now() ? 'danger' : 'gray'),
                 TextColumn::make('created_at')
                     ->label('Создан')
                     ->dateTime('d.m.Y')
@@ -190,7 +208,7 @@ final class LeadResource extends Resource
                     ->action(function (Model $record): void {
                         $record->update(['status' => 'won']);
 
-                        app(AuditService::class)->record(
+                        $this->auditService /* TODO: inject via constructor DI */ /* TODO: inject via DI */->record(
                             'crm_lead_converted',
                             get_class($record),
                             $record->id,
@@ -198,7 +216,7 @@ final class LeadResource extends Resource
                             ['status' => 'won'],
                         );
 
-                        Notification::make()
+                        $this->notificationManager->make()
                             ->title('Лид конвертирован в клиента')
                             ->success()
                             ->send();
@@ -212,9 +230,9 @@ final class LeadResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => \App\Filament\CRM\Resources\LeadResource\Pages\ListLeads::route('/'),
-            'create' => \App\Filament\CRM\Resources\LeadResource\Pages\CreateLead::route('/create'),
-            'edit'   => \App\Filament\CRM\Resources\LeadResource\Pages\EditLead::route('/{record}/edit'),
+            'index'  => ListLeads::route('/'),
+            'create' => CreateLead::route('/create'),
+            'edit'   => EditLead::route('/{record}/edit'),
         ];
     }
 }

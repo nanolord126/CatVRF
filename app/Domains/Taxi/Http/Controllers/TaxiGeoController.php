@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Http\Controllers;
 
@@ -32,7 +34,7 @@ final class TaxiGeoController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'route' => $route,
         ]);
@@ -54,7 +56,7 @@ final class TaxiGeoController extends Controller
             lon2: $validated['lon2'],
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'distance_meters' => $distance,
         ]);
@@ -77,7 +79,7 @@ final class TaxiGeoController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'duration_seconds' => $duration,
         ]);
@@ -100,7 +102,7 @@ final class TaxiGeoController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'drivers' => $drivers,
         ]);
@@ -123,7 +125,7 @@ final class TaxiGeoController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'eta' => $eta,
         ]);
@@ -152,7 +154,7 @@ final class TaxiGeoController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'zone' => $zone,
         ]);
@@ -164,7 +166,7 @@ final class TaxiGeoController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'zones' => $zones,
         ]);
@@ -184,7 +186,7 @@ final class TaxiGeoController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'message' => 'Driver location updated',
         ]);
@@ -203,7 +205,7 @@ final class TaxiGeoController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'multipliers' => $multipliers,
         ]);

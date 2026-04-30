@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -18,13 +20,6 @@ use Filament\Tables\Table;
 final class ListDentalTreatmentPlan extends ListRecords
 {
     protected static string $resource = DentalTreatmentPlanResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()->label('Создать план лечения')->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -48,7 +43,7 @@ final class ListDentalTreatmentPlan extends ListRecords
                         default    => $state,
                     }),
                 TextColumn::make('estimated_budget')->label('Бюджет')
-                    ->formatStateUsing(fn ($state) => $state ? number_format($state / 100, 0, ',', ' ') . ' ₽' : '—')->sortable(),
+                    ->formatStateUsing(fn ($state) => $state ? number_format($state / 100, 0, ',', ' ').' ₽' : '—')->sortable(),
                 TextColumn::make('created_at')->label('Создано')->dateTime('d.m.Y H:i')->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
@@ -58,5 +53,12 @@ final class ListDentalTreatmentPlan extends ListRecords
             ->actions([ViewAction::make(), EditAction::make(), DeleteAction::make()])
             ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])])
             ->defaultSort('created_at', 'desc')->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()->label('Создать план лечения')->icon('heroicon-o-plus'),
+        ];
     }
 }

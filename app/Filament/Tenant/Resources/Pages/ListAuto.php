@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -13,23 +15,11 @@ use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
 
 final class ListAuto extends ListRecords
 {
     protected static string $resource = AutoResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Добавить транспорт')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
 
     public function table(Table $table): Table
     {
@@ -89,7 +79,7 @@ final class ListAuto extends ListRecords
                     ->label('Статус')
                     ->colors([
                         'success' => 'active',
-                        'warning' => fn ($state) => in_array($state, ['repair', 'wash']),
+                        'warning' => fn ($state) => in_array($state, ['repair', 'wash'], true),
                         'primary' => 'ride',
                         'danger'  => 'sold',
                     ])
@@ -104,7 +94,7 @@ final class ListAuto extends ListRecords
                 TextColumn::make('price_kopecks')
                     ->label('Цена')
                     ->sortable()
-                    ->formatStateUsing(fn ($state) => $state ? number_format($state / 100, 0, ',', ' ') . ' ₽' : '—'),
+                    ->formatStateUsing(fn ($state) => $state ? number_format($state / 100, 0, ',', ' ').' ₽' : '—'),
 
                 TextColumn::make('correlation_id')
                     ->label('Correlation ID')
@@ -154,5 +144,14 @@ final class ListAuto extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Добавить транспорт')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

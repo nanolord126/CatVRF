@@ -1,15 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+
 /**
  * Class AutoPartOrderCreated
  *
@@ -20,20 +21,23 @@ use Illuminate\Queue\SerializesModels;
  * Events carry correlation_id for full traceability.
  * Listeners handle side effects asynchronously.
  *
- * @see \Illuminate\Foundation\Events\Dispatchable
- * @package App\Domains\Auto\Events
+ * @see Dispatchable
  */
 final class AutoPartOrderCreated implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-    
+    use Dispatchable;
+    use InteractsWithSockets;
+    use SerializesModels;
+
     public function __construct(
         public readonly int $autoPartOrderId,
         public readonly int $tenantId,
         public readonly int $userId,
         public readonly int $totalPrice,
-        public readonly string $correlationId, public readonly LoggerInterface $logger) {
-        $this->logger->info('AutoPartOrderCreated event dispatched', [
+        public readonly string $correlationId,
+        public readonly LoggerInterface $logger
+    ) {
+        $this->logger->$this->logger->info('AutoPartOrderCreated event dispatched', [
             'correlation_id' => $this->correlationId,
             'order_id' => $this->autoPartOrderId,
             'tenant_id' => $this->tenantId,
