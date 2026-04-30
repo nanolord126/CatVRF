@@ -5,12 +5,13 @@ namespace App\Http\Middleware;
 use App\Services\SuspiciousBehaviorDetector;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Symfony\Component\HttpFoundation\Response;
 
 final class CheckSuspiciousBehavior
 {
     public function __construct(
+        private readonly LogManager $log,
         private readonly SuspiciousBehaviorDetector $behaviorDetector,
     ) {}
 
@@ -32,7 +33,7 @@ final class CheckSuspiciousBehavior
             );
 
             if (!$result['allowed']) {
-                Log::channel('security')->warning('Access denied by suspicious behavior middleware', [
+                $this->log->channel('security')->warning('Access denied by suspicious behavior middleware', [
                     'user_id' => $userId,
                     'user_gender' => $userGender,
                     'reason' => $result['reason'] ?? 'unknown',

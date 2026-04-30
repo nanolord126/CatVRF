@@ -1,193 +1,214 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Analytics;
 
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Cache\CacheManager;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 final readonly class ExportService
 {
-    public function __construct(
-        private readonly LogManager $logger,
-        private readonly CacheManager $cache,
-    ) {}
+    use WithAuditLogging;
 
     private const CACHE_TTL = 3600;
-        private const EXPORTS_DIR = 'exports';
 
-        /**
-         * Экспортировать в CSV
-         */
-        public function exportToCSV(array $data, string $filename, array $context = []): array {
-            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+    private const EXPORTS_DIR = 'exports';
 
-            $csv = $this->convertToCSV($data);
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        private readonly LogManager $log,
+        private readonly CacheManager $cache,
+        private readonly AuditService $audit,
+    ) {}
 
-            $result = [
+    /**
+     * Экспортировать в CSV
+     */
+    public function exportToCSV(array $data, string $filename, array $context = []): array
+    {
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+
+        $csv = $this->convertToCSV($data);
+
+        $result = [
+            'id' => Str::uuid()->toString(),
+            'filename' => $filename.'.csv',
+            'format' => 'csv',
+            'size_bytes' => strlen($csv),
+            'url' => $this->generateDownloadURL($filename, 'csv'),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
+            'correlation_id' => $correlationId,
+        ];
+
+        $this->logger->channel('audit')->$this->logger->info('CSV export created', [
+            'correlation_id' => $correlationId,
+            'filename' => $filename,
+            'size' => $result['size_bytes'],
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Экспортировать в Excel
+     */
+    public function exportToExcel(array $data, string $filename, array $context = []): array
+    {
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+
+        throw new \RuntimeException('Excel export not yet configured. Install maatwebsite/excel.');
+    }
+
+    /**
+     * Экспортировать в PDF
+     */
+    public function exportToPDF(array $data, string $filename, array $context = []): array
+    {
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+
+        throw new \RuntimeException('PDF export not yet configured. Install barryvdh/laravel-dompdf.');
+    }
+
+    /**
+     * Экспортировать в JSON
+     */
+    public function exportToJSON(array $data, string $filename, array $context = []): array
+    {
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+
+        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+        $result = [
+            'id' => Str::uuid()->toString(),
+            'filename' => $filename.'.json',
+            'format' => 'json',
+            'size_bytes' => strlen($json),
+            'url' => $this->generateDownloadURL($filename, 'json'),
+            'created_at' => CarbonImmutable::now()->toIso8601String(),
+            'correlation_id' => $correlationId,
+        ];
+
+        $this->logger->channel('audit')->$this->logger->info('JSON export created', [
+            'correlation_id' => $correlationId,
+            'filename' => $filename,
+            'size' => $result['size_bytes'],
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Подготовить данные к экспорту (валидация, форматирование)
+     */
+    public function prepareDataForExport(array $data): array
+    {
+        $prepared = [];
+
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $prepared[$key] = $this->flattenArray($value);
+            } elseif (is_object($value)) {
+                $prepared[$key] = $this->objectToArray($value);
+            } else {
+                $prepared[$key] = $value;
+            }
+        }
+
+        return $prepared;
+    }
+
+    /**
+     * Получить историю экспортов
+     */
+    public function getExportHistory(int $tenantId, int $limit = 50, array $context = []): array
+    {
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+        $cacheKey = "exports:history:{$tenantId}";
+
+        $cached = $this->cache->get($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $history = [
+            [
                 'id' => Str::uuid()->toString(),
-                'filename' => $filename . '.csv',
+                'filename' => 'revenue_report_2026_03_18.csv',
                 'format' => 'csv',
-                'size_bytes' => strlen($csv),
-                'url' => $this->generateDownloadURL($filename, 'csv'),
-                'created_at' => now()->toIso8601String(),
-                'correlation_id' => $correlationId,
-            ];
-
-            $this->logger->channel('audit')->info('CSV export created', [
-                'correlation_id' => $correlationId,
-                'filename' => $filename,
-                'size' => $result['size_bytes'],
-            ]);
-
-            return $result;
-        }
-
-        /**
-         * Экспортировать в Excel
-         */
-        public function exportToExcel(array $data, string $filename, array $context = []): array {
-            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
-
-            throw new \RuntimeException('Excel export not yet configured. Install maatwebsite/excel.');
-        }
-
-        /**
-         * Экспортировать в PDF
-         */
-        public function exportToPDF(array $data, string $filename, array $context = []): array {
-            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
-
-            throw new \RuntimeException('PDF export not yet configured. Install barryvdh/laravel-dompdf.');
-        }
-
-        /**
-         * Экспортировать в JSON
-         */
-        public function exportToJSON(array $data, string $filename, array $context = []): array {
-            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
-
-            $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
-            $result = [
+                'created_at' => CarbonImmutable::now()->subHours(2)->toIso8601String(),
+                'created_by' => 'user@example.com',
+            ],
+            [
                 'id' => Str::uuid()->toString(),
-                'filename' => $filename . '.json',
-                'format' => 'json',
-                'size_bytes' => strlen($json),
-                'url' => $this->generateDownloadURL($filename, 'json'),
-                'created_at' => now()->toIso8601String(),
-                'correlation_id' => $correlationId,
-            ];
+                'filename' => 'monthly_summary_2026_02.xlsx',
+                'format' => 'excel',
+                'created_at' => CarbonImmutable::now()->subDays(1)->toIso8601String(),
+                'created_by' => 'manager@example.com',
+            ],
+            [
+                'id' => Str::uuid()->toString(),
+                'filename' => 'customer_analysis_2026_q1.pdf',
+                'format' => 'pdf',
+                'created_at' => CarbonImmutable::now()->subDays(7)->toIso8601String(),
+                'created_by' => 'analyst@example.com',
+            ],
+        ];
 
-            $this->logger->channel('audit')->info('JSON export created', [
-                'correlation_id' => $correlationId,
-                'filename' => $filename,
-                'size' => $result['size_bytes'],
-            ]);
+        $this->cache->put($cacheKey, $history, self::CACHE_TTL);
 
-            return $result;
-        }
+        return array_slice($history, 0, $limit);
+    }
 
-        /**
-         * Подготовить данные к экспорту (валидация, форматирование)
-         */
-        public function prepareDataForExport(array $data): array {
-            $prepared = [];
+    // ========== PRIVATE HELPERS ==========
 
-            foreach ($data as $key => $value) {
-                if (is_array($value)) {
-                    $prepared[$key] = $this->flattenArray($value);
-                } elseif (is_object($value)) {
-                    $prepared[$key] = $this->objectToArray($value);
-                } else {
-                    $prepared[$key] = $value;
-                }
+    private function convertToCSV(array $data): string
+    {
+        $csv = '';
+        $headers = array_keys($data);
+        $csv .= implode(',', $headers)."\n";
+
+        $rows = is_array(reset($data)) ? reset($data) : [$data];
+
+        foreach ($rows as $row) {
+            $values = [];
+            foreach ($headers as $header) {
+                $values[] = isset($row[$header]) ? '"'.addslashes((string) $row[$header]).'"' : '""';
             }
-
-            return $prepared;
+            $csv .= implode(',', $values)."\n";
         }
 
-        /**
-         * Получить историю экспортов
-         */
-        public function getExportHistory(int $tenantId, int $limit = 50, array $context = []): array {
-            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
-            $cacheKey = "exports:history:{$tenantId}";
+        return $csv;
+    }
 
-            $cached = $this->cache->get($cacheKey);
-            if ($cached !== null) {
-                return $cached;
+    private function generateDownloadURL(string $filename, string $format): string
+    {
+        return "/api/v2/exports/download/{$filename}.{$format}";
+    }
+
+    private function flattenArray(array $arr, string $prefix = ''): array
+    {
+        $result = [];
+        foreach ($arr as $key => $value) {
+            $newKey = $prefix ? "{$prefix}.{$key}" : $key;
+            if (is_array($value)) {
+                $result = array_merge($result, $this->flattenArray($value, $newKey));
+            } else {
+                $result[$newKey] = $value;
             }
-
-            $history = [
-                [
-                    'id' => Str::uuid()->toString(),
-                    'filename' => 'revenue_report_2026_03_18.csv',
-                    'format' => 'csv',
-                    'created_at' => now()->subHours(2)->toIso8601String(),
-                    'created_by' => 'user@example.com',
-                ],
-                [
-                    'id' => Str::uuid()->toString(),
-                    'filename' => 'monthly_summary_2026_02.xlsx',
-                    'format' => 'excel',
-                    'created_at' => now()->subDays(1)->toIso8601String(),
-                    'created_by' => 'manager@example.com',
-                ],
-                [
-                    'id' => Str::uuid()->toString(),
-                    'filename' => 'customer_analysis_2026_q1.pdf',
-                    'format' => 'pdf',
-                    'created_at' => now()->subDays(7)->toIso8601String(),
-                    'created_by' => 'analyst@example.com',
-                ],
-            ];
-
-            $this->cache->put($cacheKey, $history, self::CACHE_TTL);
-
-            return array_slice($history, 0, $limit);
         }
 
-        // ========== PRIVATE HELPERS ==========
+        return $result;
+    }
 
-        private function convertToCSV(array $data): string {
-            $csv = "";
-            $headers = array_keys($data);
-            $csv .= implode(",", $headers) . "\n";
-
-            $rows = is_array(reset($data)) ? reset($data) : [$data];
-
-            foreach ($rows as $row) {
-                $values = [];
-                foreach ($headers as $header) {
-                    $values[] = isset($row[$header]) ? '"' . addslashes((string)$row[$header]) . '"' : '""';
-                }
-                $csv .= implode(",", $values) . "\n";
-            }
-
-            return $csv;
-        }
-
-        private function generateDownloadURL(string $filename, string $format): string {
-            return "/api/v2/exports/download/{$filename}.{$format}";
-        }
-
-        private function flattenArray(array $arr, string $prefix = ''): array {
-            $result = [];
-            foreach ($arr as $key => $value) {
-                $newKey = $prefix ? "{$prefix}.{$key}" : $key;
-                if (is_array($value)) {
-                    $result = array_merge($result, $this->flattenArray($value, $newKey));
-                } else {
-                    $result[$newKey] = $value;
-                }
-            }
-            return $result;
-        }
-
-        private function objectToArray(object $obj): array {
-            return json_decode(json_encode($obj), true);
-        }
+    private function objectToArray(object $obj): array
+    {
+        return json_decode(json_encode($obj), true);
+    }
 }

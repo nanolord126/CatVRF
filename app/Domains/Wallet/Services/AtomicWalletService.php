@@ -19,12 +19,11 @@ use Psr\Log\LoggerInterface;
  *
  * CRITICAL: Uses Redis Lua scripts to prevent race conditions in debit/credit operations.
  * No negative balance possible due to atomic checks.
- *
- * @package App\Domains\Wallet\Services
  */
 final readonly class AtomicWalletService
 {
     private const PREFIX = 'wallet:balance:';
+
     private const LOCK_PREFIX = 'wallet:lock:';
 
     /**
@@ -104,25 +103,16 @@ final readonly class AtomicWalletService
     ];
 
     public function __construct(
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private RedisFactory $redis,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly RedisFactory $redis,
     ) {}
 
     /**
      * Credit wallet with atomic Redis operation.
-     *
-     * @param int $walletId
-     * @param int $amount
-     * @param BalanceTransactionType $type
-     * @param string $correlationId
-     * @param string|null $sourceType
-     * @param int|null $sourceId
-     * @param array|null $metadata
-     * @return Wallet
      */
     public function credit(
         int $walletId,
@@ -206,15 +196,6 @@ final readonly class AtomicWalletService
      *
      * CRITICAL: Uses Lua script to prevent race conditions and negative balance.
      *
-     * @param int $walletId
-     * @param int $amount
-     * @param BalanceTransactionType $type
-     * @param string $correlationId
-     * @param string|null $sourceType
-     * @param int|null $sourceId
-     * @param string|null $verticalCode
-     * @param array|null $metadata
-     * @return Wallet
      * @throws \RuntimeException If insufficient balance
      */
     public function debit(
@@ -240,7 +221,6 @@ final readonly class AtomicWalletService
             $correlationId,
             $sourceType,
             $sourceId,
-            $verticalCode,
             $metadata
         ): Wallet {
             /** @var Wallet $wallet */
@@ -298,14 +278,6 @@ final readonly class AtomicWalletService
      *
      * CRITICAL: Uses Lua script to prevent race conditions.
      *
-     * @param int $walletId
-     * @param int $amount
-     * @param string $correlationId
-     * @param string|null $sourceType
-     * @param int|null $sourceId
-     * @param array|null $metadata
-     * @param string|null $verticalCode
-     * @return Wallet
      * @throws \RuntimeException If insufficient balance
      */
     public function hold(
@@ -390,7 +362,6 @@ final readonly class AtomicWalletService
     /**
      * Get cached balance from Redis.
      *
-     * @param int $walletId
      * @return int|null Balance in kopecks or null if not cached
      */
     public function getCachedBalance(int $walletId): ?int
@@ -403,9 +374,6 @@ final readonly class AtomicWalletService
 
     /**
      * Sync Redis cache with database balance.
-     *
-     * @param int $walletId
-     * @return void
      */
     public function syncCache(int $walletId): void
     {
@@ -436,14 +404,14 @@ final readonly class AtomicWalletService
 
     private function guardCreditType(BalanceTransactionType $type): void
     {
-        if (!\in_array($type, self::CREDIT_TYPES, true)) {
+        if (! \in_array($type, self::CREDIT_TYPES, true)) {
             throw new \InvalidArgumentException("Invalid credit type: {$type->value}");
         }
     }
 
     private function guardDebitType(BalanceTransactionType $type): void
     {
-        if (!\in_array($type, self::DEBIT_TYPES, true)) {
+        if (! \in_array($type, self::DEBIT_TYPES, true)) {
             throw new \InvalidArgumentException("Invalid debit type: {$type->value}");
         }
     }
@@ -457,11 +425,11 @@ final readonly class AtomicWalletService
 
     private function balanceKey(int $walletId): string
     {
-        return self::PREFIX . $walletId;
+        return self::PREFIX.$walletId;
     }
 
     private function holdKey(int $walletId): string
     {
-        return self::PREFIX . $walletId . ':hold';
+        return self::PREFIX.$walletId.':hold';
     }
 }

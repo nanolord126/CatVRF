@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Modules\Taxi;
 
@@ -12,24 +14,8 @@ use Mockery;
 final class DriverMatchingServiceTest extends TestCase
 {
     private DriverMatchingService $service;
+
     private AuditService $audit;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->audit = Mockery::mock(AuditService::class);
-
-        $this->service = new DriverMatchingService(
-            $this->audit,
-        );
-    }
-
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
 
     public function test_find_best_drivers(): void
     {
@@ -93,5 +79,22 @@ final class DriverMatchingServiceTest extends TestCase
 
         $driver = DB::table('taxi_drivers')->where('id', 1)->first();
         $this->assertEquals('available', $driver->status);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->audit = Mockery::mock(AuditService::class);
+
+        $this->service = new DriverMatchingService(
+            $this->audit,
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 }

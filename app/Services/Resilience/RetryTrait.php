@@ -1,22 +1,31 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Resilience;
 
 use Psr\Log\LoggerInterface;
 use Throwable;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\ServerException;
+use GuzzleHttp\Exception\TooManyRedirectsException;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\ConnectionTimeoutException;
 
 trait RetryTrait
 {
     /**
      * Execute a callback with retry logic for transient failures.
      *
-     * @param callable $callback The operation to execute
-     * @param int $maxAttempts Maximum number of retry attempts
-     * @param int $initialDelayMs Initial delay in milliseconds
-     * @param float $backoffMultiplier Multiplier for exponential backoff
-     * @param array $retryableExceptions Exception classes that should trigger retry
-     * @param string $operationName Name of the operation for logging
+     * @param  callable  $callback  The operation to execute
+     * @param  int  $maxAttempts  Maximum number of retry attempts
+     * @param  int  $initialDelayMs  Initial delay in milliseconds
+     * @param  float  $backoffMultiplier  Multiplier for exponential backoff
+     * @param  array  $retryableExceptions  Exception classes that should trigger retry
+     * @param  string  $operationName  Name of the operation for logging
      * @return mixed The result of the callback
+     *
      * @throws Throwable If all retry attempts fail
      */
     protected function executeWithRetry(
@@ -34,13 +43,13 @@ trait RetryTrait
         // Default retryable exceptions for common transient failures
         if (empty($retryableExceptions)) {
             $retryableExceptions = [
-                \Illuminate\Http\Client\ConnectionException::class,
+                ConnectionException::class,
                 \Illuminate\Http\Client\RequestException::class,
-                \Illuminate\Http\Client\ConnectionTimeoutException::class,
-                \GuzzleHttp\Exception\ConnectException::class,
-                \GuzzleHttp\Exception\RequestException::class,
-                \GuzzleHttp\Exception\ServerException::class,
-                \GuzzleHttp\Exception\TooManyRedirectsException::class,
+                ConnectionTimeoutException::class,
+                ConnectException::class,
+                RequestException::class,
+                ServerException::class,
+                TooManyRedirectsException::class,
             ];
         }
 
@@ -61,11 +70,11 @@ trait RetryTrait
                 }
 
                 // Also retry on specific error codes
-                if (!$isRetryable) {
+                if (! $isRetryable) {
                     $isRetryable = $this->isRetryableError($e);
                 }
 
-                if (!$isRetryable || $attempt >= $maxAttempts) {
+                if (! $isRetryable || $attempt >= $maxAttempts) {
                     break;
                 }
 
@@ -79,7 +88,7 @@ trait RetryTrait
 
                 // Wait before retry
                 usleep($delayMs * 1000);
-                $delayMs = (int)($delayMs * $backoffMultiplier);
+                $delayMs = (int) ($delayMs * $backoffMultiplier);
             }
         }
 
@@ -99,7 +108,7 @@ trait RetryTrait
     protected function isRetryableError(Throwable $e): bool
     {
         $message = $e->getMessage();
-        
+
         // Retry on common transient error indicators
         $retryablePatterns = [
             '/timeout/i',

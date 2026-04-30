@@ -2,12 +2,14 @@
 
 namespace App\Services\Wallet;
 
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Log\LogManager;
 use App\Models\Wallet;
 use App\Models\BalanceTransaction;
+use Carbon\CarbonImmutable;
 
 /**
  * Atomic Wallet Operations Service
@@ -23,14 +25,15 @@ use App\Models\BalanceTransaction;
  */
 final readonly class AtomicWalletOperationsService
 {
-    private const string BALANCE_PREFIX = 'wallet:balance:';
-    private const string HOLD_PREFIX = 'wallet:hold:';
-    private const int LOCK_TTL_SECONDS = 30;
+    private const BALANCE_PREFIX = 'wallet:balance:';
+    private const HOLD_PREFIX = 'wallet:hold:';
+    private const LOCK_TTL_SECONDS = 30;
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly CacheRepository $cache,
         private readonly DatabaseManager $db,
-        private readonly LogManager $logger,
+        private readonly LogManager $log,
     ) {}
 
     /**
@@ -333,7 +336,7 @@ final readonly class AtomicWalletOperationsService
             ]);
         });
 
-        $this->logger->channel('audit')->info('Atomic hold completed', [
+        $this->logger->channel('audit')->$th$s->logger->ithis->logger->info('Atomic hold completed', [
             'correlation_id' => $correlationId,
             'wallet_id' => $walletId,
             'amount' => $amount,
@@ -461,7 +464,7 @@ final readonly class AtomicWalletOperationsService
             // Sync from DB if not in Redis
             $wallet = Wallet::whereKey($walletId)->firstOrFail();
             $balance = $wallet->current_balance;
-            $this->cache->put($balanceKey, $balance, now()->addHours(24));
+            $this->cache->put($balanceKey, $balance, CarbonImmutable::now()->addHours(24));
         }
 
         return (int) $balance;
@@ -481,8 +484,8 @@ final readonly class AtomicWalletOperationsService
         $balanceKey = $this->buildBalanceKey($walletId);
         $holdKey = $this->buildHoldKey($walletId);
 
-        $this->cache->put($balanceKey, $wallet->current_balance, now()->addHours(24));
-        $this->cache->put($holdKey, $wallet->hold_amount, now()->addHours(24));
+        $this->cache->put($balanceKey, $wallet->current_balance, CarbonImmutable::now()->addHours(24));
+        $this->cache->put($holdKey, $wallet->hold_amount, CarbonImmutable::now()->addHours(24));
 
         $this->logger->channel('audit')->info('Wallet synced from DB to Redis', [
             'wallet_id' => $walletId,

@@ -1,11 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 /**
  * Class PharmacyConsumable
@@ -25,36 +28,35 @@ use Illuminate\Support\Str;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Pharmacy\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class PharmacyConsumable extends Model
 {
+    use TenantScoped;
 
     protected $table = 'pharmacy_consumables';
-    protected $fillable = ['uuid', 'tenant_id', 'pharmacy_id', 'name', 'stock', 'min_threshold', 'correlation_id', 'tags'];
-    protected $casts = ['tags' => 'json'];
 
-    protected static function booted(): void
-    {
-        static::creating(fn ($m) => $m->uuid = $m->uuid ?? (string) Str::uuid());
-        static::addGlobalScope('tenant', fn (Builder $b) => $b->where('tenant_id', tenant()->id));
-    }
+    protected $fillable = ['uuid', 'tenant_id', 'pharmacy_id', 'name', 'stock', 'min_threshold', 'correlation_id', 'tags'];
+
+    protected $casts = ['tags' => 'json'];
 
     /**
      * The number of models to return for pagination.
      */
     protected $perPage = 25;
 
-
     /**
      * Get the string representation of this object.
-     *
-     * @return string
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new');
+        return self::class.'::'.($this->id ?? 'new');
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(fn ($m) => $m->uuid = $m->uuid ?? (string) Str::uuid());
+        self::addGlobalScope('tenant', fn (Builder $b) => $b->where('tenant_id', tenant()->id));
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\AutonomousVehicles\Models;
 
@@ -7,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
 
 /**
  * Class AVEngineer
@@ -26,13 +29,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Auto\AutonomousVehicles\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class AVEngineer extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes, TenantScoped;
+    use HasFactory;
+    use HasUuids;
+    use SoftDeletes;
+    use TenantScoped;
 
     protected $table = 'av_engineers';
 
@@ -60,6 +65,6 @@ final class AVEngineer extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', static fn ($q) => $q->where('av_engineers.tenant_id', tenant()->id));
+        self::addGlobalScope('tenant', static fn ($q) => $q->where('av_engineers.tenant_id', tenant()->id));
     }
 }

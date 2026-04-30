@@ -1,15 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Fraud;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Log\LogManager;
-use Illuminate\Support\Facades\Redis;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Fraud Telemetry Service for Prometheus Metrics
- * 
+ *
  * Tracks fraud detection metrics:
  * - Total operations checked
  * - Blocked/Review/Allow decisions
@@ -19,13 +25,18 @@ use Illuminate\Support\Facades\Redis;
  */
 final readonly class FraudTelemetryService
 {
+    use WithAuditLogging;
+
     private const METRICS_PREFIX = 'fraud_';
+
     private const METRICS_TTL = 86400; // 24 hours
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly RedisFactory $redis,
         private readonly Repository $cache,
-        private readonly LogManager $logger,
+        private readonly LogManager $log,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -38,25 +49,25 @@ final readonly class FraudTelemetryService
         float $latencyMs,
         ?string $correlationId = null,
     ): void {
-        $timestamp = now()->timestamp;
+        $timestamp = CarbonImmutable::now()->timestamp;
         $hourBucket = (int) floor($timestamp / 3600) * 3600;
 
-        $pipe = Redis::pipeline();
+        $pipe = $this->redis->connection()->pipeline();
 
         // Total checks counter
-        $pipe->incr(self::METRICS_PREFIX . 'checks_total');
-        $pipe->incr(self::METRICS_PREFIX . "checks_operation_{$operationType}");
-        $pipe->incr(self::METRICS_PREFIX . "checks_decision_{$decision}");
+        $pipe->incr(self::METRICS_PREFIX.'checks_total');
+        $pipe->incr(self::METRICS_PREFIX."checks_operation_{$operationType}");
+        $pipe->incr(self::METRICS_PREFIX."checks_decision_{$decision}");
 
         // Score histogram buckets
         $this->incrementScoreBucket($pipe, $score);
 
         // Latency tracking
-        $pipe->incrby(self::METRICS_PREFIX . 'latency_ms_total', (int) $latencyMs);
-        $pipe->incr(self::METRICS_PREFIX . 'latency_count');
+        $pipe->incrby(self::METRICS_PREFIX.'latency_ms_total', (int) $latencyMs);
+        $pipe->incr(self::METRICS_PREFIX.'latency_count');
 
         // Hourly time series for trends
-        $hourlyKey = self::METRICS_PREFIX . "checks_hourly:{$hourBucket}";
+        $hourlyKey = self::METRICS_PREFIX."checks_hourly:{$hourBucket}";
         $pipe->hincrby($hourlyKey, $decision, 1);
         $pipe->expire($hourlyKey, self::METRICS_TTL);
 
@@ -75,20 +86,6 @@ final readonly class FraudTelemetryService
     }
 
     /**
-     * Increment appropriate score bucket for histogram
-     */
-    private function incrementScoreBucket($pipe, float $score): void
-    {
-        $buckets = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
-        
-        foreach ($buckets as $bucket) {
-            if ($score <= $bucket) {
-                $pipe->incr(self::METRICS_PREFIX . "score_bucket_le_{$bucket}");
-            }
-        }
-    }
-
-    /**
      * Record ML inference metrics
      */
     public function recordMLInference(
@@ -97,25 +94,25 @@ final readonly class FraudTelemetryService
         bool $circuitOpen,
         ?string $modelVersion = null,
     ): void {
-        $pipe = Redis::pipeline();
+        $pipe = $this->redis->connection()->pipeline();
 
-        $pipe->incr(self::METRICS_PREFIX . 'ml_inference_total');
-        
+        $pipe->incr(self::METRICS_PREFIX.'ml_inference_total');
+
         if ($success) {
-            $pipe->incr(self::METRICS_PREFIX . 'ml_inference_success');
+            $pipe->incr(self::METRICS_PREFIX.'ml_inference_success');
         } else {
-            $pipe->incr(self::METRICS_PREFIX . 'ml_inference_failure');
+            $pipe->incr(self::METRICS_PREFIX.'ml_inference_failure');
         }
 
-        $pipe->incrby(self::METRICS_PREFIX . 'ml_latency_ms_total', (int) $latencyMs);
-        $pipe->incr(self::METRICS_PREFIX . 'ml_latency_count');
+        $pipe->incrby(self::METRICS_PREFIX.'ml_latency_ms_total', (int) $latencyMs);
+        $pipe->incr(self::METRICS_PREFIX.'ml_latency_count');
 
         if ($circuitOpen) {
-            $pipe->incr(self::METRICS_PREFIX . 'ml_circuit_open');
+            $pipe->incr(self::METRICS_PREFIX.'ml_circuit_open');
         }
 
         if ($modelVersion) {
-            $pipe->hincrby(self::METRICS_PREFIX . 'ml_model_version', $modelVersion, 1);
+            $pipe->hincrby(self::METRICS_PREFIX.'ml_model_version', $modelVersion, 1);
         }
 
         $pipe->exec();
@@ -129,12 +126,12 @@ final readonly class FraudTelemetryService
         bool $success,
         string $reason,
     ): void {
-        Redis::pipeline()
-            ->incr(self::METRICS_PREFIX . "atomic_lock_{$operation}_total")
-            ->incr($success 
-                ? self::METRICS_PREFIX . "atomic_lock_{$operation}_success"
-                : self::METRICS_PREFIX . "atomic_lock_{$operation}_failure")
-            ->incr(self::METRICS_PREFIX . "atomic_lock_reason_{$reason}")
+        $this->redis->connection()->pipeline()
+            ->incr(self::METRICS_PREFIX."atomic_lock_{$operation}_total")
+            ->incr($success
+                ? self::METRICS_PREFIX."atomic_lock_{$operation}_success"
+                : self::METRICS_PREFIX."atomic_lock_{$operation}_failure")
+            ->incr(self::METRICS_PREFIX."atomic_lock_reason_{$reason}")
             ->exec();
     }
 
@@ -231,7 +228,80 @@ final readonly class FraudTelemetryService
             );
         }
 
-        return implode("\n", $lines) . "\n";
+        return implode("\n", $lines)."\n";
+    }
+
+    /**
+     * Get fraud statistics for dashboard
+     */
+    public function getStatistics(int $hours = 24): array
+    {
+        $now = CarbonImmutable::now();
+        $stats = [
+            'total_checks' => $this->getCounter('checks_total'),
+            'blocked' => $this->getCounter('checks_decision_block'),
+            'reviewed' => $this->getCounter('checks_decision_review'),
+            'allowed' => $this->getCounter('checks_decision_allow'),
+            'block_rate' => 0,
+            'avg_latency_ms' => $this->getAverageLatency('latency'),
+            'ml_success_rate' => 0,
+            'ml_avg_latency_ms' => $this->getAverageLatency('ml_latency'),
+            'circuit_breaker_open' => $this->getCircuitBreakerStatus(),
+            'hourly_trends' => [],
+        ];
+
+        $totalChecks = $stats['total_checks'];
+        $stats['block_rate'] = $totalChecks > 0 ? ($stats['blocked'] / $totalChecks) * 100 : 0;
+
+        $mlTotal = $this->getCounter('ml_inference_total');
+        $mlSuccess = $this->getCounter('ml_inference_success');
+        $stats['ml_success_rate'] = $mlTotal > 0 ? ($mlSuccess / $mlTotal) * 100 : 0;
+
+        // Hourly trends
+        for ($i = 0; $i < $hours; $i++) {
+            $timestamp = $now->copy()->subHours($i)->timestamp;
+            $hourBucket = (int) floor($timestamp / 3600) * 3600;
+            $hourlyKey = self::METRICS_PREFIX."checks_hourly:{$hourBucket}";
+            $hourlyData = $this->redis->connection()->hgetall($hourlyKey);
+
+            $stats['hourly_trends'][] = [
+                'hour' => $now->copy()->subHours($i)->format('Y-m-d H:00'),
+                'allow' => (int) ($hourlyData['allow'] ?? 0),
+                'review' => (int) ($hourlyData['review'] ?? 0),
+                'block' => (int) ($hourlyData['block'] ?? 0),
+            ];
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Reset metrics (for testing or manual intervention)
+     */
+    public function resetMetrics(): void
+    {
+        $pattern = self::METRICS_PREFIX.'*';
+        $keys = $this->redis->connection()->keys($pattern);
+
+        if (! empty($keys)) {
+            $this->redis->connection()->del($keys);
+        }
+
+        $this->logger->channel('fraud_alert')->$this->logger->info('Fraud metrics reset');
+    }
+
+    /**
+     * Increment appropriate score bucket for histogram
+     */
+    private function incrementScoreBucket($pipe, float $score): void
+    {
+        $buckets = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+
+        foreach ($buckets as $bucket) {
+            if ($score <= $bucket) {
+                $pipe->incr(self::METRICS_PREFIX."score_bucket_le_{$bucket}");
+            }
+        }
     }
 
     /**
@@ -271,7 +341,7 @@ final readonly class FraudTelemetryService
      */
     private function getCounter(string $suffix): float
     {
-        return (float) Redis::get(self::METRICS_PREFIX . $suffix) ?: 0;
+        return (float) $this->redis->connection()->get(self::METRICS_PREFIX.$suffix) ?: 0;
     }
 
     /**
@@ -279,8 +349,8 @@ final readonly class FraudTelemetryService
      */
     private function getAverageLatency(string $type): float
     {
-        $total = (float) Redis::get(self::METRICS_PREFIX . "{$type}_ms_total") ?: 0;
-        $count = (float) Redis::get(self::METRICS_PREFIX . "{$type}_count") ?: 0;
+        $total = (float) $this->redis->connection()->get(self::METRICS_PREFIX."{$type}_ms_total") ?: 0;
+        $count = (float) $this->redis->connection()->get(self::METRICS_PREFIX."{$type}_count") ?: 0;
 
         return $count > 0 ? $total / $count : 0;
     }
@@ -290,65 +360,6 @@ final readonly class FraudTelemetryService
      */
     private function getCircuitBreakerStatus(): bool
     {
-        return (bool) Redis::get('fraud:ml:circuit_breaker');
-    }
-
-    /**
-     * Get fraud statistics for dashboard
-     */
-    public function getStatistics(int $hours = 24): array
-    {
-        $now = now();
-        $stats = [
-            'total_checks' => $this->getCounter('checks_total'),
-            'blocked' => $this->getCounter('checks_decision_block'),
-            'reviewed' => $this->getCounter('checks_decision_review'),
-            'allowed' => $this->getCounter('checks_decision_allow'),
-            'block_rate' => 0,
-            'avg_latency_ms' => $this->getAverageLatency('latency'),
-            'ml_success_rate' => 0,
-            'ml_avg_latency_ms' => $this->getAverageLatency('ml_latency'),
-            'circuit_breaker_open' => $this->getCircuitBreakerStatus(),
-            'hourly_trends' => [],
-        ];
-
-        $totalChecks = $stats['total_checks'];
-        $stats['block_rate'] = $totalChecks > 0 ? ($stats['blocked'] / $totalChecks) * 100 : 0;
-
-        $mlTotal = $this->getCounter('ml_inference_total');
-        $mlSuccess = $this->getCounter('ml_inference_success');
-        $stats['ml_success_rate'] = $mlTotal > 0 ? ($mlSuccess / $mlTotal) * 100 : 0;
-
-        // Hourly trends
-        for ($i = 0; $i < $hours; $i++) {
-            $timestamp = $now->copy()->subHours($i)->timestamp;
-            $hourBucket = (int) floor($timestamp / 3600) * 3600;
-            $hourlyKey = self::METRICS_PREFIX . "checks_hourly:{$hourBucket}";
-            $hourlyData = Redis::hgetall($hourlyKey);
-
-            $stats['hourly_trends'][] = [
-                'hour' => $now->copy()->subHours($i)->format('Y-m-d H:00'),
-                'allow' => (int) ($hourlyData['allow'] ?? 0),
-                'review' => (int) ($hourlyData['review'] ?? 0),
-                'block' => (int) ($hourlyData['block'] ?? 0),
-            ];
-        }
-
-        return $stats;
-    }
-
-    /**
-     * Reset metrics (for testing or manual intervention)
-     */
-    public function resetMetrics(): void
-    {
-        $pattern = self::METRICS_PREFIX . '*';
-        $keys = Redis::keys($pattern);
-
-        if (!empty($keys)) {
-            Redis::del($keys);
-        }
-
-        $this->logger->channel('fraud_alert')->info('Fraud metrics reset');
+        return (bool) $this->redis->connection()->get('fraud:ml:circuit_breaker');
     }
 }

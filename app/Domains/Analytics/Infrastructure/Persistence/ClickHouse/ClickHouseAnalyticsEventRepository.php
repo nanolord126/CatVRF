@@ -7,24 +7,26 @@ namespace App\Domains\Analytics\Infrastructure\Persistence\ClickHouse;
 use App\Domains\Analytics\Domain\Entities\AnalyticsEvent;
 use App\Domains\Analytics\Domain\Interfaces\AnalyticsEventRepositoryInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Database\DatabaseManager;
 
 final readonly class ClickHouseAnalyticsEventRepository implements AnalyticsEventRepositoryInterface
 {
-    public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db) {}
-
     private const TABLE = 'events';
+
+    public function __construct(
+        private readonly DatabaseManager $db
+    ) {}
 
     public function save(AnalyticsEvent $event): void
     {
         $this->db->connection('clickhouse')->table(self::TABLE)->insert([
-            $this->toClickHouseFormat($event)
+            $this->toClickHouseFormat($event),
         ]);
     }
 
     public function saveBulk(array $events): void
     {
-        $data = array_map(fn(AnalyticsEvent $event) => $this->toClickHouseFormat($event), $events);
+        $data = array_map(fn (AnalyticsEvent $event) => $this->toClickHouseFormat($event), $events);
         $this->db->connection('clickhouse')->table(self::TABLE)->insert($data);
     }
 
@@ -44,7 +46,7 @@ final readonly class ClickHouseAnalyticsEventRepository implements AnalyticsEven
                 $query->selectRaw("{$groupBy} as group, uniq(user_id) as value");
                 break;
             default:
-                return collect();
+                return new Collection();
         }
 
         return $query->groupBy('group')->get();

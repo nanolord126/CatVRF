@@ -6,6 +6,8 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
+use Modules\Advertising\Database\Seeders\AdSeeder;
+use Modules\Inventory\Database\Seeders\InventorySeeder;
 
 /**
  * Мастер-сидер для запуска всех вертикалей 2026 (НЕ ЗАПУСКАТЬ В PRODUCTION).
@@ -21,15 +23,15 @@ final class ProductionMasterSeeder extends Seeder
         $this->call([
             RolesAndPermissionsSeeder::class,
             GeoHierarchySeeder::class,
-            \Modules\Inventory\Database\Seeders\InventorySeeder::class,
+            InventorySeeder::class,
             MarketplaceVerticalsSeeder::class,
             StaffSeeder::class,
             PayrollSeeder::class,
-            \Modules\Advertising\Database\Seeders\AdSeeder::class,
+            AdSeeder::class,
             AiRecommendationsSeeder::class,
             B2BAIAnalyticsSeeder::class,
         ]);
-        
+
         // Final sanity check
         Artisan::call('tenants:run "tinker --execute=\'echo \"Production-ready! 2026 Master Seed completed.\"\'" --tenants=grand-hotel');
     }

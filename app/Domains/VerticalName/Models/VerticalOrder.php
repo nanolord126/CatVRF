@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\VerticalName\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Models\BusinessGroup;
+use App\Models\Tenant;
+use App\Models\User;
+use Carbon\Carbon;
 
 /**
  * VerticalOrder — модель заказа в вертикали VerticalName.
@@ -19,25 +20,24 @@ use Illuminate\Support\Str;
  * CANON 2026 — Layer 1: Models.
  * uuid, correlation_id, tags — обязательны.
  *
- * @property int         $id
- * @property string      $uuid
- * @property int         $tenant_id
- * @property int|null    $business_group_id
- * @property int         $user_id
- * @property int         $vertical_item_id
- * @property string      $status
- * @property int         $quantity
- * @property int         $total_price_kopecks
- * @property bool        $is_b2b
- * @property array|null  $tags
- * @property array|null  $metadata
+ * @property int $id
+ * @property string $uuid
+ * @property int $tenant_id
+ * @property int|null $business_group_id
+ * @property int $user_id
+ * @property int $vertical_item_id
+ * @property string $status
+ * @property int $quantity
+ * @property int $total_price_kopecks
+ * @property bool $is_b2b
+ * @property array|null $tags
+ * @property array|null $metadata
  * @property string|null $correlation_id
- * @property \Carbon\Carbon|null $paid_at
- * @property \Carbon\Carbon|null $deleted_at
+ * @property Carbon|null $paid_at
+ * @property Carbon|null $deleted_at
  */
 final class VerticalOrder extends Model
 {
-
     protected $table = 'vertical_name_orders';
 
     protected $fillable = [
@@ -67,38 +67,12 @@ final class VerticalOrder extends Model
     ];
 
     /**
-     * Инициализация — tenant scoping + авто-генерация uuid/correlation_id.
-     */
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant_scoping', static function ($builder): void {
-            if (function_exists('tenant') && tenant() !== null) {
-                $builder->where('tenant_id', tenant()->id);
-            }
-        });
-
-        static::creating(static function (self $model): void {
-            if (empty($model->uuid)) {
-                $model->uuid = Str::uuid()->toString();
-            }
-
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = Str::uuid()->toString();
-            }
-
-            if ($model->status === null) {
-                $model->status = 'pending';
-            }
-        });
-    }
-
-    /**
      * Tenant, которому принадлежит заказ.
      */
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(
-            \App\Models\Tenant::class,
+            Tenant::class,
             'tenant_id',
         );
     }
@@ -120,7 +94,7 @@ final class VerticalOrder extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(
-            \App\Models\User::class,
+            User::class,
             'user_id',
         );
     }
@@ -131,7 +105,7 @@ final class VerticalOrder extends Model
     public function businessGroup(): BelongsTo
     {
         return $this->belongsTo(
-            \App\Models\BusinessGroup::class,
+            BusinessGroup::class,
             'business_group_id',
         );
     }
@@ -166,5 +140,31 @@ final class VerticalOrder extends Model
     public function scopeB2c($query): void
     {
         $query->where('is_b2b', false);
+    }
+
+    /**
+     * Инициализация — tenant scoping + авто-генерация uuid/correlation_id.
+     */
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant_scoping', static function ($builder): void {
+            if (function_exists('tenant') && tenant() !== null) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(static function (self $model): void {
+            if (empty($model->uuid)) {
+                $model->uuid = Str::uuid()->toString();
+            }
+
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = Str::uuid()->toString();
+            }
+
+            if ($model->status === null) {
+                $model->status = 'pending';
+            }
+        });
     }
 }

@@ -32,7 +32,7 @@ final class CreditWalletOnPaymentCaptured implements ShouldQueue
 
             $tenant = Tenant::find($payment->tenant_id);
 
-            if (!$tenant) {
+            if (! $tenant) {
                 // Платёж без тенанта не распределяется
                 return;
             }

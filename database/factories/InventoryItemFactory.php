@@ -15,16 +15,16 @@ class InventoryItemFactory extends Factory
     public function definition(): array
     {
         return [
-            "uuid" => (string) Str::uuid(),
-            "tenant_id" => 1,
-            "sku" => $this->faker->unique()->bothify("SKU-####"),
-            "name" => $this->faker->word(),
-            "current_stock" => $this->faker->numberBetween(10, 100),
-            "hold_stock" => 0,
-            "min_stock_threshold" => $this->faker->numberBetween(5, 20),
-            "max_stock_threshold" => $this->faker->numberBetween(100, 200),
-            "correlation_id" => (string) Str::uuid(),
-            "tags" => ["auto-generated" => true],
+            'uuid' => (string) Str::uuid(),
+            'tenant_id' => 1,
+            'sku' => $this->faker->unique()->bothify('SKU-####'),
+            'name' => $this->faker->word(),
+            'current_stock' => $this->faker->numberBetween(10, 100),
+            'hold_stock' => 0,
+            'min_stock_threshold' => $this->faker->numberBetween(5, 20),
+            'max_stock_threshold' => $this->faker->numberBetween(100, 200),
+            'correlation_id' => (string) Str::uuid(),
+            'tags' => ['auto-generated' => true],
         ];
     }
 }

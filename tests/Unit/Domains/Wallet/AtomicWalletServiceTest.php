@@ -7,7 +7,6 @@ namespace Tests\Unit\Domains\Wallet;
 use App\Domains\Wallet\Enums\BalanceTransactionType;
 use App\Domains\Wallet\Models\Wallet;
 use App\Domains\Wallet\Services\AtomicWalletService;
-use App\Models\BalanceTransaction;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
 use Illuminate\Contracts\Auth\Guard;
@@ -17,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Redis;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Psr\Log\LoggerInterface;
 
 /**
  * AtomicWalletService Unit Tests
@@ -28,46 +28,8 @@ final class AtomicWalletServiceTest extends TestCase
     use RefreshDatabase;
 
     private AtomicWalletService $walletService;
+
     private Wallet $wallet;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $db = app(DatabaseManager::class);
-        $logger = app(\Psr\Log\LoggerInterface::class);
-        $guard = app(Guard::class);
-        $fraud = $this->createMock(FraudControlService::class);
-        $audit = $this->createMock(AuditService::class);
-        $redis = app(RedisFactory::class);
-
-        $fraud->method('check')->willReturn(['decision' => 'allow', 'score' => 0.0]);
-        $audit->method('log');
-
-        $this->walletService = new AtomicWalletService(
-            $db,
-            $logger,
-            $guard,
-            $fraud,
-            $audit,
-            $redis,
-        );
-
-        // Create test wallet
-        $this->wallet = Wallet::factory()->create([
-            'current_balance' => 100000, // 1000 RUB in kopecks
-            'hold_amount' => 0,
-        ]);
-
-        // Clear Redis
-        Redis::connection()->flushdb();
-    }
-
-    protected function tearDown(): void
-    {
-        Redis::connection()->flushdb();
-        parent::tearDown();
-    }
 
     #[Test]
     public function it_credits_wallet(): void
@@ -278,5 +240,44 @@ final class AtomicWalletServiceTest extends TestCase
             type: BalanceTransactionType::DEPOSIT, // Invalid for debit
             correlationId: 'test-correlation-11',
         );
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $db = app(DatabaseManager::class);
+        $logger = app(LoggerInterface::class);
+        $guard = app(Guard::class);
+        $fraud = $this->createMock(FraudControlService::class);
+        $audit = $this->createMock(AuditService::class);
+        $redis = app(RedisFactory::class);
+
+        $fraud->method('check')->willReturn(['decision' => 'allow', 'score' => 0.0]);
+        $audit->method('log');
+
+        $this->walletService = new AtomicWalletService(
+            $db,
+            $logger,
+            $guard,
+            $fraud,
+            $audit,
+            $redis,
+        );
+
+        // Create test wallet
+        $this->wallet = Wallet::factory()->create([
+            'current_balance' => 100000, // 1000 RUB in kopecks
+            'hold_amount' => 0,
+        ]);
+
+        // Clear Redis
+        Redis::connection()->flushdb();
+    }
+
+    protected function tearDown(): void
+    {
+        Redis::connection()->flushdb();
+        parent::tearDown();
     }
 }

@@ -1,10 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Class B2BDeal
@@ -24,12 +28,12 @@ use Illuminate\Support\Str;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\RealEstate\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class B2BDeal extends Model
 {
+    use TenantScoped;
 
     protected $table = 'b2b_deals';
 
@@ -51,20 +55,18 @@ final class B2BDeal extends Model
         'deal_structure' => 'json',
     ];
 
+    public function listing(): BelongsTo
+    {
+        return $this->belongsTo(Listing::class);
+    }
+
     protected static function booted(): void
     {
-        static::creating(function (B2BDeal $model) {
+        self::creating(function (B2BDeal $model) {
             $model->uuid = $model->uuid ?? (string) Str::uuid();
             if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
                 $model->tenant_id = tenant()->id;
             }
         });
     }
-
-    public function listing(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(Listing::class);
-    }
-
-    
 }

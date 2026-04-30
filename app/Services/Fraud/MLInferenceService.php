@@ -1,17 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Fraud;
 
-use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Cache\Repository;
-use Illuminate\Log\LogManager;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Redis\Factory as RedisFactory;
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Psr\Log\LoggerInterface;
 use Illuminate\Support\Str;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * ML Inference Service for Fraud Detection
- * 
+ *
  * Provides real-time ML model inference with:
  * - ONNX runtime integration
  * - Circuit breaker pattern
@@ -20,15 +24,23 @@ use Illuminate\Support\Str;
  */
 final readonly class MLInferenceService
 {
+    use WithAuditLogging;
+
     private const CIRCUIT_BREAKER_KEY = 'fraud:ml:circuit_breaker';
+
     private const CIRCUIT_BREAKER_TTL = 300; // 5 minutes
+
     private const FAILURE_THRESHOLD = 5;
+
     private const MODEL_CACHE_TTL = 3600;
 
     public function __construct(
         private readonly ConfigRepository $config,
         private readonly Repository $cache,
-        private readonly LogManager $logger,
+        private readonly LoggerInterface $logger,
+        private readonly HttpFactory $http,
+        private readonly RedisFactory $redis,
+        private readonly AuditService $audit,
     ) {}
 
     /**
@@ -44,12 +56,14 @@ final readonly class MLInferenceService
             $this->logger->channel('fraud_alert')->warning('ML circuit breaker is open, using fallback', [
                 'correlation_id' => $correlationId,
             ]);
+
             return $this->getFallbackScore($features);
         }
 
         try {
             $score = $this->doInference($features);
             $this->recordSuccess();
+
             return $score;
         } catch (\Throwable $e) {
             $this->recordFailure();
@@ -57,8 +71,32 @@ final readonly class MLInferenceService
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
+
             return $this->getFallbackScore($features);
         }
+    }
+
+    /**
+     * Reset circuit breaker (for admin/monitoring)
+     */
+    public function resetCircuitBreaker(): void
+    {
+        $this->redis->connection()->del(self::CIRCUIT_BREAKER_KEY);
+        $this->redis->connection()->del('fraud:ml:failures');
+        $this->logger->channel('fraud_alert')->$this->logger->info('ML circuit breaker reset manually');
+    }
+
+    /**
+     * Get circuit breaker status
+     */
+    public function getCircuitBreakerStatus(): array
+    {
+        return [
+            'is_open' => $this->isCircuitOpen(),
+            'failures' => (int) $this->redis->connection()->get('fraud:ml:failures') ?: 0,
+            'threshold' => self::FAILURE_THRESHOLD,
+            'ttl' => $this->redis->connection()->ttl(self::CIRCUIT_BREAKER_KEY),
+        ];
     }
 
     /**
@@ -66,7 +104,7 @@ final readonly class MLInferenceService
      */
     private function isCircuitOpen(): bool
     {
-        return (bool) Redis::get(self::CIRCUIT_BREAKER_KEY);
+        return (bool) $this->redis->connection()->get(self::CIRCUIT_BREAKER_KEY);
     }
 
     /**
@@ -75,7 +113,7 @@ final readonly class MLInferenceService
     private function recordSuccess(): void
     {
         $key = 'fraud:ml:failures';
-        Redis::del($key);
+        $this->redis->connection()->del($key);
     }
 
     /**
@@ -84,14 +122,14 @@ final readonly class MLInferenceService
     private function recordFailure(): void
     {
         $key = 'fraud:ml:failures';
-        $failures = (int) Redis::incr($key);
-        
+        $failures = (int) $this->redis->connection()->incr($key);
+
         if ($failures === 1) {
-            Redis::expire($key, self::CIRCUIT_BREAKER_TTL);
+            $this->redis->connection()->expire($key, self::CIRCUIT_BREAKER_TTL);
         }
 
         if ($failures >= self::FAILURE_THRESHOLD) {
-            Redis::setex(self::CIRCUIT_BREAKER_KEY, self::CIRCUIT_BREAKER_TTL, '1');
+            $this->redis->connection()->setex(self::CIRCUIT_BREAKER_KEY, self::CIRCUIT_BREAKER_TTL, '1');
             $this->logger->channel('fraud_alert')->critical('ML circuit breaker opened due to failures', [
                 'failures' => $failures,
             ]);
@@ -105,7 +143,7 @@ final readonly class MLInferenceService
     private function doInference(array $features): float
     {
         $modelVersion = $this->getCurrentModelVersion();
-        
+
         // Try ONNX runtime (Python microservice)
         if ($this->config->get('fraud.ml.onnx_enabled', false)) {
             return $this->predictWithONNX($features, $modelVersion);
@@ -121,17 +159,18 @@ final readonly class MLInferenceService
     private function predictWithONNX(array $features, string $modelVersion): float
     {
         $endpoint = $this->config->get('fraud.ml.onnx_endpoint', 'http://localhost:8000/predict');
-        
-        $response = Http::timeout(2)->post($endpoint, [
+
+        $response = $this->http->timeout(2)->post($endpoint, [
             'features' => $features,
             'model_version' => $modelVersion,
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new \RuntimeException("ONNX inference failed: {$response->status()}");
         }
 
         $data = $response->json();
+
         return (float) ($data['score'] ?? 0.5);
     }
 
@@ -141,22 +180,23 @@ final readonly class MLInferenceService
     private function predictWithHTTP(array $features, string $modelVersion): float
     {
         $endpoint = $this->config->get('fraud.ml.http_endpoint');
-        
-        if (!$endpoint) {
+
+        if (! $endpoint) {
             return $this->getFallbackScore($features);
         }
 
-        $response = Http::timeout(1)->post($endpoint, [
+        $response = $this->http->timeout(1)->post($endpoint, [
             'features' => $features,
             'model_version' => $modelVersion,
             'api_key' => $this->config->get('fraud.ml.api_key'),
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new \RuntimeException("HTTP ML inference failed: {$response->status()}");
         }
 
         $data = $response->json();
+
         return (float) ($data['fraud_score'] ?? 0.5);
     }
 
@@ -202,8 +242,8 @@ final readonly class MLInferenceService
     private function getCurrentModelVersion(): string
     {
         return $this->cache->remember('fraud:ml:current_version', self::MODEL_CACHE_TTL, function () {
-            $modelPath = storage_path('models/fraud');
-            if (!is_dir($modelPath)) {
+            $modelPath = base_path('storage' . DIRECTORY_SEPARATOR . 'models/fraud');
+            if (! is_dir($modelPath)) {
                 return 'v1.0.0';
             }
 
@@ -217,30 +257,8 @@ final readonly class MLInferenceService
             }
 
             usort($models, fn ($a, $b) => filemtime("$modelPath/$b") - filemtime("$modelPath/$a"));
+
             return pathinfo($models[0], PATHINFO_FILENAME);
         });
-    }
-
-    /**
-     * Reset circuit breaker (for admin/monitoring)
-     */
-    public function resetCircuitBreaker(): void
-    {
-        Redis::del(self::CIRCUIT_BREAKER_KEY);
-        Redis::del('fraud:ml:failures');
-        $this->logger->channel('fraud_alert')->info('ML circuit breaker reset manually');
-    }
-
-    /**
-     * Get circuit breaker status
-     */
-    public function getCircuitBreakerStatus(): array
-    {
-        return [
-            'is_open' => $this->isCircuitOpen(),
-            'failures' => (int) Redis::get('fraud:ml:failures') ?: 0,
-            'threshold' => self::FAILURE_THRESHOLD,
-            'ttl' => Redis::ttl(self::CIRCUIT_BREAKER_KEY),
-        ];
     }
 }

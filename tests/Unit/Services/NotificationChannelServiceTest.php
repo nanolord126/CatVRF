@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
@@ -27,40 +29,22 @@ final class NotificationChannelServiceTest extends TestCase
     use WithFaker;
 
     private NotificationChannelService $service;
+
     private EmailChannel $emailChannel;
+
     private SmsChannel $smsChannel;
+
     private PushChannel $pushChannel;
+
     private MarketplaceChannel $marketplaceChannel;
+
     private SlackChannel $slackChannel;
+
     private InAppChannel $inAppChannel;
+
     private NotificationPreferencesService $preferencesService;
+
     private LoggerInterface $logger;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->emailChannel = Mockery::mock(EmailChannel::class);
-        $this->smsChannel = Mockery::mock(SmsChannel::class);
-        $this->pushChannel = Mockery::mock(PushChannel::class);
-        $this->marketplaceChannel = Mockery::mock(MarketplaceChannel::class);
-        $this->slackChannel = Mockery::mock(SlackChannel::class);
-        $this->inAppChannel = Mockery::mock(InAppChannel::class);
-        $this->preferencesService = Mockery::mock(NotificationPreferencesService::class);
-        $this->logger = Mockery::mock(LoggerInterface::class);
-        $this->logger->shouldReceive('info', 'debug', 'warning', 'error')->andReturnNull();
-
-        $this->service = new NotificationChannelService(
-            emailChannel: $this->emailChannel,
-            smsChannel: $this->smsChannel,
-            pushChannel: $this->pushChannel,
-            marketplaceChannel: $this->marketplaceChannel,
-            slackChannel: $this->slackChannel,
-            inAppChannel: $this->inAppChannel,
-            preferencesService: $this->preferencesService,
-            logger: $this->logger,
-        );
-    }
 
     /** @test */
     public function it_returns_all_available_channels(): void
@@ -279,9 +263,9 @@ final class NotificationChannelServiceTest extends TestCase
         $now = now();
         $start = $now->copy()->subHour()->format('H:i');
         $end = $now->copy()->addHour()->format('H:i');
-        cache()->put("dnd:user.42.enabled", true, 3600);
-        cache()->put("dnd:user.42.start_time", $start, 3600);
-        cache()->put("dnd:user.42.end_time", $end, 3600);
+        cache()->put('dnd:user.42.enabled', true, 3600);
+        cache()->put('dnd:user.42.start_time', $start, 3600);
+        cache()->put('dnd:user.42.end_time', $end, 3600);
 
         $notification = $this->createNotification();
 
@@ -294,9 +278,9 @@ final class NotificationChannelServiceTest extends TestCase
         $this->assertFalse($result);
 
         // Чистим кэш
-        cache()->forget("dnd:user.42.enabled");
-        cache()->forget("dnd:user.42.start_time");
-        cache()->forget("dnd:user.42.end_time");
+        cache()->forget('dnd:user.42.enabled');
+        cache()->forget('dnd:user.42.start_time');
+        cache()->forget('dnd:user.42.end_time');
     }
 
     /** @test */
@@ -311,9 +295,9 @@ final class NotificationChannelServiceTest extends TestCase
         $notifiable = $this->createNotifiable(42);
 
         $now = now();
-        cache()->put("dnd:user.42.enabled", true, 3600);
-        cache()->put("dnd:user.42.start_time", $now->copy()->subHour()->format('H:i'), 3600);
-        cache()->put("dnd:user.42.end_time", $now->copy()->addHour()->format('H:i'), 3600);
+        cache()->put('dnd:user.42.enabled', true, 3600);
+        cache()->put('dnd:user.42.start_time', $now->copy()->subHour()->format('H:i'), 3600);
+        cache()->put('dnd:user.42.end_time', $now->copy()->addHour()->format('H:i'), 3600);
 
         $this->preferencesService->shouldReceive('getPreferences')
             ->andReturn(['sms' => ['enabled' => true]]);
@@ -329,9 +313,9 @@ final class NotificationChannelServiceTest extends TestCase
 
         $this->assertTrue($result);
 
-        cache()->forget("dnd:user.42.enabled");
-        cache()->forget("dnd:user.42.start_time");
-        cache()->forget("dnd:user.42.end_time");
+        cache()->forget('dnd:user.42.enabled');
+        cache()->forget('dnd:user.42.start_time');
+        cache()->forget('dnd:user.42.end_time');
     }
 
     /** @test */
@@ -345,9 +329,9 @@ final class NotificationChannelServiceTest extends TestCase
         $notifiable = $this->createNotifiable(42);
 
         $now = now();
-        cache()->put("dnd:user.42.enabled", true, 3600);
-        cache()->put("dnd:user.42.start_time", $now->copy()->subHour()->format('H:i'), 3600);
-        cache()->put("dnd:user.42.end_time", $now->copy()->addHour()->format('H:i'), 3600);
+        cache()->put('dnd:user.42.enabled', true, 3600);
+        cache()->put('dnd:user.42.start_time', $now->copy()->subHour()->format('H:i'), 3600);
+        cache()->put('dnd:user.42.end_time', $now->copy()->addHour()->format('H:i'), 3600);
 
         $this->preferencesService->shouldReceive('getPreferences')
             ->andReturn(['email' => ['enabled' => true]]);
@@ -364,9 +348,9 @@ final class NotificationChannelServiceTest extends TestCase
 
         $this->assertTrue($result);
 
-        cache()->forget("dnd:user.42.enabled");
-        cache()->forget("dnd:user.42.start_time");
-        cache()->forget("dnd:user.42.end_time");
+        cache()->forget('dnd:user.42.enabled');
+        cache()->forget('dnd:user.42.start_time');
+        cache()->forget('dnd:user.42.end_time');
     }
 
     /** @test */
@@ -478,7 +462,7 @@ final class NotificationChannelServiceTest extends TestCase
         $result = $this->service->send('email', $notifiable, $notification);
         $this->assertFalse($result);
 
-        cache()->forget("notif_rate:email:99");
+        cache()->forget('notif_rate:email:99');
     }
 
     /** @test */
@@ -504,20 +488,46 @@ final class NotificationChannelServiceTest extends TestCase
         $this->assertFalse($result);
     }
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->emailChannel = Mockery::mock(EmailChannel::class);
+        $this->smsChannel = Mockery::mock(SmsChannel::class);
+        $this->pushChannel = Mockery::mock(PushChannel::class);
+        $this->marketplaceChannel = Mockery::mock(MarketplaceChannel::class);
+        $this->slackChannel = Mockery::mock(SlackChannel::class);
+        $this->inAppChannel = Mockery::mock(InAppChannel::class);
+        $this->preferencesService = Mockery::mock(NotificationPreferencesService::class);
+        $this->logger = Mockery::mock(LoggerInterface::class);
+        $this->logger->shouldReceive('info', 'debug', 'warning', 'error')->andReturnNull();
+
+        $this->service = new NotificationChannelService(
+            emailChannel: $this->emailChannel,
+            smsChannel: $this->smsChannel,
+            pushChannel: $this->pushChannel,
+            marketplaceChannel: $this->marketplaceChannel,
+            slackChannel: $this->slackChannel,
+            inAppChannel: $this->inAppChannel,
+            preferencesService: $this->preferencesService,
+            logger: $this->logger,
+        );
+    }
+
     // ══════════════════════════════════════════════
     //  Helpers
     // ══════════════════════════════════════════════
 
     private function createNotifiable(int $id = 1): object
     {
-        return new class($id) {
+        return new class ($id) {
             public function __construct(public readonly int $id) {}
         };
     }
 
     private function createNotification(): Notification
     {
-        return new class extends Notification {
+        return new class () extends Notification {
             public function getCorrelationId(): string
             {
                 return 'test-correlation-id';

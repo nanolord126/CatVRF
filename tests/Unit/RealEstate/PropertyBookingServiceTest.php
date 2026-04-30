@@ -1,21 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\RealEstate;
 
 use Tests\TestCase;
 use Modules\RealEstate\Services\PropertyBookingService;
-use Illuminate\Support\Str;
+use Modules\RealEstate\Models\Property;
 
 final class PropertyBookingServiceTest extends TestCase
 {
     private PropertyBookingService $bookingService;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->bookingService = app(PropertyBookingService::class);
-    }
 
     public function test_calculate_fraud_score(): void
     {
@@ -26,7 +21,7 @@ final class PropertyBookingServiceTest extends TestCase
         $data = [
             'user_id' => 1,
         ];
-        $property = new \Modules\RealEstate\Models\Property([
+        $property = new Property([
             'price' => 10000000,
             'area' => 100,
             'city' => 'Москва',
@@ -46,7 +41,7 @@ final class PropertyBookingServiceTest extends TestCase
         $method->setAccessible(true);
 
         $data = ['user_id' => 1];
-        $property = new \Modules\RealEstate\Models\Property([
+        $property = new Property([
             'id' => 1,
             'city' => 'Москва',
             'price' => 10000000,
@@ -70,7 +65,7 @@ final class PropertyBookingServiceTest extends TestCase
         $method = $reflection->getMethod('calculateDynamicPrice');
         $method->setAccessible(true);
 
-        $property = new \Modules\RealEstate\Models\Property([
+        $property = new Property([
             'price' => 10000000,
         ]);
 
@@ -116,5 +111,12 @@ final class PropertyBookingServiceTest extends TestCase
 
         $this->assertEquals(15, $constant);
         $this->assertEquals(60, $constantB2B);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->bookingService = app(PropertyBookingService::class);
     }
 }

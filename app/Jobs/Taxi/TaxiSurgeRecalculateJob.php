@@ -4,20 +4,18 @@ declare(strict_types=1);
 
 namespace App\Jobs\Taxi;
 
+use Psr\Log\LoggerInterface;
 
-use App\Domains\Auto\Taxi\Domain\ValueObjects\Coordinate;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Cache\CacheManager;
+use Carbon\CarbonImmutable;
 
 /**
  * Пересчитывает surge-коэффициенты каждые 5 минут.
@@ -25,26 +23,28 @@ use Illuminate\Cache\CacheManager;
  */
 final class TaxiSurgeRecalculateJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 60;
 
-    public function __construct(
-        private string $correlationId = '',
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly string $correlationId,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-        private readonly CacheManager $cache,
-    )
-    {
+        private readonly CacheManager $cache,) {
         // Implementation required by canon
     }
 
     public function handle(): void
     {
-        $correlationId = $this->correlationId ?: Str::uuid()->toString();
+        $correlationId = $this->correlationId !== null ? Str::uuid()->toString();
 
-        $this->logger->channel('audit')->info('TaxiSurgeRecalculateJob started', [
+        $this->logger->channel('audit')->$this->logger->info('TaxiSurgeRecalculateJob started', [
             'correlation_id' => $correlationId,
         ]);
 
@@ -54,7 +54,7 @@ final class TaxiSurgeRecalculateJob implements ShouldQueue
             // Считаем количество заказов в зоне за последние 5 минут
             $demandCount = $this->db->table('taxi_rides')
                 ->where('status', 'requested')
-                ->where('created_at', '>=', now()->subMinutes(5))
+                ->where('created_at', '>=', CarbonImmutable::now()->subMinutes(5))
                 ->whereRaw('ST_Contains(
                     (SELECT polygon FROM taxi_surge_zones WHERE id = ?),
                     start_point
@@ -77,7 +77,7 @@ final class TaxiSurgeRecalculateJob implements ShouldQueue
             $this->cache->forget("taxi:surge:zone:{$zone->id}");
         }
 
-        $this->logger->channel('audit')->info('TaxiSurgeRecalculateJob finished', [
+        $this->logger->channel('audit')->$this->logger->info('TaxiSurgeRecalculateJob finished', [
             'correlation_id' => $correlationId,
             'zones_processed' => $zones->count(),
         ]);
@@ -88,4 +88,3 @@ final class TaxiSurgeRecalculateJob implements ShouldQueue
         return ['taxi', 'surge', 'recalculate'];
     }
 }
-

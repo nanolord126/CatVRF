@@ -1,13 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Listeners;
-
-
 
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
 use App\Domains\Pharmacy\Events\PharmacyCreated;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Services\AuditService;
+use Illuminate\Support\Str;
+
 /**
  * Class LogPharmacyCreatedListener
  *
@@ -17,13 +20,14 @@ use Illuminate\Contracts\Queue\ShouldQueue;
  * Event listener handling domain event side effects.
  * Runs asynchronously via queue when ShouldQueue is implemented.
  * All listeners maintain correlation_id chain.
- *
- * @package App\Domains\Pharmacy\Listeners
  */
 final class LogPharmacyCreatedListener implements ShouldQueue
 {
     public function __construct(
-        private readonly \App\Services\AuditService $audit, private readonly Request $request, private readonly LoggerInterface $logger) {}
+        private readonly AuditService $audit,
+        private readonly Request $request,
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Handle handle operation.
@@ -32,7 +36,7 @@ final class LogPharmacyCreatedListener implements ShouldQueue
      */
     public function handle(PharmacyCreated $event): void
     {
-        $this->logger->info('LogPharmacyCreatedListener handled', [
+        $this->logger->$this->logger->info('LogPharmacyCreatedListener handled', [
             'event' => 'PharmacyCreated',
             'correlation_id' => $event->correlationId ?? 'N/A',
         ]);
@@ -48,7 +52,7 @@ final class LogPharmacyCreatedListener implements ShouldQueue
         $this->logger->error('LogPharmacyCreatedListener failed', [
             'event' => 'PharmacyCreated',
             'error' => $exception->getMessage(),
-            'correlation_id' => $this->request?->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            'correlation_id' => $this->request?->header('X-Correlation-ID', Str::uuid()->toString()),
         ]);
     }
 }

@@ -1,12 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Payment\Gateways;
+
+use Psr\Log\LoggerInterface;
 
 use App\Models\PaymentTransaction;
 use App\Services\Fraud\FraudControlService;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use App\Exceptions\FraudException;
 
 /**
  * TinkoffGateway
@@ -15,27 +20,22 @@ use Illuminate\Support\Str;
  *
  * API: https://securepay.tinkoff.ru/v2/
  * Документация: https://www.tinkoff.ru/business/kasssa/
- *
- * @final
  */
 final class TinkoffGateway implements PaymentGatewayInterface
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly string $terminalKey,
         private readonly string $secretKey,
         private readonly PendingRequest $http,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     /**
      * Инициировать платёж через Tinkoff API
      *
-     * @param array $data
-     * @return array
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      */
     public function initPayment(array $data): array
     {
@@ -49,7 +49,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('Tinkoff: Payment initialization started', [
+        $this->logger->channel('audit')->$this->logger->info('Tinkoff: Payment initialization started', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'order_id' => $data['order_id'] ?? null,
@@ -65,9 +65,26 @@ final class TinkoffGateway implements PaymentGatewayInterface
             'Token' => $this->generateToken($data),
         ];
 
-        $response = $this->http->post('https://securepay.tinkoff.ru/v2/Init', $payload);
+        try {
+            $response = $this->http->timeout(10)
+                ->post('https://securepay.tinkoff.ru/v2/Init', $payload);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            $this->logger->channel('audit')->error('Tinkoff: Connection error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+            ]);
 
-        if (!$response->successful()) {
+            throw new \RuntimeException('Tinkoff gateway unavailable', 0, $e);
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            $this->logger->channel('audit')->error('Tinkoff: Request error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw new \RuntimeException('Tinkoff request failed', 0, $e);
+        }
+
+        if (! $response->successful()) {
             $this->logger->channel('audit')->error('Tinkoff: Payment init failed', [
                 'correlation_id' => $correlationId,
                 'status' => $response->status(),
@@ -88,11 +105,8 @@ final class TinkoffGateway implements PaymentGatewayInterface
     /**
      * Захватить (списать) платёж
      *
-     * @param PaymentTransaction $transaction
-     * @param string|null $correlationId
-     * @return bool
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      */
     public function capture(PaymentTransaction $transaction, ?string $correlationId = null): bool
     {
@@ -107,7 +121,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('Tinkoff: Payment capture started', [
+        $this->logger->channel('audit')->$this->logger->info('Tinkoff: Payment capture started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider_payment_id' => $transaction->provider_payment_id,
@@ -123,14 +137,14 @@ final class TinkoffGateway implements PaymentGatewayInterface
         try {
             $response = $this->http->post('https://securepay.tinkoff.ru/v2/Confirm', $payload);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 throw new \RuntimeException("HTTP {$response->status()}: {$response->body()}");
             }
 
             $success = $response->json()['Success'] ?? false;
 
             if ($success) {
-                $this->logger->channel('audit')->info('Tinkoff: Payment capture succeeded', [
+                $this->logger->channel('audit')->$this->logger->info('Tinkoff: Payment capture succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'response_id' => $response->json()['TerminalKey'] ?? null,
@@ -159,12 +173,8 @@ final class TinkoffGateway implements PaymentGatewayInterface
     /**
      * Вернуть (возместить) платёж
      *
-     * @param PaymentTransaction $transaction
-     * @param int $amount
-     * @param string|null $correlationId
-     * @return bool
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      */
     public function refund(PaymentTransaction $transaction, int $amount, ?string $correlationId = null): bool
     {
@@ -179,7 +189,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('Tinkoff: Payment refund initiated', [
+        $this->logger->channel('audit')->$this->logger->info('Tinkoff: Payment refund initiated', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'refund_amount' => $amount,
@@ -196,14 +206,14 @@ final class TinkoffGateway implements PaymentGatewayInterface
         try {
             $response = $this->http->post('https://securepay.tinkoff.ru/v2/Refund', $payload);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 throw new \RuntimeException("HTTP {$response->status()}: {$response->body()}");
             }
 
             $success = $response->json()['Success'] ?? false;
 
             if ($success) {
-                $this->logger->channel('audit')->info('Tinkoff: Payment refund succeeded', [
+                $this->logger->channel('audit')->$this->logger->info('Tinkoff: Payment refund succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'refunded_amount' => $amount,
@@ -225,9 +235,6 @@ final class TinkoffGateway implements PaymentGatewayInterface
 
     /**
      * Получить статус платежа
-     *
-     * @param string $providerPaymentId
-     * @return array
      */
     public function getStatus(string $providerPaymentId): array
     {
@@ -245,10 +252,8 @@ final class TinkoffGateway implements PaymentGatewayInterface
     /**
      * Создать выплату (массовая выплата)
      *
-     * @param array $data
-     * @return array
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      */
     public function createPayout(array $data): array
     {
@@ -262,7 +267,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('Tinkoff: Payout initiated', [
+        $this->logger->channel('audit')->$this->logger->info('Tinkoff: Payout initiated', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'order_id' => $data['order_id'] ?? null,
@@ -284,15 +289,12 @@ final class TinkoffGateway implements PaymentGatewayInterface
 
     /**
      * Обработать webhook от Tinkoff
-     *
-     * @param array $payload
-     * @return array
      */
     public function handleWebhook(array $payload): array
     {
         $correlationId = $payload['correlation_id'] ?? Str::uuid()->toString();
 
-        $this->logger->channel('audit')->info('Tinkoff: Webhook received', [
+        $this->logger->channel('audit')->$this->logger->info('Tinkoff: Webhook received', [
             'correlation_id' => $correlationId,
             'order_id' => $payload['OrderId'] ?? null,
             'payment_id' => $payload['PaymentId'] ?? null,
@@ -320,16 +322,12 @@ final class TinkoffGateway implements PaymentGatewayInterface
 
     /**
      * Fiscalize платёж через Tinkoff ОФД (54-ФЗ)
-     *
-     * @param PaymentTransaction $transaction
-     * @param string|null $correlationId
-     * @return bool
      */
     public function fiscalize(PaymentTransaction $transaction, ?string $correlationId = null): bool
     {
         $correlationId ??= $transaction->correlation_id ?? Str::uuid()->toString();
 
-        $this->logger->channel('audit')->info('Tinkoff: Fiscalization started', [
+        $this->logger->channel('audit')->$this->logger->info('Tinkoff: Fiscalization started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider_payment_id' => $transaction->provider_payment_id,
@@ -360,7 +358,7 @@ final class TinkoffGateway implements PaymentGatewayInterface
             $success = $response->json()['Success'] ?? false;
 
             if ($success) {
-                $this->logger->channel('audit')->info('Tinkoff: Fiscalization succeeded', [
+                $this->logger->channel('audit')->$this->logger->info('Tinkoff: Fiscalization succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                 ]);
@@ -380,26 +378,20 @@ final class TinkoffGateway implements PaymentGatewayInterface
 
     /**
      * Генерировать токен для платежа
-     *
-     * @param array $data
-     * @return string
      */
     private function generateToken(array $data): string
     {
-        $tokenString = $data['order_id'] . $data['amount'] . $this->secretKey;
+        $tokenString = $data['order_id'].$data['amount'].$this->secretKey;
 
         return md5($tokenString);
     }
 
     /**
      * Генерировать токен для существующего платежа
-     *
-     * @param string $paymentId
-     * @return string
      */
     private function generateTokenForPayment(string $paymentId): string
     {
-        $tokenString = $this->terminalKey . $paymentId . $this->secretKey;
+        $tokenString = $this->terminalKey.$paymentId.$this->secretKey;
 
         return md5($tokenString);
     }

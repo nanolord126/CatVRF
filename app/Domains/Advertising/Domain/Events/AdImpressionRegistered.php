@@ -4,20 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domains\Advertising\Domain\Events;
 
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-
 /**
  * Domain event dispatched when an ad impression is registered.
  *
  * Carries campaign ID, cost and correlation_id for traceability.
  * Listeners handle analytics side effects asynchronously.
- *
- * @package App\Domains\Advertising\Domain\Events
  */
 final class AdImpressionRegistered
 {
-
     /**
      * Create a new event instance.
      */
@@ -56,9 +50,9 @@ final class AdImpressionRegistered
      */
     public function __toString(): string
     {
-        return static::class
-            . '::campaign=' . $this->campaignId
-            . ':cost=' . $this->cost;
+        return self::class
+            .'::campaign='.$this->campaignId
+            .':cost='.$this->cost;
     }
 
     /**

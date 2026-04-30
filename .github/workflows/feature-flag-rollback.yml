@@ -1,0 +1,81 @@
+name: Feature Flag Emergency Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      feature:
+        description: 'Feature name to rollback'
+        required: true
+        type: string
+      reason:
+        description: 'Reason for rollback'
+        required: true
+        type: string
+
+jobs:
+  emergency-rollback:
+    name: Emergency Feature Rollback
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://catvrf.ru
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --no-ansi --no-interaction --prefer-dist
+
+      - name: Disable feature flag
+        run: |
+          php artisan feature:rollout ${{ github.event.inputs.feature }} --disable
+        env:
+          APP_ENV: production
+
+      - name: Verify rollback
+        run: |
+          STATUS=$(php artisan feature:rollout ${{ github.event.inputs.feature }} --status)
+          echo "Feature status after rollback: $STATUS"
+          
+          if echo "$STATUS" | grep -q "Active: No"; then
+            echo "✅ Feature successfully disabled"
+          else
+            echo "❌ Failed to disable feature"
+            exit 1
+          fi
+
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: |
+            🚨 Emergency Feature Rollback
+            
+            Feature: ${{ github.event.inputs.feature }}
+            Reason: ${{ github.event.inputs.reason }}
+            Actor: ${{ github.actor }}
+            
+            The feature has been disabled in production.
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Notify Telegram
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: html
+          message: |
+            <b>🚨 Emergency Feature Rollback</b>
+            
+            Feature: <code>${{ github.event.inputs.feature }}</code>
+            Reason: <code>${{ github.event.inputs.reason }}</code>
+            Actor: <code>${{ github.actor }}</code>
+            
+            The feature has been disabled in production.

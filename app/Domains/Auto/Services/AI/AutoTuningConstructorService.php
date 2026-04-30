@@ -4,14 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\Services\AI;
 
-use Carbon\Carbon;
-
-
-
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
-
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
@@ -20,6 +16,8 @@ use App\Services\AuditService;
 use Illuminate\Support\Str;
 use OpenAI\Client as OpenAIClient;
 use Illuminate\Http\UploadedFile;
+use App\Exceptions\FraudBlockedException;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Анализ фото авто + подбор тюнинга + список запчастей + ближайшие СТО
@@ -31,20 +29,24 @@ use Illuminate\Http\UploadedFile;
  */
 final readonly class AutoTuningConstructorService
 {
-    public function __construct(private OpenAIClient          $openai,
-        private RecommendationService $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService   $fraud,
-        private InventoryService      $inventory,
-        private AuditService          $audit,
-        private readonly \Illuminate\Database\DatabaseManager $db,
-        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+    public function __construct(
+        private readonly OpenAIClient $openai,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly FraudControlService $fraud,
+        private readonly InventoryService $inventory,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Главный метод — анализ и генерация рекомендаций.
      * Анализ фото авто + подбор тюнинга + список запчастей + ближайшие СТО
      *
-     * @throws \App\Exceptions\FraudBlockedException
+     * @throws FraudBlockedException
      */
     public function analyzeAndRecommend(UploadedFile $photo, int $userId, string $carModel = ''): array
     {
@@ -54,7 +56,7 @@ final readonly class AutoTuningConstructorService
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ai_constructor_auto', amount: 0, correlationId: $correlationId ?? '');
 
         // Кэширование результата
-        $cacheKey = "ai_auto:tuning_analysis:$userId:" . md5(json_encode(func_get_args()));
+        $cacheKey = "ai_auto:tuning_analysis:$userId:".md5(json_encode(func_get_args()));
         $cached = cache()->get($cacheKey);
 
         if ($cached !== null) {
@@ -69,7 +71,7 @@ final readonly class AutoTuningConstructorService
                     'role'    => 'user',
                     'content' => [
                         ['type' => 'text', 'text' => 'Анализ автомобиля для подбора тюнинга и запчастей. Определи: марку, модель, год, состояние кузова, признаки повреждений. Рекомендуй тюнинг, детали, сервисные работы.'],
-                        ['type' => 'image_url', 'image_url' => ['url' => 'data:image/jpeg;base64,' . base64_encode(file_get_contents($photo->getRealPath()))]],
+                        ['type' => 'image_url', 'image_url' => ['url' => 'data:image/jpeg;base64,'.base64_encode(file_get_contents($photo->getRealPath()))]],
                     ],
                 ],
             ],
@@ -108,7 +110,7 @@ final readonly class AutoTuningConstructorService
             'success'        => true,
             'tuning_profile' => $tuning_profile,
             'recommendations' => $recArray,
-            'ar_link'        => url('auto/tuning-preview/' . $userId),
+            'ar_link'        => url('auto/tuning-preview/'.$userId),
             'correlation_id' => $correlationId,
         ];
 
@@ -124,7 +126,7 @@ final readonly class AutoTuningConstructorService
             correlationId: $correlationId
         );
 
-        $this->logger->info('AutoTuningConstructorService used', [
+        $this->logger->$this->logger->info('AutoTuningConstructorService used', [
             'user_id'        => $userId,
             'vertical'       => 'auto',
             'type'           => 'tuning_analysis',
@@ -149,7 +151,7 @@ final readonly class AutoTuningConstructorService
         // Fallback: структурированный разбор текстового ответа
         return [
             'raw_analysis'   => $analysisText,
-            'parsed_at'      => Carbon::now()->toISOString(),
+            'parsed_at'      => CarbonImmutable::now()->toISOString(),
             'confidence'     => 0.85,
         ];
     }
@@ -167,8 +169,8 @@ final readonly class AutoTuningConstructorService
             [
                 'design_data'    => json_encode($data),
                 'correlation_id' => $correlationId,
-                'updated_at'     => Carbon::now(),
-                'created_at'     => Carbon::now(),
+                'updated_at'     => CarbonImmutable::now(),
+                'created_at'     => CarbonImmutable::now(),
             ]
         );
     }

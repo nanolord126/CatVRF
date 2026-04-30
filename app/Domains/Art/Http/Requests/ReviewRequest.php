@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Http\Requests;
@@ -14,8 +15,6 @@ use Illuminate\Foundation\Http\FormRequest;
  * Form Request with validation rules.
  * Validates input before reaching the controller.
  * Authorization checks tenant and business group access.
- *
- * @package App\Domains\Art\Http\Requests
  */
 final class ReviewRequest extends FormRequest
 {

@@ -1,19 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Medical\MedicalHealthcare\Services;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Medical\Models\MedicalAppointment;
 use App\Services\FraudControlService;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
 use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
 
 final class VideoConsultationService
 {
-    public function __construct(
-        private FraudControlService $fraud,
-    ) {
-    }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,) {}
 
     public function generateToken(int $appointmentId, int $userId, string $correlationId = ''): array
     {
@@ -38,9 +43,9 @@ final class VideoConsultationService
         $roomName = "healthcare_consult_{$appointment->id}";
         $expiresAt = $appointment->appointment_datetime->addHours(2);
 
-        Redis::setex(
+        $this->redis->connection()->setex(
             "healthcare:webrtc:token:{$token}",
-            $expiresAt->diffInSeconds(now()),
+            $expiresAt->diffInSeconds(CarbonImmutable::now()),
             json_encode([
                 'appointment_id' => $appointmentId,
                 'user_id' => $appointment->user_id,
@@ -50,7 +55,7 @@ final class VideoConsultationService
             ])
         );
 
-        Log::channel('audit')->info('Video consultation token generated', [
+        $this->log->channel('audit')->$this->logger->info('Video consultation token generated', [
             'appointment_id' => $appointmentId,
             'correlation_id' => $correlationId,
             'expires_at' => $expiresAt->toIso8601String(),
@@ -59,7 +64,7 @@ final class VideoConsultationService
         return [
             'token' => $token,
             'room_name' => $roomName,
-            'webrtc_url' => config('services.webrtc.endpoint') . "/room/{$roomName}?token={$token}",
+            'webrtc_url' => config('services.webrtc.endpoint')."/room/{$roomName}?token={$token}",
             'expires_at' => $expiresAt->toIso8601String(),
             'doctor_name' => $appointment->doctor->name,
         ];

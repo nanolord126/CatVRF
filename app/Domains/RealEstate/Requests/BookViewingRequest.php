@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Requests;
 
+use Illuminate\Http\JsonResponse;
+
+use Carbon\CarbonImmutable;
+
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Carbon\Carbon;
 
 final class BookViewingRequest extends FormRequest
 {
@@ -19,7 +24,7 @@ final class BookViewingRequest extends FormRequest
     {
         return [
             'property_id' => ['required', 'integer', 'exists:real_estate_properties,id'],
-            'scheduled_at' => ['required', 'date', 'after:now', 'before:' . now()->addDays(30)->toIso8601String()],
+            'scheduled_at' => ['required', 'date', 'after:now', 'before:'.CarbonImmutable::now()->addDays(30)->toIso8601String()],
             'inn' => ['nullable', 'string', 'max:12', 'min:10'],
             'business_card_id' => ['nullable', 'integer', 'exists:business_cards,id'],
             'metadata' => ['nullable', 'array'],
@@ -44,35 +49,35 @@ final class BookViewingRequest extends FormRequest
         ];
     }
 
-    protected function failedValidation(Validator $validator): void
-    {
-        throw new HttpResponseException(
-            response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-                'correlation_id' => $this->header('X-Correlation-ID'),
-            ], 422)
-        );
-    }
-
     public function withValidator(Validator $validator): void
     {
         $validator->after(function ($validator) {
-            if ($this->has('inn') && !$this->has('business_card_id')) {
+            if ($this->has('inn') && ! $this->has('business_card_id')) {
                 $validator->errors()->add('business_card_id', 'Business card ID is required when INN is provided');
             }
 
-            if (!$this->has('inn') && $this->has('business_card_id')) {
+            if (! $this->has('inn') && $this->has('business_card_id')) {
                 $validator->errors()->add('inn', 'INN is required when business card ID is provided');
             }
 
-            $scheduledTime = \Carbon\Carbon::parse($this->input('scheduled_at'));
+            $scheduledTime = Carbon::parse($this->input('scheduled_at'));
             $hour = $scheduledTime->hour;
 
             if ($hour < 9 || $hour >= 21) {
                 $validator->errors()->add('scheduled_at', 'Viewings can only be scheduled between 09:00 and 21:00');
             }
         });
+    }
+
+    protected function failedValidation(Validator $validator): void
+    {
+        throw new HttpResponseException(
+            new JsonResponse([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+                'correlation_id' => $this->header('X-Correlation-ID'),
+            ], 422)
+        );
     }
 }

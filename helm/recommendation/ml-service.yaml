@@ -1,0 +1,127 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: recommendation-ml-config
+  namespace: catvrf
+data:
+  LOG_LEVEL: "INFO"
+  MODEL_PATH: "/app/models"
+  EMBEDDING_DIM: "128"
+  CLICKHOUSE_HOST: "clickhouse.catvrf.svc.cluster.local"
+  CLICKHOUSE_PORT: "8123"
+  CLICKHOUSE_DATABASE: "catvrf"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendation-ml
+  namespace: catvrf
+  labels:
+    app: recommendation-ml
+    component: ml-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: recommendation-ml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendation-ml
+  namespace: catvrf
+  labels:
+    app: recommendation-ml
+    component: ml-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: recommendation-ml
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: recommendation-ml
+        component: ml-service
+    spec:
+      containers:
+        - name: recommendation-ml
+          image: catvrf/recommendation-ml:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          env:
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: recommendation-ml-config
+                  key: LOG_LEVEL
+            - name: MODEL_PATH
+              valueFrom:
+                configMapKeyRef:
+                  name: recommendation-ml-config
+                  key: MODEL_PATH
+            - name: EMBEDDING_DIM
+              valueFrom:
+                configMapKeyRef:
+                  name: recommendation-ml-config
+                  key: EMBEDDING_DIM
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: recommendation-ml-hpa
+  namespace: catvrf
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: recommendation-ml
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

@@ -13,6 +13,7 @@ updates:
     labels:
       - "dependencies"
       - "php"
+      - "security"
     ignore:
       # stancl/tenancy: только patch-обновления автоматически
       - dependency-name: "stancl/tenancy"
@@ -20,6 +21,16 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
+    groups:
+      laravel:
+        patterns:
+          - "laravel/*"
+          - "illuminate/*"
+      security:
+        patterns:
+          - "nesbot/carbon"
+          - "guzzlehttp/*"
+          - "symfony/*"
 
   # JavaScript / npm dependencies
   - package-ecosystem: "npm"

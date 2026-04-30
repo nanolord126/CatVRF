@@ -1,31 +1,41 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
+
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Beauty\DTOs\HoldBookingSlotDto;
 use App\Domains\Beauty\Events\SlotHeldEvent;
 use App\Domains\Beauty\Events\SlotReleasedEvent;
 use App\Domains\Beauty\Models\BookingSlot;
+use App\Octane\Services\SwooleTableService;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
 use App\Services\IdempotencyService;
 use App\Services\CRMService;
 use Illuminate\Database\ConnectionInterface;
-use Illuminate\Log\Logger;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Carbon\CarbonImmutable;
 
 final readonly class BookingSlotHoldService
 {
-    public function __construct(
-        private FraudControlService $fraudControl,
-        private AuditService $auditService,
-        private IdempotencyService $idempotencyService,
-        private CRMService $crmService,
-        private ConnectionInterface $db,
-        private Logger $logger,
-    ) {
-    }
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraudControl,
+        private readonly AuditService $auditService,
+        private readonly IdempotencyService $idempotencyService,
+        private readonly CRMService $crmService,
+        private readonly ConnectionInterface $db,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,
+        private readonly ?SwooleTableService $swooleTableService = null,) {}
 
     public function holdSlot(HoldBookingSlotDto $dto): BookingSlot
     {
@@ -34,7 +44,7 @@ final readonly class BookingSlotHoldService
         $this->fraudControl->check($dto);
         $this->idempotencyService->checkOrSkip($dto->idempotencyKey, 'booking_slot_hold');
 
-        $this->logger->channel('audit')->info('beauty.slot.hold.start', [
+        $this->log->channel('audit')->$this->logger->info('beauty.slot.hold.start', [
             'correlation_id' => $correlationId,
             'booking_slot_id' => $dto->bookingSlotId,
             'customer_id' => $dto->customerId,
@@ -55,12 +65,12 @@ final readonly class BookingSlotHoldService
             }
 
             $holdMinutes = $dto->isB2b ? 60 : 15;
-            $expiresAt = now()->addMinutes($holdMinutes);
+            $expiresAt = CarbonImmutable::now()->addMinutes($holdMinutes);
 
             $slot->update([
                 'status' => 'held',
                 'customer_id' => $dto->customerId,
-                'held_at' => now(),
+                'held_at' => CarbonImmutable::now(),
                 'expires_at' => $expiresAt,
                 'correlation_id' => $correlationId,
                 'metadata' => array_merge($slot->metadata ?? [], [
@@ -83,12 +93,15 @@ final readonly class BookingSlotHoldService
                 ],
             );
 
-            event(new SlotHeldEvent($slot, $correlationId));
+            $this->eventDispatcher->dispatch(new SlotHeldEvent($slot, $correlationId));
+
+            // Store in Swoole Table for fast access (fallback to Redis if Swoole not available)
+            $this->storeSlotHoldInTable($slot->id, $dto->customerId, $dto->tenantId, $expiresAt->timestamp, $correlationId);
 
             return $slot->fresh();
         });
 
-        $this->logger->channel('audit')->info('beauty.slot.hold.success', [
+        $this->log->channel('audit')->$this->logger->info('beauty.slot.hold.success', [
             'correlation_id' => $correlationId,
             'booking_slot_id' => $slot->id,
             'expires_at' => $slot->expires_at->toIso8601String(),
@@ -105,7 +118,7 @@ final readonly class BookingSlotHoldService
     ): BookingSlot {
         $correlationId ??= Str::uuid()->toString();
 
-        $this->logger->channel('audit')->info('beauty.slot.release.start', [
+        $this->log->channel('audit')->$this->logger->info('beauty.slot.release.start', [
             'correlation_id' => $correlationId,
             'booking_slot_id' => $bookingSlotId,
             'tenant_id' => $tenantId,
@@ -136,7 +149,7 @@ final readonly class BookingSlotHoldService
                 'metadata' => array_merge($slot->metadata ?? [], [
                     'release_reason' => $reason,
                     'previous_status' => $previousStatus,
-                    'released_at' => now()->toIso8601String(),
+                    'released_at' => CarbonImmutable::now()->toIso8601String(),
                 ]),
             ]);
 
@@ -153,7 +166,10 @@ final readonly class BookingSlotHoldService
                 ],
             );
 
-            event(new SlotReleasedEvent($slot, $correlationId, $reason));
+            $this->eventDispatcher->dispatch(new SlotReleasedEvent($slot, $correlationId, $reason));
+
+            // Remove from Swoole Table
+            $this->removeSlotHoldFromTable($slot->id);
 
             if ($previousStatus === 'held' && $reason === 'payment_failed') {
                 $this->crmService->createAppeal(
@@ -173,7 +189,7 @@ final readonly class BookingSlotHoldService
             return $slot->fresh();
         });
 
-        $this->logger->channel('audit')->info('beauty.slot.release.success', [
+        $this->log->channel('audit')->$this->logger->info('beauty.slot.release.success', [
             'correlation_id' => $correlationId,
             'booking_slot_id' => $slot->id,
         ]);
@@ -189,7 +205,7 @@ final readonly class BookingSlotHoldService
     ): BookingSlot {
         $correlationId ??= Str::uuid()->toString();
 
-        $this->logger->channel('audit')->info('beauty.slot.confirm.start', [
+        $this->log->channel('audit')->$this->logger->info('beauty.slot.confirm.start', [
             'correlation_id' => $correlationId,
             'booking_slot_id' => $bookingSlotId,
             'tenant_id' => $tenantId,
@@ -216,7 +232,7 @@ final readonly class BookingSlotHoldService
             $slot->update([
                 'status' => 'booked',
                 'order_id' => $orderId,
-                'booked_at' => now(),
+                'booked_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId,
                 'metadata' => array_merge($slot->metadata ?? [], [
                     'confirmed_via' => 'payment_success',
@@ -247,7 +263,7 @@ final readonly class BookingSlotHoldService
             return $slot->fresh();
         });
 
-        $this->logger->channel('audit')->info('beauty.slot.confirm.success', [
+        $this->log->channel('audit')->$this->logger->info('beauty.slot.confirm.success', [
             'correlation_id' => $correlationId,
             'booking_slot_id' => $slot->id,
             'order_id' => $orderId,
@@ -260,7 +276,7 @@ final readonly class BookingSlotHoldService
     {
         $correlationId = Str::uuid()->toString();
 
-        $this->logger->channel('audit')->info('beauty.slot.expire.start', [
+        $this->log->channel('audit')->$this->logger->info('beauty.slot.expire.start', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
         ]);
@@ -268,7 +284,7 @@ final readonly class BookingSlotHoldService
         $expiredSlots = BookingSlot::query()
             ->where('tenant_id', $tenantId)
             ->where('status', 'held')
-            ->where('expires_at', '<', now())
+            ->where('expires_at', '<', CarbonImmutable::now())
             ->get();
 
         $count = 0;
@@ -278,7 +294,7 @@ final readonly class BookingSlotHoldService
                 $this->releaseSlot($slot->id, $tenantId, 'expired', $correlationId);
                 $count++;
             } catch (RuntimeException $e) {
-                $this->logger->channel('audit')->warning('beauty.slot.expire.failed', [
+                $this->log->channel('audit')->warning('beauty.slot.expire.failed', [
                     'correlation_id' => $correlationId,
                     'booking_slot_id' => $slot->id,
                     'error' => $e->getMessage(),
@@ -286,12 +302,81 @@ final readonly class BookingSlotHoldService
             }
         }
 
-        $this->logger->channel('audit')->info('beauty.slot.expire.complete', [
+        $this->log->channel('audit')->$this->logger->info('beauty.slot.expire.complete', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'expired_count' => $count,
         ]);
 
         return $count;
+    }
+
+    public function isSlotHeld(int $slotId): bool
+    {
+        if ($this->swooleTableService === null) {
+            // Fallback to Redis
+            return $this->redis->exists("beauty:slot_hold:{$slotId}") > 0;
+        }
+
+        $slotHoldsTable = $this->swooleTableService->slotHolds();
+        if ($slotHoldsTable) {
+            $hold = $slotHoldsTable->get("beauty:{$slotId}");
+            if ($hold && $hold['expires_at'] > time()) {
+                return true;
+            }
+            // Clean up expired holds
+            if ($hold) {
+                $slotHoldsTable->del("beauty:{$slotId}");
+            }
+        }
+
+        return false;
+    }
+
+    private function storeSlotHoldInTable(int $slotId, int $customerId, int $tenantId, int $expiresAt, string $correlationId): void
+    {
+        if ($this->swooleTableService === null) {
+            // Fallback to Redis if Swoole not available
+            $key = "beauty:slot_hold:{$slotId}";
+            $this->redis->setex($key, $expiresAt - time(), json_encode([
+                'slot_id' => $slotId,
+                'customer_id' => $customerId,
+                'tenant_id' => $tenantId,
+                'expires_at' => $expiresAt,
+                'correlation_id' => $correlationId,
+                'status' => 'active',
+            ]));
+
+            return;
+        }
+
+        // Use Swoole Table for faster access
+        $slotHoldsTable = $this->swooleTableService->slotHolds();
+        if ($slotHoldsTable) {
+            $slotHoldsTable->set("beauty:{$slotId}", [
+                'user_id' => $customerId,
+                'doctor_id' => 0, // Not applicable for beauty
+                'clinic_id' => $tenantId,
+                'slot_time' => 0, // Not applicable
+                'expires_at' => $expiresAt,
+                'status' => 'active',
+                'created_at' => time(),
+            ]);
+        }
+    }
+
+    private function removeSlotHoldFromTable(int $slotId): void
+    {
+        if ($this->swooleTableService === null) {
+            // Fallback to Redis
+            $this->redis->del("beauty:slot_hold:{$slotId}");
+
+            return;
+        }
+
+        $slotHoldsTable = $this->swooleTableService->slotHolds();
+        if ($slotHoldsTable) {
+            $slotHoldsTable->del("beauty:{$slotId}");
+        }
     }
 }

@@ -1,0 +1,44 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# CatVRF Pre-commit Hooks
+# Runs lint checks before commit
+
+echo "🔍 Running CatVRF pre-commit checks..."
+
+# Check for PHP syntax errors
+echo "📝 Checking PHP syntax..."
+find . -name "*.php" -not -path "./vendor/*" -not -path "./node_modules/*" -not -path "./storage/*" -not -path "./bootstrap/cache/*" -exec php -l {} \; | grep -v "No syntax errors" && exit 1
+
+# Run Laravel Pint (code style)
+if command -v vendor/bin/pint &> /dev/null; then
+    echo "🎨 Running Laravel Pint..."
+    vendor/bin/pint --test
+    PINT_EXIT=$?
+    if [ $PINT_EXIT -ne 0 ]; then
+        echo "❌ Laravel Pint found code style issues. Run 'vendor/bin/pint' to fix them."
+        exit 1
+    fi
+fi
+
+# Run PHPStan (static analysis)
+if command -v vendor/bin/phpstan &> /dev/null; then
+    echo "🧠 Running PHPStan..."
+    vendor/bin/phpstan analyse --memory-limit=2G
+    PHPSTAN_EXIT=$?
+    if [ $PHPSTAN_EXIT -ne 0 ]; then
+        echo "❌ PHPStan found issues. Please fix them before committing."
+        exit 1
+    fi
+fi
+
+# Check for TODO/FIXME comments in production code
+echo "🔎 Checking for TODO/FIXME comments..."
+TODO_COUNT=$(find ./app ./modules -name "*.php" -exec grep -l "TODO\|FIXME" {} \; | wc -l)
+if [ $TODO_COUNT -gt 0 ]; then
+    echo "⚠️  Found $TODO_COUNT files with TODO/FIXME comments in app/modules"
+    echo "   Consider resolving them or adding a ticket reference."
+    # Don't block commit, just warn
+fi
+
+echo "✅ Pre-commit checks passed!"

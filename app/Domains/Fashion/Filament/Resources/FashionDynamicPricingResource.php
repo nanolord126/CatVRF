@@ -1,20 +1,26 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Filament\Resources;
 
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Resources\FashionDynamicPricingResource\Pages;
+use App\Models\FashionDynamicPricing;
 
-final class FashionDynamicPricingResource extends Resource
+final class FashionDynamicPricingResource extends BaseOptimizedResource
 {
-    protected static ?string $model = \App\Models\FashionDynamicPricing::class;
+    protected static ?string $model = FashionDynamicPricing::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+
     protected static ?string $navigationGroup = 'Fashion AI';
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
@@ -113,5 +119,13 @@ final class FashionDynamicPricingResource extends Resource
             'view' => Pages\ViewFashionDynamicPricing::route('/{record}'),
             'edit' => Pages\EditFashionDynamicPricing::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Fashion
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

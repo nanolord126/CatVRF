@@ -18,6 +18,8 @@
 
 namespace App\Domains\Pharmacy\Services;
 
+use Carbon\CarbonImmutable;
+
 use App\Domains\Payment\Services\PaymentServiceAdapter;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
@@ -33,13 +35,13 @@ final readonly class SubscriptionService
 
         return $this->db->transaction(function () use ($data, $correlationId) {
             $sub = PharmacySubscription::create(array_merge($data, ['correlation_id' => $correlationId]));
-            $this->logger->info("Subscription created", ['id' => $sub->id, 'correlation_id' => $correlationId]);
+            $this->logger->$this->logger->info("Subscription created", ['id' => $sub->id, 'correlation_id' => $correlationId]);
             return $sub;
         });
     }
             return $this->db->transaction(function () use ($data, $correlationId) {
                 $sub = PharmacySubscription::create(array_merge($data, ['correlation_id' => $correlationId]));
-                $this->logger->info("Subscription created", ['id' => $sub->id, 'correlation_id' => $correlationId]);
+                $this->logger->$this->logger->info("Subscription created", ['id' => $sub->id, 'correlation_id' => $correlationId]);
                 return $sub;
             });
         }
@@ -63,7 +65,7 @@ final readonly class SubscriptionService
     {
         return [
             'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

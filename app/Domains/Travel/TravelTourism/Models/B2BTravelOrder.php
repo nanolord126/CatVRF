@@ -1,11 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\TravelTourism\Models;
 
-
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Carbon\Carbon;
 
 /**
  * Class B2BTravelOrder
@@ -25,14 +26,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Domains\Travel\TravelTourism\Models
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class B2BTravelOrder extends Model
 {
-
-
     protected $table = 'b2b_travel_orders';
 
     protected $fillable = [
@@ -62,13 +60,13 @@ final class B2BTravelOrder extends Model
         'expected_delivery_at' => 'datetime',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', $this->guard->user()?->tenant_id ?? null));
-    }
-
     public function storefront(): BelongsTo
     {
         return $this->belongsTo(B2BTravelStorefront::class, 'b2b_travel_storefront_id');
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', $this->guard->user()?->tenant_id ?? null));
     }
 }

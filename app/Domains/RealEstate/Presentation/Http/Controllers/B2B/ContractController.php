@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Presentation\Http\Controllers\B2B;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,12 +37,12 @@ final class ContractController extends Controller
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
                 'status' => 'draft',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]));
         });
 
-        $this->logger->info('Contract created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Contract created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'Договор создан'], 201);
     }
@@ -52,10 +55,10 @@ final class ContractController extends Controller
             $this->db->table('real_estate_contracts')
                 ->where('id', $id)
                 ->where('tenant_id', $request->get('tenant_id'))
-                ->update(['status' => 'signed', 'signed_at' => now(), 'updated_at' => now()]);
+                ->update(['status' => 'signed', 'signed_at' => CarbonImmutable::now(), 'updated_at' => CarbonImmutable::now()]);
         });
 
-        $this->logger->info('Contract signed', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Contract signed', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Договор подписан']);
     }

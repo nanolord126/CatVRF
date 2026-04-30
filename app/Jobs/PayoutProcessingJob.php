@@ -1,9 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
-
-
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
@@ -12,14 +13,13 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-
-
 use Illuminate\Support\Str;
 use Modules\Finances\Models\WithdrawalRequest;
 use Modules\Finances\Services\FraudMLService;
 use Modules\Finances\Services\PaymentGateway\PaymentGatewayInterface;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 /**
  * Payout Processing Job
@@ -31,49 +31,55 @@ use Illuminate\Database\DatabaseManager;
  */
 final class PayoutProcessingJob implements ShouldQueue
 {
-    use Dispatchable, Queueable, InteractsWithQueue, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $timeout = 3600; // 1 час
+
     public int $tries = 3;
+
     public int $backoff = 300; // 5 минут между попытками
 
     private readonly PaymentGatewayInterface $gateway;
+
     private readonly FraudMLService $fraudMLService;
+
     private readonly string $correlationId;
 
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly ConfigRepository $config,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-    )
-    {
-        $this->gateway = app(PaymentGatewayInterface::class);
-        $this->fraudMLService = app(FraudMLService::class);
+        private readonly PaymentGatewayInterface $gateway,
+        private readonly FraudMLService $fraudMLService,) {
         $this->correlationId = (string) Str::uuid()->toString();
     }
 
     public function handle(): void
     {
         try {
-            $this->logger->channel('audit')->info('Payout processing started', [
+            $this->logger->channel('audit')->$this->logger->info('Payout processing started', [
                 'correlation_id' => $this->correlationId,
-                'timestamp' => now()->toIso8601String(),
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ]);
 
             // 1. Найти все pending выводы
             $pendingPayouts = WithdrawalRequest::query()
                 ->where('status', 'pending')
-                ->where('scheduled_for', '<=', now())
+                ->where('scheduled_for', '<=', CarbonImmutable::now())
                 ->lockForUpdate()
                 ->get();
 
             if ($pendingPayouts->isEmpty()) {
-                $this->logger->info('No pending payouts to process');
+                $this->logger->$this->logger->info('No pending payouts to process');
+
                 return;
             }
 
-            $this->logger->info('Processing payouts', [
+            $this->logger->$this->logger->info('Processing payouts', [
                 'correlation_id' => $this->correlationId,
                 'count' => $pendingPayouts->count(),
             ]);
@@ -92,6 +98,7 @@ final class PayoutProcessingJob implements ShouldQueue
                 $this->logger->warning('All payouts marked as fraudulent', [
                     'correlation_id' => $this->correlationId,
                 ]);
+
                 return;
             }
 
@@ -121,7 +128,7 @@ final class PayoutProcessingJob implements ShouldQueue
                 }
             }
 
-            $this->logger->channel('audit')->info('Payout processing completed', [
+            $this->logger->channel('audit')->$this->logger->info('Payout processing completed', [
                 'correlation_id' => $this->correlationId,
                 'successful' => $successCount,
                 'failed' => $failureCount,
@@ -142,6 +149,14 @@ final class PayoutProcessingJob implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    public function failed(\Exception $exception): void
+    {
+        $this->logger->channel('audit')->error('PayoutProcessingJob failed permanently', [
+            'correlation_id' => $this->correlationId,
+            'error' => $exception->getMessage(),
+        ]);
     }
 
     /**
@@ -169,7 +184,7 @@ final class PayoutProcessingJob implements ShouldQueue
             $payout->update([
                 'status' => 'rejected',
                 'rejection_reason' => 'Fraud detection',
-                'rejected_at' => now(),
+                'rejected_at' => CarbonImmutable::now(),
                 'correlation_id' => $this->correlationId,
             ]);
 
@@ -191,7 +206,7 @@ final class PayoutProcessingJob implements ShouldQueue
 
         foreach ($payouts as $payout) {
             $method = $payout->method; // sbp, card, bank_transfer
-            if (!isset($grouped[$method])) {
+            if (! isset($grouped[$method])) {
                 $grouped[$method] = [];
             }
             $grouped[$method][] = $payout;
@@ -208,7 +223,7 @@ final class PayoutProcessingJob implements ShouldQueue
         $this->db->transaction(function () use ($payout, $method) {
             $payout->update([
                 'status' => 'processing',
-                'processing_started_at' => now(),
+                'processing_started_at' => CarbonImmutable::now(),
                 'correlation_id' => $this->correlationId,
             ]);
 
@@ -220,19 +235,19 @@ final class PayoutProcessingJob implements ShouldQueue
                 idempotency_key: $payout->idempotency_key,
             );
 
-            if (!$result->isSuccessful()) {
+            if (! $result->isSuccessful()) {
                 throw new \RuntimeException("Payout gateway error: {$result->getMessage()}");
             }
 
             // Обновить статус
             $payout->update([
                 'status' => 'sent',
-                'sent_at' => now(),
+                'sent_at' => CarbonImmutable::now(),
                 'provider_transaction_id' => $result->getTransactionId(),
                 'correlation_id' => $this->correlationId,
             ]);
 
-            $this->logger->info('Payout sent successfully', [
+            $this->logger->$this->logger->info('Payout sent successfully', [
                 'payout_id' => $payout->id,
                 'provider_id' => $result->getTransactionId(),
             ]);
@@ -246,20 +261,12 @@ final class PayoutProcessingJob implements ShouldQueue
     {
         $payout->update([
             'retry_count' => ($payout->retry_count ?? 0) + 1,
-            'last_retry_at' => now(),
+            'last_retry_at' => CarbonImmutable::now(),
         ]);
 
         if (($payout->retry_count ?? 0) >= 3) {
             $payout->update(['status' => 'failed']);
             $payout->wallet->refund($payout->amount, 'Payout failed after 3 attempts');
         }
-    }
-
-    public function failed(\Exception $exception): void
-    {
-        $this->logger->channel('audit')->error('PayoutProcessingJob failed permanently', [
-            'correlation_id' => $this->correlationId,
-            'error' => $exception->getMessage(),
-        ]);
     }
 }

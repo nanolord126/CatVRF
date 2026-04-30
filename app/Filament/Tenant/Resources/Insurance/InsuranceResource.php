@@ -1,13 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Insurance;
 
-
-
-
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Models\Insurance;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
@@ -23,21 +21,22 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class InsuranceResource extends Resource
 {
+    protected static ?string $model = Insurance::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-shield-check';
+
+    protected static ?string $navigationGroup = 'Вертикали';
+
+    protected static ?int $navigationSort = 16;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model = Insurance::class;
-    protected static ?string $navigationIcon = 'heroicon-o-shield-check';
-    protected static ?string $navigationGroup = 'Вертикали';
-    protected static ?int $navigationSort = 16;
 
     public static function form(Form $form): Form
     {
@@ -46,8 +45,8 @@ final class InsuranceResource extends Resource
                 TextInput::make('policy_number')->label('Номер полиса')->required()->hidden(),
                 TextInput::make('policy_name')->label('Название полиса')->required(),
                 Select::make('insurance_type')->label('Тип страховки')->options([
-                    'health' => 'Медицинская','auto' => 'Автомобильная','property' => 'Имущество','travel' => 'Путешествия',
-                    'life' => 'Жизнь','liability' => 'Ответственность','business' => 'Бизнес','pet' => 'Домашние животные',
+                    'health' => 'Медицинская', 'auto' => 'Автомобильная', 'property' => 'Имущество', 'travel' => 'Путешествия',
+                    'life' => 'Жизнь', 'liability' => 'Ответственность', 'business' => 'Бизнес', 'pet' => 'Домашние животные',
                 ])->required(),
                 TextInput::make('provider_name')->label('Страховщик')->required(),
                 TextInput::make('provider_license')->label('Лицензия')->required(),
@@ -84,8 +83,8 @@ final class InsuranceResource extends Resource
                 TextInput::make('avg_claim_payout_days')->label('Средний срок выплаты (дн)')->numeric(),
             ]),
             Section::make('Скрытые поля')->hidden()->schema([
-                TextInput::make('tenant_id')->default(fn()=>filament()->getTenant()->id),
-                TextInput::make('correlation_id')->default(fn()=>Str::uuid()->toString()),
+                TextInput::make('tenant_id')->default(fn () => filament()->getTenant()->id),
+                TextInput::make('correlation_id')->default(fn () => Str::uuid()->toString()),
             ]),
         ]);
     }
@@ -104,17 +103,18 @@ final class InsuranceResource extends Resource
         ])->defaultSort('policy_name');
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        $this->db->transaction(function()use(&$data){
-            $data['correlation_id'] = Str::uuid()->toString();
-            $this->logger->info('Insurance policy action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
-        });
-        return $data;
-    }
-
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->db->transaction(function () use (&$data) {
+            $data['correlation_id'] = Str::uuid()->toString();
+            $this->logger->$this->logger->info('Insurance policy action', ['user' => $this->guard->id(), 'correlation_id' => $data['correlation_id']]);
+        });
+
+        return $data;
     }
 }

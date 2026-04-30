@@ -1,6 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Http\Controllers;
+
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Auto\Http\Requests\CarImportRequest;
 use App\Domains\Auto\Resources\CarImportResource;
@@ -11,14 +19,16 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Log\LogManager;
+use Illuminate\Support\Str;
 
 final class CarImportController
 {
-    public function __construct(
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly BusDispatcher $bus,
+        private readonly LoggerInterface $logger,
         private readonly CarImportService $importService,
         private readonly DatabaseManager $db,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     public function calculateDuties(CarImportRequest $request): JsonResponse
     {
@@ -26,7 +36,7 @@ final class CarImportController
             $dto = $request->toDto();
             $result = $this->importService->calculateCustomsDuties($dto);
 
-            CarImportCalculatedEvent::dispatch(
+            CarImportCalculatedEvent::$this->bus->dispatch(
                 vin: $dto->vin,
                 userId: $dto->userId,
                 tenantId: $dto->tenantId,
@@ -34,7 +44,7 @@ final class CarImportController
                 calculationData: $result,
             );
 
-            $this->logger->channel('audit')->info('car.api.import.calculation.success', [
+            $this->logger->channel('audit')->$this->logger->info('car.api.import.calculation.success', [
                 'correlation_id' => $dto->correlationId,
                 'user_id' => $dto->userId,
                 'tenant_id' => $dto->tenantId,
@@ -52,7 +62,7 @@ final class CarImportController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'correlation_id' => $request->header('X-Correlation-ID'),
@@ -78,7 +88,7 @@ final class CarImportController
 
             $result = $this->importService->initiateImportProcess($dto, $documents);
 
-            Event::dispatch(new CarImportInitiatedEvent(
+            $this->eventDispatcher->$this->bus->dispatch(new CarImportInitiatedEvent(
                 importId: $result['import_id'],
                 vin: $dto->vin,
                 userId: $dto->userId,
@@ -87,14 +97,14 @@ final class CarImportController
                 isB2b: $dto->isB2b,
             ));
 
-            $this->logger->channel('audit')->info('car.api.import.initiated.success', [
+            $this->logger->channel('audit')->$this->logger->info('car.api.import.initiated.success', [
                 'correlation_id' => $dto->correlationId,
                 'user_id' => $dto->userId,
                 'import_id' => $result['import_id'],
                 'vin' => $dto->vin,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'import_id' => $result['import_id'],
                 'vehicle_id' => $result['vehicle_id'],
@@ -109,7 +119,7 @@ final class CarImportController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'correlation_id' => $request->header('X-Correlation-ID'),
@@ -120,7 +130,7 @@ final class CarImportController
     public function payDuties(Request $request, int $importId): JsonResponse
     {
         try {
-            $correlationId = $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString();
+            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
             $userId = (int) $request->user()->id;
             $tenantId = (int) tenant()->id;
 
@@ -131,13 +141,13 @@ final class CarImportController
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('car.api.import.payment.success', [
+            $this->logger->channel('audit')->$this->logger->info('car.api.import.payment.success', [
                 'correlation_id' => $correlationId,
                 'import_id' => $importId,
                 'user_id' => $userId,
             ]);
 
-            return response()->json(array_merge($result, ['correlation_id' => $correlationId]), 200);
+            return new JsonResponse(array_merge($result, ['correlation_id' => $correlationId]), 200);
 
         } catch (\Throwable $e) {
             $this->logger->channel('audit')->error('car.api.import.payment.error', [
@@ -145,7 +155,7 @@ final class CarImportController
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'correlation_id' => $request->header('X-Correlation-ID'),
@@ -162,13 +172,13 @@ final class CarImportController
                 ->first();
 
             if ($import === null) {
-                return response()->json([
+                return new JsonResponse([
                     'success' => false,
                     'error' => 'Import not found',
                 ], 404);
             }
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'import' => [
                     'id' => $import->id,
@@ -187,7 +197,7 @@ final class CarImportController
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'error' => $e->getMessage(),
             ], 500);

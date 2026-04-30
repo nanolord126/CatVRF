@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Mail;
 
@@ -17,44 +19,43 @@ use Illuminate\Queue\SerializesModels;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Mail
  */
 final class AppointmentReminderMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable;
+    use SerializesModels;
 
-        public function __construct(
-            private readonly Appointment $appointment,
-        ) {}
+    public function __construct(
+        private readonly Appointment $appointment,
+    ) {}
 
-        /**
-         * Handle envelope operation.
-         *
-         * @throws \DomainException
-         */
-        public function envelope(): Envelope
-        {
-            return new Envelope(
-                subject: 'Напоминание о записи',
-            );
-        }
+    /**
+     * Handle envelope operation.
+     *
+     * @throws \DomainException
+     */
+    public function envelope(): Envelope
+    {
+        return new Envelope(
+            subject: 'Напоминание о записи',
+        );
+    }
 
-        /**
-         * Handle content operation.
-         *
-         * @throws \DomainException
-         */
-        public function content(): Content
-        {
-            return new Content(
-                view: 'emails.appointment-reminder',
-                with: [
-                    'masterName' => $this->appointment->master->full_name ?? '',
-                    'serviceName' => $this->appointment->service->name ?? '',
-                    'datetime' => $this->appointment->datetime_start?->format('d.m.Y H:i'),
-                    'salonAddress' => $this->appointment->salon->address ?? '',
-                ],
-            );
-        }
+    /**
+     * Handle content operation.
+     *
+     * @throws \DomainException
+     */
+    public function content(): Content
+    {
+        return new Content(
+            view: 'emails.appointment-reminder',
+            with: [
+                'masterName' => $this->appointment->master->full_name ?? '',
+                'serviceName' => $this->appointment->service->name ?? '',
+                'datetime' => $this->appointment->datetime_start?->format('d.m.Y H:i'),
+                'salonAddress' => $this->appointment->salon->address ?? '',
+            ],
+        );
+    }
 }

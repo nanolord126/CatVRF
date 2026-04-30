@@ -1,15 +1,27 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\Marketplace;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Illuminate\Support\Collection;
 
 use Illuminate\View\View;
 use Livewire\Component;
 
 final class Cart extends Component
 {
-    private array $items = [];
-    private int $totalPrice = 0;
-    private int $itemCount = 0;
+    private readonly array $items = [];
+
+    private readonly int $totalPrice = 0;
+
+    private readonly int $itemCount = 0;
+
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
     public function mount(): void
     {
@@ -24,14 +36,15 @@ final class Cart extends Component
 
     public function calculateTotals(): void
     {
-        $this->totalPrice = collect($this->items)->sum(fn ($item) => $item['price'] * $item['quantity']);
-        $this->itemCount = collect($this->items)->sum(fn ($item) => $item['quantity']);
+        $this->totalPrice = new Collection($this->items)->sum(fn ($item) => $item['price'] * $item['quantity']);
+        $this->itemCount = new Collection($this->items)->sum(fn ($item) => $item['quantity']);
     }
 
     public function updateQuantity(string $key, int $quantity): void
     {
         if ($quantity <= 0) {
             $this->removeItem($key);
+
             return;
         }
 
@@ -64,6 +77,6 @@ final class Cart extends Component
 
     public function render(): View
     {
-        return view('livewire.marketplace.cart');
+        return $this->viewFactory->make('livewire.marketplace.cart');
     }
 }

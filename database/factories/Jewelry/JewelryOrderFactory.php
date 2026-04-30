@@ -6,6 +6,7 @@ namespace Database\Factories\Jewelry;
 
 use App\Domains\Luxury\Jewelry\Models\JewelryOrder;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class JewelryOrderFactory extends Factory
 {
@@ -14,7 +15,7 @@ final class JewelryOrderFactory extends Factory
     public function definition(): array
     {
         return [
-            'order_number' => 'JWL-' . strtoupper(\Illuminate\Support\Str::random(8)),
+            'order_number' => 'JWL-'.strtoupper(Str::random(8)),
             'item_id' => 1,
             'quantity' => 1,
             'unit_price' => 300000,
@@ -23,7 +24,7 @@ final class JewelryOrderFactory extends Factory
             'payment_status' => 'pending',
             'shipping_address' => $this->faker->address(),
             'ordered_at' => now(),
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'tags' => ['order'],
             'meta' => [],
         ];

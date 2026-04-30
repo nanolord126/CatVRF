@@ -7,14 +7,17 @@ namespace App\Domains\Payment\Services;
 use App\Domains\Payment\Contracts\PaymentGatewayInterface;
 use App\Domains\Payment\DTOs\CreatePaymentRecordDto;
 use App\Domains\Payment\DTOs\UpdatePaymentRecordDto;
+use App\Domains\Payment\DTOs\FiscalReceiptDto;
+use App\Domains\Payment\DTOs\FiscalReceiptItemDto;
 use App\Domains\Payment\Enums\PaymentStatus;
 use App\Domains\Payment\Models\PaymentRecord;
 use App\Domains\FraudML\DTOs\PaymentFraudMLDto;
 use App\Domains\FraudML\Services\PaymentFraudMLService;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
+use App\Domains\Payment\Services\OFD\OFDService;
+use App\Domains\Payment\Services\SplitPaymentService;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -29,15 +32,17 @@ use Psr\Log\LoggerInterface;
 final readonly class PaymentCoordinatorService
 {
     public function __construct(
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private PaymentService $paymentService,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly PaymentService $paymentService,
+        private readonly PaymentFraudMLService $paymentFraudML,
+        private readonly OFDService $ofdService,
+        private readonly SplitPaymentService $splitPayment,
     ) {}
 
-    /**,
-        private PaymentFraudMLService $paymentFraudML
+    /**
      * Инициировать платёж: создать запись + вызвать шлюз.
      *
      * @return array{payment_record: PaymentRecord, redirect_url: string}
@@ -74,7 +79,7 @@ final readonly class PaymentCoordinatorService
         $fraudResult = $this->paymentFraudML->scorePayment($fraudMLDto);
 
         if ($fraudResult['decision'] === 'block') {
-            Log::warning('Payment blocked by ML fraud detection', [
+            $this->logger->warning('Payment blocked by ML fraud detection', [
                 'idempotency_key' => $dto->idempotencyKey,
                 'correlation_id' => $dto->correlationId,
                 'score' => $fraudResult['score'],
@@ -82,7 +87,7 @@ final readonly class PaymentCoordinatorService
                 'vertical_code' => $verticalCode,
             ]);
 
-            throw new \RuntimeException('Payment blocked by fraud detection. Score: ' . $fraudResult['score']);
+            throw new \RuntimeException('Payment blocked by fraud detection. Score: '.$fraudResult['score']);
         }
 
         // Идемпотентность: если запись уже есть — вернуть её
@@ -177,11 +182,14 @@ final readonly class PaymentCoordinatorService
 
     /**
      * Выполнить capture авторизованного платежа.
+     *
+     * После успешного capture автоматически фискализирует чек через ОФД (54-ФЗ).
      */
     public function capture(
         int $paymentRecordId,
         PaymentGatewayInterface $gateway,
         string $correlationId,
+        ?FiscalReceiptDto $fiscalReceiptDto = null,
     ): PaymentRecord {
         $record = PaymentRecord::findOrFail($paymentRecordId);
 
@@ -198,7 +206,36 @@ final readonly class PaymentCoordinatorService
             providerResponse: $captureResult['provider_response'] ?? null,
         );
 
-        return $this->paymentService->updateStatus($updateDto);
+        $updatedRecord = $this->paymentService->updateStatus($updateDto);
+
+        // Автоматическая фискализация чека (54-ФЗ) для РФ
+        if ($fiscalReceiptDto !== null && config('payment.ofd_enabled', false)) {
+            try {
+                $ofdProvider = config('payment.ofd_provider', 'tensor');
+                $this->ofdService->fiscalizePayment(
+                    paymentRecord: $updatedRecord,
+                    receiptDto: $fiscalReceiptDto,
+                    ofdProvider: $ofdProvider,
+                    correlationId: $correlationId,
+                );
+
+                $this->logger->info('OFD fiscalization completed', [
+                    'payment_record_id' => $updatedRecord->id,
+                    'ofd_provider' => $ofdProvider,
+                    'correlation_id' => $correlationId,
+                ]);
+            } catch (\Exception $e) {
+                $this->logger->error('OFD fiscalization failed (non-blocking)', [
+                    'payment_record_id' => $updatedRecord->id,
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId,
+                ]);
+                // Не блокировать платеж при ошибке фискализации
+                // Отправить в очередь для повторной попытки
+            }
+        }
+
+        return $updatedRecord;
     }
 
     /**

@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Http\Controllers;
+
+use Illuminate\Contracts\Validation\Factory as ValidatorFactory;
 
 use App\Domains\Travel\Services\ExternalFlightSearchService;
 use Illuminate\Http\JsonResponse;
@@ -11,29 +15,25 @@ use Illuminate\Support\Str;
 
 /**
  * Flight Search Controller
- * 
+ *
  * API controller for external flight search integration.
  * Provides endpoints for searching flights across multiple providers
  * (Amadeus, Sabre, Skyscanner) with caching and fallback support.
  */
 final class FlightSearchController
 {
-    public function __construct(
+    public function __construct(private readonly ValidatorFactory $validatorFactory,
         private readonly ExternalFlightSearchService $flightSearchService,
-        private readonly LoggerInterface $logger,
-    ) {}
+        private readonly LoggerInterface $logger,) {}
 
     /**
      * Search for flights.
-     * 
-     * @param Request $request
-     * @return JsonResponse
      */
     public function search(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
-        $validator = Validator::make($request->all(), [
+        $validator = $this->validatorFactory->make($request->all(), [
             'origin' => 'required|string|max:3',
             'destination' => 'required|string|max:3',
             'date' => 'required|date|after:today',
@@ -45,7 +45,7 @@ final class FlightSearchController
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Validation failed',
                 'errors' => $validator->errors(),
@@ -67,7 +67,7 @@ final class FlightSearchController
 
             $results = $this->flightSearchService->searchFlights($params, $correlationId);
 
-            $this->logger->info('Flight search completed', [
+            $this->logger->$this->logger->info('Flight search completed', [
                 'origin' => $params['origin'],
                 'destination' => $params['destination'],
                 'date' => $params['date'],
@@ -76,7 +76,7 @@ final class FlightSearchController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'data' => $results,
                 'correlation_id' => $correlationId,
@@ -88,7 +88,7 @@ final class FlightSearchController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Flight search failed',
                 'error' => $e->getMessage(),
@@ -99,9 +99,6 @@ final class FlightSearchController
 
     /**
      * Get available airports for autocomplete.
-     * 
-     * @param Request $request
-     * @return JsonResponse
      */
     public function airports(Request $request): JsonResponse
     {
@@ -109,7 +106,7 @@ final class FlightSearchController
         $query = $request->input('q', '');
 
         if (strlen($query) < 2) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Query too short',
                 'correlation_id' => $correlationId,
@@ -121,7 +118,7 @@ final class FlightSearchController
             // For now, return mock data
             $airports = $this->getAirportsMock($query);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'data' => $airports,
                 'correlation_id' => $correlationId,
@@ -132,7 +129,7 @@ final class FlightSearchController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Airport search failed',
                 'correlation_id' => $correlationId,
@@ -142,10 +139,6 @@ final class FlightSearchController
 
     /**
      * Get flight details by ID.
-     * 
-     * @param Request $request
-     * @param string $id
-     * @return JsonResponse
      */
     public function show(Request $request, string $id): JsonResponse
     {
@@ -154,7 +147,7 @@ final class FlightSearchController
         try {
             // This would fetch detailed flight information
             // For now, return a placeholder response
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'data' => [
                     'id' => $id,
@@ -168,7 +161,7 @@ final class FlightSearchController
                 'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Failed to fetch flight details',
                 'correlation_id' => $correlationId,
@@ -178,9 +171,6 @@ final class FlightSearchController
 
     /**
      * Get mock airport data for autocomplete.
-     * 
-     * @param string $query
-     * @return array
      */
     private function getAirportsMock(string $query): array
     {
@@ -203,9 +193,9 @@ final class FlightSearchController
         ];
 
         $query = strtoupper($query);
-        
+
         return array_filter($allAirports, function ($airport) use ($query) {
-            return str_contains($airport['code'], $query) || 
+            return str_contains($airport['code'], $query) ||
                    str_contains(strtoupper($airport['name']), $query) ||
                    str_contains(strtoupper($airport['city']), $query);
         });

@@ -19,31 +19,16 @@ final class SportsRealTimeBookingServiceTest extends TestCase
     use RefreshDatabase;
 
     private SportsRealTimeBookingService $service;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
+
     private DatabaseManager $db;
+
     private Cache $cache;
+
     private RedisConnection $redis;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = $this->createMock(FraudControlService::class);
-        $this->audit = $this->createMock(AuditService::class);
-        $this->db = $this->app->make(DatabaseManager::class);
-        $this->cache = $this->app->make(Cache::class);
-        $this->redis = $this->app->make('redis');
-
-        $this->service = new SportsRealTimeBookingService(
-            fraud: $this->fraud,
-            audit: $this->audit,
-            db: $this->db,
-            cache: $this->cache,
-            logger: $this->app->make('log'),
-            redis: $this->redis,
-        );
-    }
 
     public function test_hold_slot_success(): void
     {
@@ -120,7 +105,7 @@ final class SportsRealTimeBookingServiceTest extends TestCase
         $this->assertFalse($result['success']);
         $this->assertStringContainsString('already held', $result['message']);
 
-        $slotKey = "sports:slot:hold:1:1:" . now()->addHours(2)->toIso8601String();
+        $slotKey = 'sports:slot:hold:1:1:'.now()->addHours(2)->toIso8601String();
         $this->redis->del($slotKey);
     }
 
@@ -145,7 +130,7 @@ final class SportsRealTimeBookingServiceTest extends TestCase
 
         $this->service->holdSlot($dto);
 
-        $slotKey = "sports:slot:hold:1:1:" . now()->addHours(2)->toIso8601String();
+        $slotKey = 'sports:slot:hold:1:1:'.now()->addHours(2)->toIso8601String();
         $result = $this->service->extendHold(1, 1, now()->addHours(2)->toIso8601String(), 1, 'test-correlation-id-2');
 
         $this->assertTrue($result['success']);
@@ -175,7 +160,7 @@ final class SportsRealTimeBookingServiceTest extends TestCase
 
         $this->service->holdSlot($dto);
 
-        $slotKey = "sports:slot:hold:1::" . now()->addHours(2)->toIso8601String();
+        $slotKey = 'sports:slot:hold:1::'.now()->addHours(2)->toIso8601String();
         $this->service->releaseSlot(1, null, now()->addHours(2)->toIso8601String(), 1, 'test-correlation-id-2');
 
         $this->assertFalse($this->redis->exists($slotKey));
@@ -233,12 +218,32 @@ final class SportsRealTimeBookingServiceTest extends TestCase
         $result = $this->service->holdSlot($dto);
 
         $this->assertTrue($result['success']);
-        $slotKey = "sports:slot:hold:1:1:" . now()->addHours(2)->toIso8601String();
+        $slotKey = 'sports:slot:hold:1:1:'.now()->addHours(2)->toIso8601String();
         $holdData = json_decode($this->redis->get($slotKey), true);
-        
+
         $this->assertTrue($holdData['extended']);
 
         $this->redis->del($slotKey);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = $this->createMock(FraudControlService::class);
+        $this->audit = $this->createMock(AuditService::class);
+        $this->db = $this->app->make(DatabaseManager::class);
+        $this->cache = $this->app->make(Cache::class);
+        $this->redis = $this->app->make('redis');
+
+        $this->service = new SportsRealTimeBookingService(
+            fraud: $this->fraud,
+            audit: $this->audit,
+            db: $this->db,
+            cache: $this->cache,
+            logger: $this->app->make('log'),
+            redis: $this->redis,
+        );
     }
 
     private function callPrivateMethod(object $object, string $methodName, array $parameters): mixed

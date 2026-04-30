@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Domains\Education;
 
@@ -9,15 +11,8 @@ use Illuminate\Support\Facades\DB;
 final class LiveClassApiTest extends TestCase
 {
     private User $user;
+
     private string $token;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->user = User::factory()->create();
-        $this->token = $this->user->createToken('test-token')->plainTextToken;
-    }
 
     public function test_create_live_session_unauthorized(): void
     {
@@ -174,5 +169,13 @@ final class LiveClassApiTest extends TestCase
             ->assertJson([
                 'message' => 'Session ended',
             ]);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->user = User::factory()->create();
+        $this->token = $this->user->createToken('test-token')->plainTextToken;
     }
 }

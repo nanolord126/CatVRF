@@ -1,9 +1,9 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
 
-
-use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -46,28 +46,16 @@ final class PayoutRequest extends Model
     ];
 
     /**
-     * Global scope: tenant scoping
-     */
-    protected static function booted()
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            if ($this->guard->check() && $this->guard->user()->tenant_id) {
-                $query->where('tenant_id', $this->guard->user()->tenant_id);
-            }
-        });
-    }
-
-    /**
      * Relations
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     public function businessGroup(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\BusinessGroup::class);
+        return $this->belongsTo(BusinessGroup::class);
     }
 
     /**
@@ -86,5 +74,17 @@ final class PayoutRequest extends Model
     public function scopeFailed($query)
     {
         return $query->where('status', 'failed');
+    }
+
+    /**
+     * Global scope: tenant scoping
+     */
+    protected static function booted()
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            if ($this->guard->check() && $this->guard->user()->tenant_id) {
+                $query->where('tenant_id', $this->guard->user()->tenant_id);
+            }
+        });
     }
 }

@@ -1,7 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Policies\Logistics;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 /**
  * Class CourierPolicy
@@ -18,44 +24,47 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Policies\Logistics
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class CourierPolicy extends Model
 {
-        /**
-         * Handle viewAny operation.
-         *
-         * @throws \DomainException
-         */
-        public function viewAny(User $user): bool
-        {
-            return $user->can('view_logistics');
-        }
+    /**
+     * Handle viewAny operation.
+     *
+     * @throws \DomainException
+     */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
-        /**
-         * Handle view operation.
-         *
-         * @throws \DomainException
-         */
-        public function view(User $user, Courier $courier): bool
-        {
-            return $courier->tenant_id === $user->tenant_id;
-        }
+    public function viewAny(User $user): bool
+    {
+        return $user->can('view_logistics');
+    }
 
-        public function create(User $user): bool
-        {
-            return $user->can('manage_logistics');
-        }
+    /**
+     * Handle view operation.
+     *
+     * @throws \DomainException
+     */
+    public function $this->viewFactory->make(User $user, Courier $courier): bool
+    {
+        return $courier->tenant_id === $user->tenant_id;
+    }
 
-        public function update(User $user, Courier $courier): bool
-        {
-            return $courier->tenant_id === $user->tenant_id && $user->can('manage_logistics');
-        }
+    public function create(User $user): bool
+    {
+        return $user->can('manage_logistics');
+    }
 
-        public function delete(User $user, Courier $courier): bool
-        {
-            return $courier->tenant_id === $user->tenant_id && $user->can('manage_logistics');
-        }
+    public function update(User $user, Courier $courier): bool
+    {
+        return $courier->tenant_id === $user->tenant_id && $user->can('manage_logistics');
+    }
+
+    public function delete(User $user, Courier $courier): bool
+    {
+        return $courier->tenant_id === $user->tenant_id && $user->can('manage_logistics');
+    }
 }

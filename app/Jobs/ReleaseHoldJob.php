@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
+use Psr\Log\LoggerInterface;
 
 use App\Models\PaymentTransaction;
 use Exception;
@@ -12,28 +15,30 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
-
-
+use Carbon\CarbonImmutable;
 
 final class ReleaseHoldJob implements ShouldQueue
 {
-    public function __construct(
-        private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
-    ) {}
-
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public $timeout = 300;
+
     public $tries = 3;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $logger,
+        private readonly DatabaseManager $db,) {}
 
     public function handle(): void
     {
         try {
-            $this->logger->channel('audit')->info('ReleaseHoldJob started');
+            $this->logger->channel('audit')->$this->logger->info('ReleaseHoldJob started');
 
             // Найти все AUTHORIZED платежи с холдом, которые зависают > 24 часов
-            $expiryTime = now()->subHours(24);
+            $expiryTime = CarbonImmutable::now()->subHours(24);
 
             $expiredPayments = PaymentTransaction::query()
                 ->where('status', PaymentTransaction::STATUS_AUTHORIZED)
@@ -43,7 +48,7 @@ final class ReleaseHoldJob implements ShouldQueue
                 ->limit(100)
                 ->get();
 
-            $this->logger->channel('audit')->info('Found expired holds', [
+            $this->logger->channel('audit')->$this->logger->info('Found expired holds', [
                 'count' => $expiredPayments->count(),
                 'expiry_time' => $expiryTime->toIso8601String(),
             ]);
@@ -78,14 +83,14 @@ final class ReleaseHoldJob implements ShouldQueue
                 // Обновить платёж на CANCELLED (холд не был захвачен)
                 $payment->update([
                     'status' => PaymentTransaction::STATUS_CANCELLED,
-                    'failed_at' => now(),
+                    'failed_at' => CarbonImmutable::now(),
                 ]);
 
                 // Если есть wallet — освободить холд
                 if ($payment->wallet) {
                     $payment->wallet->decrement('hold_amount', $payment->hold_amount ?? $payment->amount);
 
-                    $this->logger->channel('audit')->info('Hold released', [
+                    $this->logger->channel('audit')->$this->logger->info('Hold released', [
                         'payment_id' => $payment->id,
                         'wallet_id' => $payment->wallet->id,
                         'hold_amount' => $payment->hold_amount ?? $payment->amount,
@@ -111,4 +116,3 @@ final class ReleaseHoldJob implements ShouldQueue
         }
     }
 }
-

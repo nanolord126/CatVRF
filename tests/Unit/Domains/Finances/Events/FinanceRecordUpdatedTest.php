@@ -17,19 +17,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class FinanceRecordUpdatedTest extends TestCase
 {
-    private function makeRecord(
-        int $id = 1,
-        int $tenantId = 10,
-        ?int $businessGroupId = null,
-    ): FinanceRecord {
-        $record = new FinanceRecord();
-        $record->id = $id;
-        $record->tenant_id = $tenantId;
-        $record->business_group_id = $businessGroupId;
-
-        return $record;
-    }
-
     #[Test]
     public function it_stores_all_properties(): void
     {
@@ -60,7 +47,7 @@ final class FinanceRecordUpdatedTest extends TestCase
     }
 
     #[Test]
-    public function toAuditContext_returns_complete_structure(): void
+    public function to_audit_context_returns_complete_structure(): void
     {
         $record = $this->makeRecord(id: 33, tenantId: 5, businessGroupId: 8);
         $old = ['status' => 'draft', 'amount' => 100];
@@ -79,7 +66,7 @@ final class FinanceRecordUpdatedTest extends TestCase
     }
 
     #[Test]
-    public function getTenantId_returns_record_tenant(): void
+    public function get_tenant_id_returns_record_tenant(): void
     {
         $event = new FinanceRecordUpdated(
             $this->makeRecord(tenantId: 99),
@@ -90,7 +77,7 @@ final class FinanceRecordUpdatedTest extends TestCase
     }
 
     #[Test]
-    public function getBusinessGroupId_returns_record_group(): void
+    public function get_business_group_id_returns_record_group(): void
     {
         $event = new FinanceRecordUpdated(
             $this->makeRecord(businessGroupId: 42),
@@ -101,7 +88,7 @@ final class FinanceRecordUpdatedTest extends TestCase
     }
 
     #[Test]
-    public function getBusinessGroupId_null_for_b2c(): void
+    public function get_business_group_id_null_for_b2c(): void
     {
         $event = new FinanceRecordUpdated(
             $this->makeRecord(businessGroupId: null),
@@ -116,7 +103,7 @@ final class FinanceRecordUpdatedTest extends TestCase
     // ──────────────────────────────────────
 
     #[Test]
-    public function hasChanged_true_when_field_in_newValues(): void
+    public function has_changed_true_when_field_in_new_values(): void
     {
         $event = new FinanceRecordUpdated(
             $this->makeRecord(),
@@ -130,7 +117,7 @@ final class FinanceRecordUpdatedTest extends TestCase
     }
 
     #[Test]
-    public function hasChanged_false_when_field_not_in_newValues(): void
+    public function has_changed_false_when_field_not_in_new_values(): void
     {
         $event = new FinanceRecordUpdated(
             $this->makeRecord(),
@@ -145,7 +132,7 @@ final class FinanceRecordUpdatedTest extends TestCase
     }
 
     #[Test]
-    public function hasChanged_false_when_newValues_empty(): void
+    public function has_changed_false_when_new_values_empty(): void
     {
         $event = new FinanceRecordUpdated(
             $this->makeRecord(),
@@ -156,7 +143,7 @@ final class FinanceRecordUpdatedTest extends TestCase
     }
 
     #[Test]
-    public function toAuditContext_contains_all_required_keys(): void
+    public function to_audit_context_contains_all_required_keys(): void
     {
         $event = new FinanceRecordUpdated(
             $this->makeRecord(),
@@ -175,5 +162,18 @@ final class FinanceRecordUpdatedTest extends TestCase
         self::assertContains('new_values', $keys);
         self::assertContains('correlation_id', $keys);
         self::assertContains('user_id', $keys);
+    }
+
+    private function makeRecord(
+        int $id = 1,
+        int $tenantId = 10,
+        ?int $businessGroupId = null,
+    ): FinanceRecord {
+        $record = new FinanceRecord();
+        $record->id = $id;
+        $record->tenant_id = $tenantId;
+        $record->business_group_id = $businessGroupId;
+
+        return $record;
     }
 }

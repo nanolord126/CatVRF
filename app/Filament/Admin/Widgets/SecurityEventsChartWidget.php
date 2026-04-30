@@ -1,11 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Admin\Widgets;
 
+use Illuminate\Support\Collection;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 /**
  * Виджет — график security-событий за 7 дней.
@@ -14,22 +19,23 @@ use Illuminate\Support\Facades\DB;
  */
 final class SecurityEventsChartWidget extends ChartWidget
 {
+    protected static ?string $heading = 'Security-события за 7 дней';
+
+    protected static ?int $sort    = 3;
+
+    protected readonly int|string|array $columnSpan = 'full';
+
     public function __construct(
         private readonly DatabaseManager $db,
     ) {}
 
-    protected static ?string $heading = 'Security-события за 7 дней';
-    protected static ?int    $sort    = 3;
-
-    protected int | string | array $columnSpan = 'full';
-
     protected function getData(): array
     {
-        $days = collect(range(6, 0))->map(static fn (int $i) => now()->subDays($i)->format('Y-m-d'));
+        $days = new Collection(range(6, 0))->map(static fn (int $i) => CarbonImmutable::now()->subDays($i)->format('Y-m-d'));
 
         $raw = $this->db->table('fraud_attempts')
-            ->where('created_at', '>=', now()->subDays(7)->startOfDay())
-            ->selectRaw("DATE(created_at) as day, decision, COUNT(*) as cnt")
+            ->where('created_at', '>=', CarbonImmutable::now()->subDays(7)->startOfDay())
+            ->selectRaw('DATE(created_at) as day, decision, COUNT(*) as cnt')
             ->groupBy('day', 'decision')
             ->get()
             ->groupBy('day');
@@ -39,7 +45,7 @@ final class SecurityEventsChartWidget extends ChartWidget
         $allowed  = [];
 
         foreach ($days as $day) {
-            $group      = $raw->get($day, collect());
+            $group      = $raw->get($day, new Collection());
             $blocked[]  = (int) ($group->firstWhere('decision', 'block')?->cnt  ?? 0);
             $reviewed[] = (int) ($group->firstWhere('decision', 'review')?->cnt ?? 0);
             $allowed[]  = (int) ($group->firstWhere('decision', 'allow')?->cnt  ?? 0);
@@ -72,7 +78,7 @@ final class SecurityEventsChartWidget extends ChartWidget
                     'fill'            => true,
                 ],
             ],
-            'labels' => $days->map(static fn (string $d) => \Carbon\Carbon::parse($d)->format('d.m'))->values()->toArray(),
+            'labels' => $days->map(static fn (string $d) => Carbon::parse($d)->format('d.m'))->values()->toArray(),
         ];
     }
 

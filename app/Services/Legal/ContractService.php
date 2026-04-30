@@ -1,34 +1,39 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Legal;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Models\User;
-use App\Models\Lawyer;
 use App\Models\Legal\LegalContract;
-use App\Services\Payment\PaymentGateway;
 use App\Services\FraudControlService;
-
-
 use Illuminate\Support\Str;
-
 use App\Models\Legal\LegalConsultation;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 final readonly class ContractService
 {
+    use WithAuditLogging;
+
     /**
      * Constructor injection for required dependencies.
      */
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly FraudControlService $fraud,
         private readonly PricingService $pricing,
-        private readonly LogManager $logger,
+        private readonly LogManager $log,
         private readonly DatabaseManager $db,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
@@ -39,14 +44,14 @@ final readonly class ContractService
         string $title,
         string $content,
         ?LegalConsultation $consultation = null,
-        string $correlationId = null
+        ?string $correlationId = null
     ): LegalContract {
         $correlationId = $correlationId ?? (string) Str::uuid();
 
         // 1. Fraud Check before drafting
         $this->fraud->check((int) $client->id, 'legal_contract_draft', $this->request->ip());
 
-        $this->logger->channel('audit')->info('Attempting to draft legal contract', [
+        $this->logger->channel('audit')->$this->logger->info('Attempting to draft legal contract', [
             'client_id' => $client->id,
             'title' => $title,
             'correlation_id' => $correlationId,
@@ -65,7 +70,7 @@ final readonly class ContractService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Legal contract drafted successfully', [
+            $this->logger->channel('audit')->$this->logger->info('Legal contract drafted successfully', [
                 'contract_id' => $contract->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -77,11 +82,11 @@ final readonly class ContractService
     /**
      * Sign a legal contract with digital signature.
      */
-    public function signContract(LegalContract $contract, array $signatureData, string $correlationId = null): void
+    public function signContract(LegalContract $contract, array $signatureData, ?string $correlationId = null): void
     {
         $correlationId = $correlationId ?? $contract->correlation_id;
 
-        $this->logger->channel('audit')->info('Attempting to sign legal contract', [
+        $this->logger->channel('audit')->$this->logger->info('Attempting to sign legal contract', [
             'contract_id' => $contract->id,
             'correlation_id' => $correlationId,
         ]);
@@ -89,12 +94,12 @@ final readonly class ContractService
         $this->db->transaction(function () use ($contract, $signatureData, $correlationId) {
             $contract->update([
                 'status' => 'signed',
-                'signed_at' => now(),
+                'signed_at' => CarbonImmutable::now(),
                 'digital_signature' => $signatureData,
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Legal contract signed successfully', [
+            $this->logger->channel('audit')->$this->logger->info('Legal contract signed successfully', [
                 'contract_id' => $contract->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -104,11 +109,11 @@ final readonly class ContractService
     /**
      * Archive a legal contract.
      */
-    public function archiveContract(LegalContract $contract, string $correlationId = null): void
+    public function archiveContract(LegalContract $contract, ?string $correlationId = null): void
     {
         $correlationId = $correlationId ?? $contract->correlation_id;
 
-        $this->logger->channel('audit')->info('Archiving legal contract', [
+        $this->logger->channel('audit')->$this->logger->info('Archiving legal contract', [
             'contract_id' => $contract->id,
             'correlation_id' => $correlationId,
         ]);
@@ -119,7 +124,7 @@ final readonly class ContractService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->logger->channel('audit')->info('Legal contract archived', [
+            $this->logger->channel('audit')->$this->logger->info('Legal contract archived', [
                 'contract_id' => $contract->id,
                 'correlation_id' => $correlationId,
             ]);

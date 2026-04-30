@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -18,15 +20,6 @@ final class ListFood extends ListRecords
 {
     protected static string $resource = FoodResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Новый заказ')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
-
     public function table(Table $table): Table
     {
         return $table
@@ -44,7 +37,7 @@ final class ListFood extends ListRecords
                     ->searchable(),
                 TextColumn::make('total_price')
                     ->label('Сумма')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable()
                     ->alignRight(),
                 BadgeColumn::make('status')
@@ -90,5 +83,14 @@ final class ListFood extends ListRecords
             ->bulkActions([DeleteBulkAction::make()])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новый заказ')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

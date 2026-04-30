@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * ViewFitnes — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/viewfitnes
  * @see https://catvrf.ru/docs/viewfitnes
  * @see https://catvrf.ru/docs/viewfitnes
@@ -20,46 +23,19 @@
  * @see https://catvrf.ru/docs/viewfitnes
  */
 
-
 namespace App\Filament\Tenant\Resources\Fitness\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+
+use Carbon\CarbonImmutable;
+
 use App\Filament\Tenant\Resources\Fitness\FitnessResource;
 use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
+use Illuminate\Contracts\View\View;
 
 final class ViewFitnes extends ViewRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
-    protected static string $resource = FitnessResource::class;
-
-    protected function afterLoad(): void
-    {
-        \Illuminate\Support\Facades\Log::channel('audit')->info('Fitness record viewed', [
-            'record_id' => $this->record->id,
-            'uuid' => $this->record->uuid,
-            'correlation_id' => $this->record->correlation_id ?? null,
-            'user_id' => auth()->id(),
-            'tenant_id' => filament()->getTenant()->id,
-            'timestamp' => now()->toIso8601String(),
-        ]);
-    }
-
-    public function render(): \Illuminate\Contracts\View\View {
-        $this->logger->debug('ViewFitnes page rendered', [
-            'record_id' => $this->record->id,
-            'user_id' => auth()->id(),
-        ]);
-
-        return parent::render();
-    }
-
     /**
      * Version identifier for this component.
      */
@@ -70,4 +46,30 @@ final class ViewFitnes extends ViewRecord
      */
     private const MAX_RETRIES = 3;
 
+    protected static string $resource = FitnessResource::class;
+
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
+
+    public function render(): View
+    {
+        $this->logger->debug('ViewFitnes page rendered', [
+            'record_id' => $this->record->id,
+            'user_id' => auth()->id(),
+        ]);
+
+        return parent::render();
+    }
+
+    protected function afterLoad(): void
+    {
+        $this->log->channel('audit')->$this->logger->info('Fitness record viewed', [
+            'record_id' => $this->record->id,
+            'uuid' => $this->record->uuid,
+            'correlation_id' => $this->record->correlation_id ?? null,
+            'user_id' => auth()->id(),
+            'tenant_id' => filament()->getTenant()->id,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
+        ]);
+    }
 }

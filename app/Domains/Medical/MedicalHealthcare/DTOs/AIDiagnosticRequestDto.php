@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Medical\MedicalHealthcare\DTOs;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 final readonly class AIDiagnosticRequestDto
 {
@@ -17,12 +20,12 @@ final readonly class AIDiagnosticRequestDto
     public static function from(Request $request): self
     {
         $userId = $request->has('user_id') ? intval($request->input('user_id')) : 0;
-        
+
         return new self(
             userId: $userId,
             symptoms: array_map('strval', $request->input('symptoms', [])),
             additionalContext: strval($request->input('additional_context', '')),
-            correlationId: strval($request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString())),
+            correlationId: strval($request->header('X-Correlation-ID', Str::uuid()->toString())),
             idempotencyKey: $request->input('idempotency_key') ? strval($request->input('idempotency_key')) : null,
         );
     }

@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Electronics\Services;
+
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
 
 use App\Domains\Electronics\DTOs\SplitPaymentRequestDto;
 use App\Domains\Electronics\DTOs\SplitPaymentResponseDto;
@@ -8,26 +14,24 @@ use App\Domains\Electronics\Events\SplitPaymentCompletedEvent;
 use App\Domains\Electronics\Events\EscrowReleasedEvent;
 use App\Services\FraudControlService;
 use App\Services\WalletService;
-use App\Services\PaymentService;
 use App\Domains\Payment\Services\PaymentServiceAdapter;
-use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Cache\CacheManager;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
-use Psr\Log\LoggerInterface;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
 final readonly class ElectronicsWalletService
 {
-    public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private PaymentServiceAdapter $payment,
-        private Cache $cache,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-    ) {
-    }
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly PaymentServiceAdapter $payment,
+        private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     public function processSplitPayment(SplitPaymentRequestDto $dto): SplitPaymentResponseDto
     {
@@ -41,7 +45,7 @@ final readonly class ElectronicsWalletService
             correlationId: $correlationId
         );
 
-        if (!$dto->validatePaymentSources()) {
+        if (! $dto->validatePaymentSources()) {
             return new SplitPaymentResponseDto(
                 success: false,
                 correlationId: $correlationId,
@@ -63,7 +67,7 @@ final readonly class ElectronicsWalletService
 
         $cachedResult = $this->cache->get($cacheKey);
         if ($cachedResult !== null) {
-            $this->logger->info('Split payment cache hit', [
+            $this->log->$this->logger->info('Split payment cache hit', [
                 'order_id' => $dto->orderId,
                 'correlation_id' => $correlationId,
             ]);
@@ -87,7 +91,7 @@ final readonly class ElectronicsWalletService
                 $totalProcessed += $result['amount_kopecks'];
             }
 
-            if (!$allSuccessful) {
+            if (! $allSuccessful) {
                 $this->rollbackPayments($paymentResults, $correlationId);
 
                 return new SplitPaymentResponseDto(
@@ -105,7 +109,7 @@ final readonly class ElectronicsWalletService
 
             $escrowReleaseDate = null;
             if ($dto->useEscrow) {
-                $escrowReleaseDate = now()->addDays($dto->escrowReleaseDays)->toIso8601String();
+                $escrowReleaseDate = CarbonImmutable::now()->addDays($dto->escrowReleaseDays)->toIso8601String();
                 $this->createEscrowHold($dto, $paymentId, $escrowReleaseDate, $correlationId);
             } else {
                 $this->releaseFundsToMerchant($dto, $paymentId, $correlationId);
@@ -124,11 +128,11 @@ final readonly class ElectronicsWalletService
                 metadata: $dto->metadata,
             );
 
-            $this->cache->put($cacheKey, $response->toArray(), now()->addHours(24));
+            $this->cache->put($cacheKey, $response->toArray(), CarbonImmutable::now()->addHours(24));
 
-            event(new SplitPaymentCompletedEvent($dto, $response, $correlationId));
+            $this->eventDispatcher->dispatch(new SplitPaymentCompletedEvent($dto, $response, $correlationId));
 
-            Log::channel('audit')->info('Electronics split payment completed', [
+            $this->log->channel('audit')->$this->logger->info('Electronics split payment completed', [
                 'order_id' => $dto->orderId,
                 'user_id' => $dto->userId,
                 'payment_id' => $paymentId,
@@ -138,6 +142,57 @@ final readonly class ElectronicsWalletService
             ]);
 
             return $response;
+        });
+    }
+
+    public function releaseEscrow(string $paymentId, string $reason, string $correlationId): bool
+    {
+        return $this->db->transaction(function () use ($paymentId, $reason, $correlationId) {
+            $escrowHold = $this->db->table('electronics_escrow_holds')
+                ->where('payment_id', $paymentId)
+                ->where('status', 'held')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $escrowHold) {
+                throw new \RuntimeException('Escrow hold not found or already released');
+            }
+
+            $dto = new SplitPaymentRequestDto(
+                orderId: $escrowHold->order_id,
+                userId: $escrowHold->user_id,
+                correlationId: $correlationId,
+                totalAmountKopecks: $escrowHold->amount_kopecks,
+                paymentSources: [],
+                useEscrow: false,
+                escrowReleaseDays: 0,
+                metadata: json_decode($escrowHold->metadata, true),
+            );
+
+            $this->releaseFundsToMerchant($dto, $paymentId, $correlationId);
+
+            $this->db->table('electronics_escrow_holds')
+                ->where('id', $escrowHold->id)
+                ->update([
+                    'status' => 'released',
+                    'release_reason' => $reason,
+                    'released_at' => CarbonImmutable::now(),
+                    'updated_at' => CarbonImmutable::now(),
+                ]);
+
+            $this->cache->forget("escrow_release:{$paymentId}");
+
+            $this->eventDispatcher->dispatch(new EscrowReleasedEvent($escrowHold, $reason, $correlationId));
+
+            $this->log->channel('audit')->$this->logger->info('Escrow released', [
+                'payment_id' => $paymentId,
+                'order_id' => $escrowHold->order_id,
+                'amount' => $escrowHold->amount_kopecks,
+                'reason' => $reason,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return true;
         });
     }
 
@@ -168,7 +223,7 @@ final readonly class ElectronicsWalletService
                 'metadata' => array_merge($metadata, $result['metadata'] ?? []),
             ];
         } catch (\Throwable $e) {
-            $this->logger->error('Payment source processing failed', [
+            $this->log->error('Payment source processing failed', [
                 'source' => $sourceType,
                 'amount' => $amount,
                 'error' => $e->getMessage(),
@@ -288,20 +343,20 @@ final readonly class ElectronicsWalletService
 
     private function getUserWalletId(int $userId): int
     {
-        $wallet = DB::table('wallets')
+        $wallet = $this->db->table('wallets')
             ->where('user_id', $userId)
             ->where('tenant_id', tenant()->id)
             ->first();
 
-        if (!$wallet) {
-            $walletId = DB::table('wallets')->insertGetId([
+        if (! $wallet) {
+            $walletId = $this->db->table('wallets')->insertGetId([
                 'user_id' => $userId,
                 'tenant_id' => tenant()->id,
                 'current_balance' => 0,
                 'hold_amount' => 0,
                 'correlation_id' => Str::uuid()->toString(),
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
             return $walletId;
@@ -317,7 +372,7 @@ final readonly class ElectronicsWalletService
                 try {
                     $this->rollbackSinglePayment($result, $correlationId);
                 } catch (\Throwable $e) {
-                    $this->logger->error('Payment rollback failed', [
+                    $this->log->error('Payment rollback failed', [
                         'transaction_id' => $result['transaction_id'],
                         'error' => $e->getMessage(),
                         'correlation_id' => $correlationId,
@@ -337,7 +392,7 @@ final readonly class ElectronicsWalletService
                 walletId: $paymentResult['metadata']['wallet_id'],
                 amountKopecks: $paymentResult['amount_kopecks'],
                 type: 'refund',
-                description: "Rollback for failed split payment",
+                description: 'Rollback for failed split payment',
                 metadata: ['original_transaction_id' => $transactionId, 'correlation_id' => $correlationId]
             ),
             'card', 'sbp' => $this->payment->refund(
@@ -356,7 +411,7 @@ final readonly class ElectronicsWalletService
         string $escrowReleaseDate,
         string $correlationId
     ): void {
-        DB::table('electronics_escrow_holds')->insert([
+        $this->db->table('electronics_escrow_holds')->insert([
             'order_id' => $dto->orderId,
             'user_id' => $dto->userId,
             'tenant_id' => tenant()->id,
@@ -366,8 +421,8 @@ final readonly class ElectronicsWalletService
             'release_date' => $escrowReleaseDate,
             'correlation_id' => $correlationId,
             'metadata' => json_encode($dto->metadata),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
 
         $this->cache->put(
@@ -378,7 +433,7 @@ final readonly class ElectronicsWalletService
                 'amount_kopecks' => $dto->totalAmountKopecks,
                 'release_date' => $escrowReleaseDate,
             ],
-            \Carbon\Carbon::parse($escrowReleaseDate)
+            Carbon::parse($escrowReleaseDate)
         );
     }
 
@@ -422,66 +477,16 @@ final readonly class ElectronicsWalletService
         );
     }
 
-    public function releaseEscrow(string $paymentId, string $reason, string $correlationId): bool
-    {
-        return $this->db->transaction(function () use ($paymentId, $reason, $correlationId) {
-            $escrowHold = DB::table('electronics_escrow_holds')
-                ->where('payment_id', $paymentId)
-                ->where('status', 'held')
-                ->lockForUpdate()
-                ->first();
-
-            if (!$escrowHold) {
-                throw new \RuntimeException('Escrow hold not found or already released');
-            }
-
-            $dto = new SplitPaymentRequestDto(
-                orderId: $escrowHold->order_id,
-                userId: $escrowHold->user_id,
-                correlationId: $correlationId,
-                totalAmountKopecks: $escrowHold->amount_kopecks,
-                paymentSources: [],
-                useEscrow: false,
-                escrowReleaseDays: 0,
-                metadata: json_decode($escrowHold->metadata, true),
-            );
-
-            $this->releaseFundsToMerchant($dto, $paymentId, $correlationId);
-
-            DB::table('electronics_escrow_holds')
-                ->where('id', $escrowHold->id)
-                ->update([
-                    'status' => 'released',
-                    'release_reason' => $reason,
-                    'released_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-            $this->cache->forget("escrow_release:{$paymentId}");
-
-            event(new EscrowReleasedEvent($escrowHold, $reason, $correlationId));
-
-            Log::channel('audit')->info('Escrow released', [
-                'payment_id' => $paymentId,
-                'order_id' => $escrowHold->order_id,
-                'amount' => $escrowHold->amount_kopecks,
-                'reason' => $reason,
-                'correlation_id' => $correlationId,
-            ]);
-
-            return true;
-        });
-    }
-
     private function getOrderMerchantId(int $orderId): int
     {
-        $order = DB::table('orders')->where('id', $orderId)->first();
+        $order = $this->db->table('orders')->where('id', $orderId)->first();
+
         return $order ? (int) $order->merchant_id : 0;
     }
 
     private function getMerchantWalletId(int $merchantId): int
     {
-        $wallet = DB::table('wallets')
+        $wallet = $this->db->table('wallets')
             ->where('merchant_id', $merchantId)
             ->where('tenant_id', tenant()->id)
             ->first();
@@ -491,20 +496,20 @@ final readonly class ElectronicsWalletService
 
     private function createMerchantWallet(int $merchantId): int
     {
-        return DB::table('wallets')->insertGetId([
+        return $this->db->table('wallets')->insertGetId([
             'merchant_id' => $merchantId,
             'tenant_id' => tenant()->id,
             'current_balance' => 0,
             'hold_amount' => 0,
             'correlation_id' => Str::uuid()->toString(),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 
     private function getPlatformWalletId(): int
     {
-        $wallet = DB::table('wallets')
+        $wallet = $this->db->table('wallets')
             ->where('tenant_id', tenant()->id)
             ->where('is_platform', true)
             ->first();
@@ -514,25 +519,26 @@ final readonly class ElectronicsWalletService
 
     private function createPlatformWallet(): int
     {
-        return DB::table('wallets')->insertGetId([
+        return $this->db->table('wallets')->insertGetId([
             'tenant_id' => tenant()->id,
             'is_platform' => true,
             'current_balance' => 0,
             'hold_amount' => 0,
             'correlation_id' => Str::uuid()->toString(),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 
     private function getCommissionRate(int $userId, int $amountKopecks): float
     {
-        $isB2B = DB::table('business_groups')
+        $isB2B = $this->db->table('business_groups')
             ->where('owner_id', $userId)
             ->exists();
 
         if ($isB2B) {
             $amountRubles = $amountKopecks / 100;
+
             return match (true) {
                 $amountRubles >= 1000000 => 0.08,
                 $amountRubles >= 500000 => 0.10,
@@ -550,7 +556,7 @@ final readonly class ElectronicsWalletService
         ?string $escrowReleaseDate,
         string $correlationId
     ): void {
-        DB::table('electronics_split_payments')->insert([
+        $this->db->table('electronics_split_payments')->insert([
             'order_id' => $dto->orderId,
             'user_id' => $dto->userId,
             'tenant_id' => tenant()->id,
@@ -561,8 +567,8 @@ final readonly class ElectronicsWalletService
             'escrow_release_date' => $escrowReleaseDate,
             'correlation_id' => $correlationId,
             'metadata' => json_encode($dto->metadata),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
         ]);
     }
 }

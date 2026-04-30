@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Services;
 
@@ -9,10 +11,11 @@ use App\Services\AuditService;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Redis\Connections\Connection as RedisConnection;
 use Psr\Log\LoggerInterface;
+use Illuminate\Support\Str;
 
 /**
  * Tourism Wishlist Service
- * 
+ *
  * Service for managing tourism wishlists with AI-powered recommendations.
  * When a user adds a tour to wishlist, automatically generates personalized
  * recommendations based on that tour and user preferences.
@@ -20,21 +23,21 @@ use Psr\Log\LoggerInterface;
 final readonly class TourismWishlistService
 {
     public function __construct(
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private AuditService $audit,
-        private TourismRecommendationService $recommendationService,
-        private LoggerInterface $logger,
-        private Cache $cache,
-        private RedisConnection $redis,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly AuditService $audit,
+        private readonly TourismRecommendationService $recommendationService,
+        private readonly LoggerInterface $logger,
+        private readonly Cache $cache,
+        private readonly RedisConnection $redis,
     ) {}
 
     /**
      * Add tour to wishlist and generate AI recommendations.
-     * 
-     * @param int $userId User ID
-     * @param int $tourId Tour ID
-     * @param array $preferences User preferences (budget, dates, group size, notes)
-     * @param string $correlationId Correlation ID for tracing
+     *
+     * @param  int  $userId  User ID
+     * @param  int  $tourId  Tour ID
+     * @param  array  $preferences  User preferences (budget, dates, group size, notes)
+     * @param  string  $correlationId  Correlation ID for tracing
      * @return TourismWishlist Created wishlist item
      */
     public function addToWishlist(int $userId, int $tourId, array $preferences = [], string $correlationId = ''): TourismWishlist
@@ -42,7 +45,7 @@ final readonly class TourismWishlistService
         $tour = Tour::findOrFail($tourId);
 
         $wishlistItem = TourismWishlist::create([
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'uuid' => Str::uuid()->toString(),
             'tenant_id' => function_exists('tenant') && tenant() ? tenant()->id : 1,
             'user_id' => $userId,
             'tour_id' => $tourId,
@@ -75,7 +78,7 @@ final readonly class TourismWishlistService
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Tour added to wishlist', [
+        $this->logger->$this->logger->info('Tour added to wishlist', [
             'wishlist_id' => $wishlistItem->id,
             'user_id' => $userId,
             'tour_id' => $tourId,
@@ -90,10 +93,9 @@ final readonly class TourismWishlistService
 
     /**
      * Remove tour from wishlist.
-     * 
-     * @param string $uuid Wishlist item UUID
-     * @param string $correlationId Correlation ID for tracing
-     * @return void
+     *
+     * @param  string  $uuid  Wishlist item UUID
+     * @param  string  $correlationId  Correlation ID for tracing
      */
     public function removeFromWishlist(string $uuid, string $correlationId = ''): void
     {
@@ -116,7 +118,7 @@ final readonly class TourismWishlistService
 
         $wishlistItem->delete();
 
-        $this->logger->info('Tour removed from wishlist', [
+        $this->logger->$this->logger->info('Tour removed from wishlist', [
             'wishlist_id' => $wishlistItem->id,
             'user_id' => $wishlistItem->user_id,
             'tour_id' => $wishlistItem->tour_id,
@@ -128,9 +130,9 @@ final readonly class TourismWishlistService
 
     /**
      * Get user wishlist with AI-powered recommendations.
-     * 
-     * @param int $userId User ID
-     * @param string $correlationId Correlation ID for tracing
+     *
+     * @param  int  $userId  User ID
+     * @param  string  $correlationId  Correlation ID for tracing
      * @return array Wishlist items with recommendations
      */
     public function getUserWishlist(int $userId, string $correlationId = ''): array
@@ -185,9 +187,9 @@ final readonly class TourismWishlistService
 
     /**
      * Get personalized recommendations based on wishlist items.
-     * 
-     * @param int $userId User ID
-     * @param string $correlationId Correlation ID for tracing
+     *
+     * @param  int  $userId  User ID
+     * @param  string  $correlationId  Correlation ID for tracing
      * @return array Personalized recommendations
      */
     public function getRecommendationsFromWishlist(int $userId, string $correlationId = ''): array
@@ -204,12 +206,12 @@ final readonly class TourismWishlistService
         $preferredDates = $wishlistItems->pluck('preferred_dates')->filter()->flatten()->unique()->toArray();
         $groupSizes = $wishlistItems->pluck('group_size')->filter()->toArray();
 
-        $avgBudget = !empty($budgetRanges) ? [
+        $avgBudget = ! empty($budgetRanges) ? [
             min(array_column($budgetRanges, 0)),
             max(array_column($budgetRanges, 1)),
         ] : null;
 
-        $avgGroupSize = !empty($groupSizes) ? (int) round(array_sum($groupSizes) / count($groupSizes)) : null;
+        $avgGroupSize = ! empty($groupSizes) ? (int) round(array_sum($groupSizes) / count($groupSizes)) : null;
 
         $recommendations = [];
         foreach ($wishlistItems as $wishlistItem) {
@@ -223,7 +225,7 @@ final readonly class TourismWishlistService
         usort($recommendations, fn ($a, $b) => $b['score'] <=> $a['score']);
         $recommendations = array_slice($recommendations, 0, 10);
 
-        $this->logger->info('Wishlist-based recommendations generated', [
+        $this->logger->$this->logger->info('Wishlist-based recommendations generated', [
             'user_id' => $userId,
             'wishlist_items_count' => $wishlistItems->count(),
             'recommendations_count' => count($recommendations),
@@ -231,6 +233,37 @@ final readonly class TourismWishlistService
         ]);
 
         return $recommendations;
+    }
+
+    /**
+     * Calculate wishlist-based discount for booking.
+     *
+     * @param  int  $userId  User ID
+     * @param  int  $tourId  Tour ID
+     * @param  string  $correlationId  Correlation ID for tracing
+     * @return float Discount rate (0-1)
+     */
+    public function getWishlistDiscount(int $userId, int $tourId, string $correlationId = ''): float
+    {
+        $wishlistItem = TourismWishlist::where('user_id', $userId)
+            ->where('tour_id', $tourId)
+            ->first();
+
+        if (! $wishlistItem) {
+            return 0;
+        }
+
+        if ($wishlistItem->isHighPriority()) {
+            return 0.05; // 5% discount for high priority wishlist items
+        }
+
+        $wishlistCount = TourismWishlist::where('user_id', $userId)->count();
+
+        if ($wishlistCount >= 5) {
+            return 0.03; // 3% discount for loyal users with 5+ wishlist items
+        }
+
+        return 0;
     }
 
     /**
@@ -244,7 +277,7 @@ final readonly class TourismWishlistService
         $recommendationsKey = "tourism_wishlist_recommendations:{$userId}";
         $this->redis->setex($recommendationsKey, 3600, json_encode($similarTours));
 
-        $this->logger->info('Wishlist recommendations generated on add', [
+        $this->logger->$this->logger->info('Wishlist recommendations generated on add', [
             'user_id' => $userId,
             'tour_id' => $tour->id,
             'similar_tours_count' => count($similarTours),
@@ -360,36 +393,5 @@ final readonly class TourismWishlistService
     {
         $this->cache->forget("tourism_wishlist:{$userId}");
         $this->redis->del("tourism_wishlist_recommendations:{$userId}");
-    }
-
-    /**
-     * Calculate wishlist-based discount for booking.
-     * 
-     * @param int $userId User ID
-     * @param int $tourId Tour ID
-     * @param string $correlationId Correlation ID for tracing
-     * @return float Discount rate (0-1)
-     */
-    public function getWishlistDiscount(int $userId, int $tourId, string $correlationId = ''): float
-    {
-        $wishlistItem = TourismWishlist::where('user_id', $userId)
-            ->where('tour_id', $tourId)
-            ->first();
-
-        if (!$wishlistItem) {
-            return 0;
-        }
-
-        if ($wishlistItem->isHighPriority()) {
-            return 0.05; // 5% discount for high priority wishlist items
-        }
-
-        $wishlistCount = TourismWishlist::where('user_id', $userId)->count();
-
-        if ($wishlistCount >= 5) {
-            return 0.03; // 3% discount for loyal users with 5+ wishlist items
-        }
-
-        return 0;
     }
 }

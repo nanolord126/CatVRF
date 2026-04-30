@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Http\Controllers;
 
@@ -21,7 +23,7 @@ final class TaxiDriverPortalController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'dashboard' => $dashboard,
         ]);
@@ -41,7 +43,7 @@ final class TaxiDriverPortalController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'earnings' => $earnings,
         ]);
@@ -68,7 +70,7 @@ final class TaxiDriverPortalController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'schedule' => $schedule,
         ]);
@@ -96,7 +98,7 @@ final class TaxiDriverPortalController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'document' => $document,
         ]);
@@ -109,7 +111,7 @@ final class TaxiDriverPortalController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'documents' => $documents,
         ]);
@@ -131,7 +133,7 @@ final class TaxiDriverPortalController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'history' => $history,
         ]);
@@ -149,7 +151,7 @@ final class TaxiDriverPortalController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'driver' => $driver,
         ]);
@@ -169,7 +171,7 @@ final class TaxiDriverPortalController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'report' => $report,
         ]);

@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Party;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Services\AI\AIConstructorService;
@@ -9,119 +12,116 @@ use App\Models\Party\PartyProduct;
 use App\Models\Party\PartyTheme;
 use App\Models\Party\PartyGiftSet;
 use Illuminate\Database\Eloquent\Collection;
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 
 final readonly class AIPartyConstructor
 {
-
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly AIConstructorService $aiService,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
-        private function correlationId(): string
-        {
-            return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
-        }
+    /**
+     * Build AI-matching party list.
+     */
+    public function buildDecorPlan(array $params): array
+    {
+        $this->logger->channel('audit')->$this->logger->info('Initializing AI Party Constructor', [
+            'correlation_id' => $this->correlationId(),
+            'budget' => $params['budget'] ?? 0,
+            'guests' => $params['guests'] ?? 0,
+            'theme_id' => $params['theme_id'] ?? null,
+        ]);
 
-        /**
-         * Build AI-matching party list.
-         */
-        public function buildDecorPlan(array $params): array
-        {
-            $this->logger->channel('audit')->info('Initializing AI Party Constructor', [
-                'correlation_id' => $this->correlationId(),
-                'budget' => $params['budget'] ?? 0,
-                'guests' => $params['guests'] ?? 0,
-                'theme_id' => $params['theme_id'] ?? null,
-            ]);
+        try {
+            // Find theme
+            $theme = isset($params['theme_id']) ? PartyTheme::find($params['theme_id']) : null;
+            $themeName = $theme ? $theme->name : 'General Celebration';
 
-            try {
-                // Find theme
-                $theme = isset($params['theme_id']) ? PartyTheme::find($params['theme_id']) : null;
-                $themeName = $theme ? $theme->name : 'General Celebration';
-
-                // Construct prompt for AI analysis (simplified here for simulation)
-                $prompt = "Create matching balloon and decor list for a '{$themeName}' party.
+            // Construct prompt for AI analysis (simplified here for simulation)
+            $prompt = "Create matching balloon and decor list for a '{$themeName}' party.
                            Budget: {$params['budget']} cents. Guests: {$params['guests']}.";
 
-                // (Simulation of AI analysis output)
-                $analysis = [
-                    'vertical' => 'party_supplies',
-                    'recommendations' => [
-                        'balloons' => 50,
-                        'centerpieces' => 5,
-                        'is_large' => $params['guests'] > 100,
-                    ],
-                ];
+            // (Simulation of AI analysis output)
+            $analysis = [
+                'vertical' => 'party_supplies',
+                'recommendations' => [
+                    'balloons' => 50,
+                    'centerpieces' => 5,
+                    'is_large' => $params['guests'] > 100,
+                ],
+            ];
 
-                // Filter real products from inventory based on AI analysis
-                $matchedProducts = $this->matchProductsWithAnalysis($analysis, $theme);
+            // Filter real products from inventory based on AI analysis
+            $matchedProducts = $this->matchProductsWithAnalysis($analysis, $theme);
 
-                $result = [
-                    'theme' => $themeName,
-                    'analysis' => $analysis,
-                    'matched_products' => $matchedProducts,
-                    'is_b2b' => ($params['budget'] > 1000000), // Larger budgets imply B2B wholesale
-                    'correlation_id' => $this->correlationId(),
-                ];
+            $result = [
+                'theme' => $themeName,
+                'analysis' => $analysis,
+                'matched_products' => $matchedProducts,
+                'is_b2b' => ($params['budget'] > 1000000), // Larger budgets imply B2B wholesale
+                'correlation_id' => $this->correlationId(),
+            ];
 
-                $this->logger->channel('audit')->info('AI Decor Plan successfully built', [
-                    'correlation_id' => $this->correlationId(),
-                    'products_count' => count($matchedProducts),
-                ]);
+            $this->logger->channel('audit')->$this->logger->info('AI Decor Plan successfully built', [
+                'correlation_id' => $this->correlationId(),
+                'products_count' => count($matchedProducts),
+            ]);
 
-                return $result;
+            return $result;
 
-            } catch (\Exception $e) {
-                $this->logger->channel('audit')->error($e->getMessage(), [
-                    'exception' => $e::class,
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'correlation_id' => $this->correlationId(),
-                ]);
+        } catch (\Exception $e) {
+            $this->logger->channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => $this->correlationId(),
+            ]);
 
-                $this->logger->channel('audit')->error('Failed to build AI Party Decor Plan', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $this->correlationId(),
-                ]);
+            $this->logger->channel('audit')->error('Failed to build AI Party Decor Plan', [
+                'error' => $e->getMessage(),
+                'correlation_id' => $this->correlationId(),
+            ]);
 
-                throw $e;
-            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Match gift sets based on theme and guests count.
+     */
+    public function getGiftSetsByTheme(int $themeId): Collection
+    {
+        return PartyGiftSet::where('is_active', true)
+            ->where('party_theme_id', $themeId)
+            ->get();
+    }
+
+    private function correlationId(): string
+    {
+        return $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+    }
+
+    /**
+     * Filter actual store inventory matches based on AI suggestions.
+     */
+    private function matchProductsWithAnalysis(array $analysis, ?PartyTheme $theme): Collection
+    {
+        $query = PartyProduct::where('is_active', true);
+
+        if ($theme) {
+            $query->where('party_theme_id', $theme->id);
         }
 
-        /**
-         * Filter actual store inventory matches based on AI suggestions.
-         */
-        private function matchProductsWithAnalysis(array $analysis, ?PartyTheme $theme): Collection
-        {
-            $query = PartyProduct::where('is_active', true);
-
-            if ($theme) {
-                $query->where('party_theme_id', $theme->id);
-            }
-
-            return $query->limit(10)->get()->map(function ($product) {
-                return [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'price_cents' => $product->price_cents,
-                    'sku' => $product->sku,
-                    'stock' => $product->current_stock,
-                ];
-            });
-        }
-
-        /**
-         * Match gift sets based on theme and guests count.
-         */
-        public function getGiftSetsByTheme(int $themeId): Collection
-        {
-            return PartyGiftSet::where('is_active', true)
-                ->where('party_theme_id', $themeId)
-                ->get();
-        }
+        return $query->limit(10)->get()->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'price_cents' => $product->price_cents,
+                'sku' => $product->sku,
+                'stock' => $product->current_stock,
+            ];
+        });
+    }
 }

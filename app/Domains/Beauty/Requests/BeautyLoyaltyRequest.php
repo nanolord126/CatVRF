@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Requests;
 
+use Illuminate\Http\JsonResponse;
+
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -44,7 +46,7 @@ final class BeautyLoyaltyRequest extends FormRequest
     protected function failedValidation(Validator $validator): void
     {
         throw new HttpResponseException(
-            response()->json([
+            new JsonResponse([
                 'success' => false,
                 'errors' => $validator->errors(),
                 'correlation_id' => $this->header('X-Correlation-ID'),

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Database\Factories;
 
@@ -12,13 +14,12 @@ class FarmProductFactory extends Factory
     public function definition(): array
     {
         return [
-            "uuid" => fake()->uuid(),
-            "tenant_id" => fake()->numberBetween(1, 10),
-            "farm_id" => fake()->numberBetween(1, 10),
-            "name" => fake()->word(),
-            "price" => fake()->numberBetween(100, 1000),
-            "correlation_id" => fake()->uuid(),
+            'uuid' => fake()->uuid(),
+            'tenant_id' => fake()->numberBetween(1, 10),
+            'farm_id' => fake()->numberBetween(1, 10),
+            'name' => fake()->word(),
+            'price' => fake()->numberBetween(100, 1000),
+            'correlation_id' => fake()->uuid(),
         ];
     }
 }
-

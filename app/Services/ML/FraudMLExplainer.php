@@ -1,9 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ML;
 
-use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
 
 /**
  * FraudML Model Explainer (SHAP-like)
@@ -11,12 +13,13 @@ use Psr\Log\LoggerInterface;
  *
  * Provides explainability for ML predictions using SHAP (SHapley Additive exPlanations).
  * Returns top-N most important features for a prediction.
- * 
+ *
  * Critical for compliance in Medical vertical - must explain why operation was blocked.
  */
 final readonly class FraudMLExplainer
 {
     private const SHAP_THRESHOLD = 0.7; // Log SHAP only for high-risk scores
+
     private const TOP_FEATURES_COUNT = 5;
 
     public function __construct(
@@ -52,16 +55,68 @@ final readonly class FraudMLExplainer
             'top_features' => $topFeatures,
             'threshold_exceeded' => true,
             'model_version' => $modelVersion,
-            'explanation_timestamp' => now()->toIso8601String(),
+            'explanation_timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
 
-        $this->logger->info('FraudML SHAP explanation generated', [
+        $this->logger->$this->logger->info('FraudML SHAP explanation generated', [
             'score' => $score,
             'top_feature' => $topFeatures[0]['feature'] ?? null,
             'feature_count' => count($topFeatures),
         ]);
 
         return $explanation;
+    }
+
+    /**
+     * Format explanation for human-readable output
+     */
+    public function formatExplanationForHuman(array $explanation): string
+    {
+        if (! $explanation['threshold_exceeded']) {
+            return "Low risk prediction (score: {$explanation['score']})";
+        }
+
+        $lines = ["High risk prediction (score: {$explanation['score']})", 'Top contributing factors:'];
+
+        foreach ($explanation['top_features'] as $feature => $data) {
+            $direction = $data['value'] > 0 ? 'increases' : 'decreases';
+            $lines[] = "- {$feature}: {$data['feature_value']} ({$direction} risk by ".abs($data['value']).')';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Get feature importance summary for monitoring
+     */
+    public function getFeatureImportanceSummary(array $explanations): array
+    {
+        $featureCounts = [];
+
+        foreach ($explanations as $explanation) {
+            foreach ($explanation['top_features'] as $feature => $data) {
+                if (! isset($featureCounts[$feature])) {
+                    $featureCounts[$feature] = [
+                        'count' => 0,
+                        'total_impact' => 0,
+                    ];
+                }
+                $featureCounts[$feature]['count']++;
+                $featureCounts[$feature]['total_impact'] += abs($data['value']);
+            }
+        }
+
+        // Calculate average impact
+        foreach ($featureCounts as $feature => &$data) {
+            $data['avg_impact'] = $data['total_impact'] / max(1, $data['count']);
+        }
+
+        // Sort by count descending
+        uasort($featureCounts, function ($a, $b) {
+            return $b['count'] <=> $a['count'];
+        });
+
+        return $featureCounts;
     }
 
     /**
@@ -87,13 +142,13 @@ final readonly class FraudMLExplainer
         ];
 
         foreach ($features as $feature => $value) {
-            if (!isset($featureWeights[$feature])) {
+            if (! isset($featureWeights[$feature])) {
                 continue;
             }
 
             // Normalize feature value to 0-1 range (simplified)
             $normalizedValue = $this->normalizeFeatureValue($feature, $value);
-            
+
             // SHAP value = weight * normalized value
             $shapValue = $featureWeights[$feature] * $normalizedValue;
 
@@ -123,7 +178,7 @@ final readonly class FraudMLExplainer
             'day_of_week' => [0, 6],
         ];
 
-        if (!isset($normalizationRanges[$feature])) {
+        if (! isset($normalizationRanges[$feature])) {
             return 0.5; // Default middle value
         }
 
@@ -149,57 +204,5 @@ final readonly class FraudMLExplainer
 
         // Take top-N
         return array_slice($shapValues, 0, $topN, true);
-    }
-
-    /**
-     * Format explanation for human-readable output
-     */
-    public function formatExplanationForHuman(array $explanation): string
-    {
-        if (!$explanation['threshold_exceeded']) {
-            return "Low risk prediction (score: {$explanation['score']})";
-        }
-
-        $lines = ["High risk prediction (score: {$explanation['score']})", "Top contributing factors:"];
-        
-        foreach ($explanation['top_features'] as $feature => $data) {
-            $direction = $data['value'] > 0 ? 'increases' : 'decreases';
-            $lines[] = "- {$feature}: {$data['feature_value']} ({$direction} risk by " . abs($data['value']) . ")";
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * Get feature importance summary for monitoring
-     */
-    public function getFeatureImportanceSummary(array $explanations): array
-    {
-        $featureCounts = [];
-
-        foreach ($explanations as $explanation) {
-            foreach ($explanation['top_features'] as $feature => $data) {
-                if (!isset($featureCounts[$feature])) {
-                    $featureCounts[$feature] = [
-                        'count' => 0,
-                        'total_impact' => 0,
-                    ];
-                }
-                $featureCounts[$feature]['count']++;
-                $featureCounts[$feature]['total_impact'] += abs($data['value']);
-            }
-        }
-
-        // Calculate average impact
-        foreach ($featureCounts as $feature => &$data) {
-            $data['avg_impact'] = $data['total_impact'] / max(1, $data['count']);
-        }
-
-        // Sort by count descending
-        uasort($featureCounts, function ($a, $b) {
-            return $b['count'] <=> $a['count'];
-        });
-
-        return $featureCounts;
     }
 }

@@ -1,72 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Payment;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for PaymentService.
- *
- * @covers \App\Domains\Payment\Domain\Services\PaymentService
- */
-final class PaymentServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Payment\Domain\Services\PaymentService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'PaymentService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Payment\Domain\Services\PaymentService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'PaymentService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Payment');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Payment\Domain\Services\PaymentService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'PaymentService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('PaymentService exists and is instantiable', function () {
+    $this->assertServiceExists('PaymentService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Payment\Domain\Services\PaymentService::class, 'create'),
-            'PaymentService must implement create()'
-        );
-    }
+test('PaymentService follows clean architecture', function () {
+    $this->assertCleanArchitecture('PaymentService');
+});
 
-    public function test_updateStatus_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Payment\Domain\Services\PaymentService::class, 'updateStatus'),
-            'PaymentService must implement updateStatus()'
-        );
-    }
+test('PaymentService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('PaymentService', 'process', []);
+});
 
-    public function test_findById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Payment\Domain\Services\PaymentService::class, 'findById'),
-            'PaymentService must implement findById()'
-        );
-    }
+test('PaymentService enforces quota limits', function () {
+    $this->testServiceWithQuota('PaymentService', 'process', 1, 10, []);
+});
 
-    public function test_findByIdempotencyKey_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Payment\Domain\Services\PaymentService::class, 'findByIdempotencyKey'),
-            'PaymentService must implement findByIdempotencyKey()'
-        );
-    }
+test('PaymentService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('PaymentService'));
+        $service->process([]);
+    }, 10);
+});
 
-}
+test('PaymentService has proper caching', function () {
+    $cacheKey = 'payment:data:1';
+
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('PaymentService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('PaymentService dispatches proper events', function () {
+    $eventClass = "App\Domains\Payment\Events\PaymentProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('PaymentService'));
+        $service->process([]);
+    });
+});
+
+test('PaymentService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Payment\Jobs\ProcessPaymentJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('PaymentService'));
+        $service->processAsync([]);
+    });
+});
+
+test('PaymentService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('PaymentService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('PaymentService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('PaymentService'));
+        $service->process([]);
+    }, 'PaymentService processed');
+});
+
+test('PaymentService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

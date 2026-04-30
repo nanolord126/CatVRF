@@ -1,13 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\EventManagement;
 
-
-
-
 use Illuminate\Database\DatabaseManager;
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
 use App\Models\EventManagement;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
@@ -22,21 +20,22 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class EventManagementResource extends Resource
 {
+    protected static ?string $model = EventManagement::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
+
+    protected static ?string $navigationGroup = 'Вертикали';
+
+    protected static ?int $navigationSort = 15;
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model = EventManagement::class;
-    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
-    protected static ?string $navigationGroup = 'Вертикали';
-    protected static ?int $navigationSort = 15;
 
     public static function form(Form $form): Form
     {
@@ -45,12 +44,12 @@ final class EventManagementResource extends Resource
                 TextInput::make('event_code')->label('Код события')->required()->hidden(),
                 TextInput::make('event_name')->label('Название события')->required(),
                 Select::make('event_type')->label('Тип события')->options([
-                    'conference' => 'Конференция','seminar' => 'Семинар','workshop' => 'Воркшоп',
-                    'festival' => 'Фестиваль','corporate' => 'Корпоративное','wedding' => 'Свадьба',
-                    'party' => 'Вечеринка','concert' => 'Концерт','exhibition' => 'Выставка',
+                    'conference' => 'Конференция', 'seminar' => 'Семинар', 'workshop' => 'Воркшоп',
+                    'festival' => 'Фестиваль', 'corporate' => 'Корпоративное', 'wedding' => 'Свадьба',
+                    'party' => 'Вечеринка', 'concert' => 'Концерт', 'exhibition' => 'Выставка',
                 ])->required(),
                 Select::make('status')->label('Статус')->options([
-                    'planning' => 'Планирование','scheduled' => 'Назначено','in_progress' => 'В процессе','completed' => 'Завершено',
+                    'planning' => 'Планирование', 'scheduled' => 'Назначено', 'in_progress' => 'В процессе', 'completed' => 'Завершено',
                 ])->required(),
                 DatePicker::make('event_date')->label('Дата события')->required(),
                 TextInput::make('duration_hours')->label('Длительность (часы)')->numeric(),
@@ -84,7 +83,7 @@ final class EventManagementResource extends Resource
             ]),
             Section::make('Программа')->schema([
                 Repeater::make('schedule')->label('Расписание')->schema([
-                    TextInput::make('time')->label('Время'),TextInput::make('activity')->label('Мероприятие'),
+                    TextInput::make('time')->label('Время'), TextInput::make('activity')->label('Мероприятие'),
                 ])->columnSpanFull(),
             ]),
             Section::make('Рейтинг')->columns(2)->schema([
@@ -92,8 +91,8 @@ final class EventManagementResource extends Resource
                 TextInput::make('reviews_count')->label('Отзывов')->numeric()->disabled(),
             ]),
             Section::make('Скрытые поля')->hidden()->schema([
-                TextInput::make('tenant_id')->default(fn()=>filament()->getTenant()->id),
-                TextInput::make('correlation_id')->default(fn()=>Str::uuid()->toString()),
+                TextInput::make('tenant_id')->default(fn () => filament()->getTenant()->id),
+                TextInput::make('correlation_id')->default(fn () => Str::uuid()->toString()),
             ]),
         ]);
     }
@@ -112,17 +111,18 @@ final class EventManagementResource extends Resource
         ])->defaultSort('event_date');
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        $this->db->transaction(function()use(&$data){
-            $data['correlation_id'] = Str::uuid()->toString();
-            $this->logger->info('EventManagement action',['user'=>$this->guard->id(),'correlation_id'=>$data['correlation_id']]);
-        });
-        return $data;
-    }
-
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->db->transaction(function () use (&$data) {
+            $data['correlation_id'] = Str::uuid()->toString();
+            $this->logger->$this->logger->info('EventManagement action', ['user' => $this->guard->id(), 'correlation_id' => $data['correlation_id']]);
+        });
+
+        return $data;
     }
 }

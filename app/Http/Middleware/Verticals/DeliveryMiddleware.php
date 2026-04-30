@@ -6,15 +6,18 @@ namespace App\Http\Middleware\Verticals;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 
 final class DeliveryMiddleware
 {
+    public function __construct(
+        private readonly LogManager $log,
+    ) {}
     public function handle(Request $request, Closure $next)
     {
         $correlationId = $request->header('X-Correlation-ID') ?? uniqid('delivery-', true);
         
-        Log::channel('audit')->info('Delivery API Request', [
+        $this->log->channel('audit')->info('Delivery API Request', [
             'correlation_id' => $correlationId,
             'path' => $request->path(),
             'method' => $request->method(),

@@ -1,105 +1,118 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Tickets;
+
+use Illuminate\Support\Collection;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Log\LogManager;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use App\Domains\Tickets\Models\Ticket;
+use Illuminate\Support\Str;
 
 final class TicketApiController extends Controller
 {
-
     /**
-         * Конструктор с зависимостями.
-         */
-        public function __construct(
-            private readonly TicketService $ticketService,
-            private readonly LogManager $logger,
-            private readonly Guard $guard,
-            private readonly ResponseFactory $response,
+     * Конструктор с зависимостями.
+     */
+    public function __construct(
+        private readonly TicketService $ticketService,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,
     ) {}
-        /**
-         * Покупка билета через типизированный реквест.
-         */
-        public function purchase(TicketPurchaseRequest $request): JsonResponse
-        {
-            $correlationId = $request->getCorrelationId();
-            try {
-                // 2. Создание DTO из валидированного реквеста
-                $dto = BuyTicketDto::fromArray(array_merge($request->validated(), [
-                    'user_id' => $this->guard->id() ?? 1,
-                    'correlation_id' => $correlationId
-                ]));
-                // 3. Вызов сервиса
-                $tickets = $this->ticketService->buyTickets($dto);
-                return $this->response->json([
-                    'success' => true,
-                    'correlation_id' => $correlationId,
-                    'data' => [
-                        'tickets' => collect($tickets)->map(fn ($t) => [
-                            'uuid' => $t->uuid,
-                            'qr_code' => $t->qr_code,
-                            'seat' => $t->seat_string,
-                            'status' => $t->status,
-                            'expires_at' => $t->expires_at->toIso8601String()
-                        ]),
-                    ],
-                    'message' => 'Билеты успешно куплены и доступны в вашем кабинете'
-                ]);
-            } catch (\Throwable $e) {
-                $this->logger->channel('audit')->error('Ticket purchase failed (API)', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId
-                ]);
-                return $this->response->json([
-                    'success' => false,
-                    'correlation_id' => $correlationId,
-                    'error' => $e->getMessage()
-                ], 400);
-            }
-        }
-        /**
-         * Проверка билета (Check-in) через типизированный реквест.
-         */
-        public function checkIn(TicketCheckInRequest $request): JsonResponse
-        {
-            $correlationId = $request->getCorrelationId();
-            try {
-                $result = $this->ticketService->checkIn(
-                    qrCode: $request->input('qr_code'),
-                    checkerUserId: $this->guard->id() ?? 1,
-                    requestData: array_merge($request->validated(), ['correlation_id' => $correlationId])
-                );
-                return $this->response->json(array_merge($result, [
-                    'correlation_id' => $correlationId
-                ]), $result['success'] ? 200 : 400);
-            } catch (\Throwable $e) {
-                $this->logger->channel('audit')->error('Ticket check-in API fatal error', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId
-                ]);
-                return $this->response->json([
-                    'success' => false,
-                    'correlation_id' => $correlationId,
-                    'error' => 'Внутренняя ошибка при проверке билета'
-                ], 500);
-            }
-        }
-        /**
-         * Получить билеты пользователя.
-         */
-        public function getMyTickets(Request $request): JsonResponse
-        {
-            $correlationId = $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid());
-            $tickets = \App\Domains\Tickets\Models\Ticket::where('user_id', $this->guard->id() ?? 1)
-                ->with(['event', 'ticketType'])
-                ->orderBy('id', 'desc')
-                ->paginate(15);
+
+    /**
+     * Покупка билета через типизированный реквест.
+     */
+    public function purchase(TicketPurchaseRequest $request): JsonResponse
+    {
+        $correlationId = $request->getCorrelationId();
+        try {
+            // 2. Создание DTO из валидированного реквеста
+            $dto = BuyTicketDto::fromArray(array_merge($request->validated(), [
+                'user_id' => $this->guard->id() ?? 1,
+                'correlation_id' => $correlationId,
+            ]));
+            // 3. Вызов сервиса
+            $tickets = $this->ticketService->buyTickets($dto);
+
             return $this->response->json([
                 'success' => true,
                 'correlation_id' => $correlationId,
-                'data' => $tickets
+                'data' => [
+                    'tickets' => new Collection($tickets)->map(fn ($t) => [
+                        'uuid' => $t->uuid,
+                        'qr_code' => $t->qr_code,
+                        'seat' => $t->seat_string,
+                        'status' => $t->status,
+                        'expires_at' => $t->expires_at->toIso8601String(),
+                    ]),
+                ],
+                'message' => 'Билеты успешно куплены и доступны в вашем кабинете',
             ]);
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Ticket purchase failed (API)', [
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $this->response->json([
+                'success' => false,
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+            ], 400);
         }
+    }
+
+    /**
+     * Проверка билета (Check-in) через типизированный реквест.
+     */
+    public function checkIn(TicketCheckInRequest $request): JsonResponse
+    {
+        $correlationId = $request->getCorrelationId();
+        try {
+            $result = $this->ticketService->checkIn(
+                qrCode: $request->input('qr_code'),
+                checkerUserId: $this->guard->id() ?? 1,
+                requestData: array_merge($request->validated(), ['correlation_id' => $correlationId])
+            );
+
+            return $this->response->json(array_merge($result, [
+                'correlation_id' => $correlationId,
+            ]), $result['success'] ? 200 : 400);
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Ticket check-in API fatal error', [
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $this->response->json([
+                'success' => false,
+                'correlation_id' => $correlationId,
+                'error' => 'Внутренняя ошибка при проверке билета',
+            ], 500);
+        }
+    }
+
+    /**
+     * Получить билеты пользователя.
+     */
+    public function getMyTickets(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        $tickets = Ticket::where('user_id', $this->guard->id() ?? 1)
+            ->with(['event', 'ticketType'])
+            ->orderBy('id', 'desc')
+            ->paginate(15);
+
+        return $this->response->json([
+            'success' => true,
+            'correlation_id' => $correlationId,
+            'data' => $tickets,
+        ]);
+    }
 }

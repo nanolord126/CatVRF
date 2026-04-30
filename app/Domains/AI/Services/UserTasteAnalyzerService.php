@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domains\AI\Services;
 
-
+use Carbon\CarbonImmutable;
 
 use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use Illuminate\Database\DatabaseManager;
+
 /**
  * Class UserTasteAnalyzerService
  *
@@ -21,14 +25,15 @@ use Psr\Log\LoggerInterface;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\AI\Services
+ * @see FraudControlService
+ * @see AuditService
  */
 final readonly class UserTasteAnalyzerService
 {
     public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Собирает и агрегирует историю из БД (просмотры, покупки).
@@ -50,13 +55,26 @@ final readonly class UserTasteAnalyzerService
             'taste_profile' => json_encode([
                 'categories' => $viewedCategories,
                 'price_range' => 'mid', // dummy ML deduction
-                'analyzed_at' => \Carbon\Carbon::now()->toIso8601String()
-            ])
+                'analyzed_at' => CarbonImmutable::now()->toIso8601String(),
+            ]),
         ]);
 
-        $this->logger->info('User taste profile rigorously analyzed and stored', [
+        $this->logger->$this->logger->info('User taste profile rigorously analyzed and stored', [
             'user_id' => $userId,
-            'correlation_id' => $correlationId
+            'correlation_id' => $correlationId,
         ]);
+    }
+
+    /**
+     * Analyze user preferences for advertising targeting
+     *
+     * @param int $userId User ID
+     * @return array|null User preferences array or null if not available
+     */
+    public function analyzeUserPreferences(int $userId): ?array
+    {
+        // TODO: Implement actual user preference analysis
+        // This is a stub for the Advertising vertical's AdvancedTargetingEngine
+        return null;
     }
 }

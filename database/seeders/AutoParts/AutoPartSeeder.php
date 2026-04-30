@@ -30,7 +30,7 @@ final class AutoPartSeeder extends Seeder
             AutoPart::updateOrCreate(
                 ['tenant_id' => $tenantId, 'name' => $part['name']],
                 [
-                    'sku' => strtoupper('PART-' . Str::random(8)),
+                    'sku' => strtoupper('PART-'.Str::random(8)),
                     'category' => $part['category'],
                     'description' => 'Автомобильная запчасть',
                     'price' => $part['price'],

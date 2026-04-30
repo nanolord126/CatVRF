@@ -1,0 +1,109 @@
+groups:
+  - name: bigdata_cost_alerts
+    rules:
+      # Budget alerts
+      - alert: BigDataBudgetApproaching
+        expr: catvrf_bigdata_cost_budget_utilization_percent > 80
+        for: 1h
+        labels:
+          severity: warning
+          team: finops
+          vertical: bigdata
+        annotations:
+          summary: "BigData budget approaching limit"
+          description: "Budget utilization at {{ $value }}%. Monthly budget: ${{ $labels.monthly_budget }}"
+
+      - alert: BigDataBudgetExceeded
+        expr: catvrf_bigdata_cost_budget_utilization_percent >= 100
+        for: 30m
+        labels:
+          severity: critical
+          team: finops
+          vertical: bigdata
+        annotations:
+          summary: "BigData budget EXCEEDED"
+          description: "Budget utilization at {{ $value }}%. IMMEDIATE ACTION REQUIRED"
+
+      - alert: BigDataBudgetCriticalOver
+        expr: catvrf_bigdata_cost_budget_utilization_percent >= 120
+        for: 15m
+        labels:
+          severity: critical
+          team: finops
+          vertical: bigdata
+          page: true
+        annotations:
+          summary: "BigData budget CRITICALLY OVER (120%+)"
+          description: "Budget utilization at {{ $value }}%. Escalate to VP Engineering"
+
+      # Storage growth
+      - alert: BigDataStorageGrowthHigh
+        expr: catvrf_bigdata_cost_storage_growth_rate_percent > 15
+        for: 2h
+        labels:
+          severity: warning
+          team: finops
+          vertical: bigdata
+        annotations:
+          summary: "BigData storage growing too fast"
+          description: "Storage growth rate {{ $value }}%/week (threshold: 15%)"
+
+      # Compression ratio
+      - alert: BigDataCompressionRatioLow
+        expr: catvrf_bigdata_cost_compression_ratio < 5
+        for: 4h
+        labels:
+          severity: info
+          team: finops
+          vertical: bigdata
+        annotations:
+          summary: "ClickHouse compression ratio below target"
+          description: "Table {{ $labels.table }} has compression ratio {{ $value }}x (target: >10x)"
+
+      # Cost anomalies
+      - alert: BigDataCostAnomalyDetected
+        expr: catvrf_bigdata_cost_anomaly_open_count > 0
+        for: 10m
+        labels:
+          severity: warning
+          team: finops
+          vertical: bigdata
+        annotations:
+          summary: "Cost anomalies detected"
+          description: "{{ $value }} open cost anomalies require investigation"
+
+      # Daily cost spike
+      - alert: BigDataDailyCostSpike
+        expr: catvrf_bigdata_cost_daily_total_usd > (avg_over_time(catvrf_bigdata_cost_daily_total_usd[7d]) * 1.5)
+        for: 2h
+        labels:
+          severity: warning
+          team: finops
+          vertical: bigdata
+        annotations:
+          summary: "Daily cost spike detected"
+          description: "Today's cost ${{ $value }} is >50% above 7-day average"
+
+      # Unit economics
+      - alert: BigDataCostToGmvRatioHigh
+        expr: avg(catvrf_bigdata_cost_unit_cost_to_gmv_ratio) > 0.05
+        for: 24h
+        labels:
+          severity: warning
+          team: finops
+          vertical: bigdata
+        annotations:
+          summary: "BigData cost-to-GMV ratio exceeds 5%"
+          description: "Average cost/GMV ratio is {{ $value | humanizePercentage }} (target: ≤5%)"
+
+      # Optimizable cost
+      - alert: BigDataHighOptimizableCost
+        expr: catvrf_bigdata_cost_daily_optimizable_usd > 50
+        for: 4h
+        labels:
+          severity: info
+          team: finops
+          vertical: bigdata
+        annotations:
+          summary: "High optimizable cost detected"
+          description: "${{ $value }} of daily cost is optimizable — run auto-optimization"

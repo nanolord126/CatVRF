@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Payment;
+
+use Illuminate\Database\DatabaseManager;
 
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Http\Request;
@@ -9,52 +13,56 @@ use App\Services\Payment\Gateways\SberGateway;
 use App\Services\Payment\Gateways\TinkoffGateway;
 use App\Services\Payment\Gateways\TochkaGateway;
 use Illuminate\Log\LogManager;
-use Illuminate\Support\Str;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * PaymentGatewayService - Isolated payment gateway operations.
  *
- * CRITICAL: Gateway calls are NEVER wrapped in DB::transaction to prevent
+ * CRITICAL: Gateway calls are NEVER wrapped in $this->db->transaction to prevent
  * connection holding during timeouts. Uses circuit breaker for resilience.
- *
- * @final
  */
-final class PaymentGatewayService
+final readonly class PaymentGatewayService
 {
+    use WithAuditLogging;
+
     private const CIRCUIT_BREAKER_THRESHOLD = 5; // Failures before opening
+
     private const CIRCUIT_BREAKER_TIMEOUT = 60; // Seconds before trying again
 
     public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
         private readonly TinkoffGateway $tinkoff,
         private readonly TochkaGateway $tochka,
         private readonly SberGateway $sber,
-        private readonly LogManager $logger,
+        private readonly LogManager $log,
         private readonly Guard $guard,
         private readonly RedisFactory $redis,
-        private readonly LoggerInterface $log,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
-     * Инициировать платёж через шлюз (без DB::transaction).
+     * Инициировать платёж через шлюз (без $this->db->transaction).
      *
      * CRITICAL: Gateway call is NOT wrapped in DB transaction to prevent
      * connection holding during timeouts. Caller must handle transaction.
      *
-     * @param array $data Данные платежа: amount, provider, currency
-     * @param string $correlationId
+     * @param  array  $data  Данные платежа: amount, provider, currency
      * @return array Gateway response
+     *
      * @throws \RuntimeException If circuit breaker is open or gateway fails
      */
     public function initiatePayment(array $data, string $correlationId): array
     {
         $provider = $data['provider'] ?? 'tinkoff';
-        
+
         $this->checkCircuitBreaker($provider);
 
-        $this->logger->channel('audit')->info('Payment gateway initiation started', [
+        $this->logger->channel('audit')->$this->logger->info('Payment gateway initiation started', [
             'correlation_id' => $correlationId,
             'provider' => $provider,
             'amount' => $data['amount'],
@@ -74,7 +82,7 @@ final class PaymentGatewayService
 
             $this->recordSuccess($provider, $latencyMs);
 
-            $this->logger->channel('audit')->info('Payment gateway initiation successful', [
+            $this->logger->channel('audit')->$this->logger->info('Payment gateway initiation successful', [
                 'correlation_id' => $correlationId,
                 'provider' => $provider,
                 'latency_ms' => $latencyMs,
@@ -101,22 +109,21 @@ final class PaymentGatewayService
     }
 
     /**
-     * Захватить (списать) платёж через шлюз (без DB::transaction).
+     * Захватить (списать) платёж через шлюз (без $this->db->transaction).
      *
      * CRITICAL: Gateway call is NOT wrapped in DB transaction.
      *
-     * @param PaymentTransaction $transaction
-     * @param string $correlationId
      * @return array Gateway response
+     *
      * @throws \RuntimeException If circuit breaker is open or gateway fails
      */
     public function capture(PaymentTransaction $transaction, string $correlationId): array
     {
         $provider = $transaction->provider;
-        
+
         $this->checkCircuitBreaker($provider);
 
-        $this->logger->channel('audit')->info('Payment gateway capture started', [
+        $this->logger->channel('audit')->$this->logger->info('Payment gateway capture started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider' => $provider,
@@ -136,7 +143,7 @@ final class PaymentGatewayService
 
             $this->recordSuccess($provider, $latencyMs);
 
-            $this->logger->channel('audit')->info('Payment gateway capture successful', [
+            $this->logger->channel('audit')->$this->logger->info('Payment gateway capture successful', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'provider' => $provider,
@@ -165,24 +172,23 @@ final class PaymentGatewayService
     }
 
     /**
-     * Возвратить платёж через шлюз (без DB::transaction).
+     * Возвратить платёж через шлюз (без $this->db->transaction).
      *
      * CRITICAL: Gateway call is NOT wrapped in DB transaction.
      *
-     * @param PaymentTransaction $transaction
-     * @param int $amount Сумма в копейках
-     * @param string $reason Причина возврата
-     * @param string $correlationId
+     * @param  int  $amount  Сумма в копейках
+     * @param  string  $reason  Причина возврата
      * @return array Gateway response
+     *
      * @throws \RuntimeException If circuit breaker is open or gateway fails
      */
     public function refund(PaymentTransaction $transaction, int $amount, string $reason, string $correlationId): array
     {
         $provider = $transaction->provider;
-        
+
         $this->checkCircuitBreaker($provider);
 
-        $this->logger->channel('audit')->info('Payment gateway refund started', [
+        $this->logger->channel('audit')->$this->logger->info('Payment gateway refund started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider' => $provider,
@@ -203,7 +209,7 @@ final class PaymentGatewayService
 
             $this->recordSuccess($provider, $latencyMs);
 
-            $this->logger->channel('audit')->info('Payment gateway refund successful', [
+            $this->logger->channel('audit')->$this->logger->info('Payment gateway refund successful', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'provider' => $provider,
@@ -235,8 +241,6 @@ final class PaymentGatewayService
     /**
      * Get payment status from gateway.
      *
-     * @param PaymentTransaction $transaction
-     * @param string $correlationId
      * @return array Gateway response
      */
     public function getStatus(PaymentTransaction $transaction, string $correlationId): array
@@ -292,7 +296,7 @@ final class PaymentGatewayService
         $this->redis->connection()->del($key);
 
         // Record metrics for Prometheus
-        $this->log->info('payment_gateway_success', [
+        $this->log->$this->logger->info('payment_gateway_success', [
             'provider' => $provider,
             'latency_ms' => $latencyMs,
         ]);

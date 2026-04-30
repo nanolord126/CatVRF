@@ -1,7 +1,8 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models;
-
 
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Model;
@@ -12,23 +13,19 @@ use Illuminate\Support\Str;
  * Позиция заказа (товар / услуга в составе Order).
  * Канон CatVRF 2026.
  *
- * @property int         $id
- * @property int         $order_id
+ * @property int $id
+ * @property int $order_id
  * @property string|null $product_type
- * @property int|null    $product_id
+ * @property int|null $product_id
  * @property string|null $product_name
- * @property int         $quantity
- * @property int         $unit_price     Копейки
- * @property int         $total_price    Копейки
- * @property array|null  $options
+ * @property int $quantity
+ * @property int $unit_price Копейки
+ * @property int $total_price Копейки
+ * @property array|null $options
  * @property string|null $correlation_id
  */
 final class OrderItem extends Model
 {
-    public function __construct(
-        private readonly Request $request,
-    ) {}
-
     protected $table = 'order_items';
 
     protected $fillable = [
@@ -52,24 +49,9 @@ final class OrderItem extends Model
         'quantity'    => 'integer',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            if (function_exists('tenant') && tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-
-        static::creating(static function (self $model): void {
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
-            }
-            // Автоматический расчёт total_price
-            if ($model->unit_price > 0 && $model->quantity > 0 && $model->total_price === 0) {
-                $model->total_price = $model->unit_price * $model->quantity;
-            }
-        });
-    }
+    public function __construct(
+        private readonly Request $request,
+    ) {}
 
     // ─── Отношения ──────────────────────────────────────────────────────────
 
@@ -99,5 +81,24 @@ final class OrderItem extends Model
     public function totalPriceInRubles(): float
     {
         return $this->total_price / 100;
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(static function (self $model): void {
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = $this->request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+            }
+            // Автоматический расчёт total_price
+            if ($model->unit_price > 0 && $model->quantity > 0 && $model->total_price === 0) {
+                $model->total_price = $model->unit_price * $model->quantity;
+            }
+        });
     }
 }

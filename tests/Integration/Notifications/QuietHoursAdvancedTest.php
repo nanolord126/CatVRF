@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Integration\Notifications;
 
@@ -11,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * QuietHoursAdvancedTest
- * 
+ *
  * Тестирует сложные сценарии с quiet hours, включая midnight-spanning
  */
 final class QuietHoursAdvancedTest extends TestCase
@@ -493,7 +495,7 @@ final class QuietHoursAdvancedTest extends TestCase
 
     private function isInQuietHours(NotificationPreference $preference): bool
     {
-        if (!$preference->quiet_hours_enabled) {
+        if (! $preference->quiet_hours_enabled) {
             return false;
         }
 

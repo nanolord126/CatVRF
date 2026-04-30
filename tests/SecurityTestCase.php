@@ -1,6 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests;
+
+use App\Models\AuditLog;
+use App\Models\BusinessGroup;
+use App\Models\Product;
+use App\Models\Referral;
+use App\Models\Wallet;
 
 /**
  * Security Test Case для fraud-атак, authorization, input validation
@@ -110,7 +118,7 @@ abstract class SecurityTestCase extends BaseTestCase
         int $debitAmount
     ): void {
         // Создаём wallet с начальным балансом
-        $wallet = \App\Models\Wallet::factory()->create([
+        $wallet = Wallet::factory()->create([
             'tenant_id' => $this->tenant->id,
             'current_balance' => $initialBalance,
         ]);
@@ -149,7 +157,7 @@ abstract class SecurityTestCase extends BaseTestCase
     protected function assertWishlistManipulationProtection(): void
     {
         // Создаём товар
-        $product = \App\Models\Product::factory()->create([
+        $product = Product::factory()->create([
             'tenant_id' => $this->tenant->id,
             'rating' => 3.0,
             'review_count' => 10,
@@ -177,7 +185,7 @@ abstract class SecurityTestCase extends BaseTestCase
      */
     protected function assertFakeReviewsProtection(): void
     {
-        $product = \App\Models\Product::factory()->create([
+        $product = Product::factory()->create([
             'tenant_id' => $this->tenant->id,
         ]);
 
@@ -201,19 +209,19 @@ abstract class SecurityTestCase extends BaseTestCase
      */
     protected function assertBonusHuntingProtection(): void
     {
-        $referral = \App\Models\Referral::factory()->create([
+        $referral = Referral::factory()->create([
             'referrer_id' => $this->user->id,
             'status' => 'pending',
         ]);
 
         // Первый claim — успешен
-        $response1 = $this->authenticatedPost('/api/referrals/' . $referral->id . '/claim', [
+        $response1 = $this->authenticatedPost('/api/referrals/'.$referral->id.'/claim', [
             'amount' => 1000,
         ]);
         $response1->assertSuccessful();
 
         // Второй claim с тем же реферралом — должен быть отклонён
-        $response2 = $this->authenticatedPost('/api/referrals/' . $referral->id . '/claim', [
+        $response2 = $this->authenticatedPost('/api/referrals/'.$referral->id.'/claim', [
             'amount' => 1000,
         ]);
         $response2->assertStatus(422);
@@ -248,7 +256,7 @@ abstract class SecurityTestCase extends BaseTestCase
 
         // Если создаётся, то скрипт должен быть экранирован
         if ($response->successful()) {
-            $product = \App\Models\Product::find($response->json('id'));
+            $product = Product::find($response->json('id'));
             $this->assertStringNotContainsString('<script>', $product?->$field ?? '');
         }
     }
@@ -314,8 +322,8 @@ abstract class SecurityTestCase extends BaseTestCase
      */
     protected function assertBusinessGroupIsolation(): void
     {
-        $group1 = \App\Models\BusinessGroup::factory()->create(['tenant_id' => $this->tenant->id]);
-        $group2 = \App\Models\BusinessGroup::factory()->create(['tenant_id' => $this->tenant->id]);
+        $group1 = BusinessGroup::factory()->create(['tenant_id' => $this->tenant->id]);
+        $group2 = BusinessGroup::factory()->create(['tenant_id' => $this->tenant->id]);
 
         // Создаём ресурс в группе 1
         $response1 = $this->authenticatedPost('/api/businesses', [
@@ -345,12 +353,12 @@ abstract class SecurityTestCase extends BaseTestCase
 
         // Отправляем 50 быстрых запросов
         for ($i = 0; $i < 50; $i++) {
-            $response = $this->authenticatedGet($uri, ['q' => 'test-' . $i]);
+            $response = $this->authenticatedGet($uri, ['q' => 'test-'.$i]);
             $responses[] = $response->status();
         }
 
         // В какой-то момент должны получить 429 (rate limit)
-        $has429 = in_array(429, $responses);
+        $has429 = in_array(429, $responses, true);
         $this->assertTrue($has429, 'Search DDoS was not blocked');
     }
 
@@ -359,7 +367,7 @@ abstract class SecurityTestCase extends BaseTestCase
      */
     protected function assertAuditLogCreated(string $operationType, array $relatedIds = []): void
     {
-        $auditLog = \App\Models\AuditLog::where([
+        $auditLog = AuditLog::where([
             'operation_type' => $operationType,
             'correlation_id' => $this->correlationId,
         ])->first();

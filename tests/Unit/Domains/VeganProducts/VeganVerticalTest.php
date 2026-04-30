@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\VeganProducts;
 
@@ -23,22 +25,6 @@ class VeganVerticalTest extends TestCase
     use RefreshDatabase;
 
     private VeganProductService $service;
-
-    /**
-     * Set up the test environment.
-     */
-    protected function setUp(): void
-    {
-        parent::setUp();
-        
-        // Mocking FraudControlService for simple unit/feature test
-        $this->instance(
-            FraudControlService::class,
-            \Mockery::mock(FraudControlService::class)->shouldReceive('check')->andReturn(true)->getMock()
-        );
-
-        $this->service = app(VeganProductService::class);
-    }
 
     /**
      * Test successful product creation through the domain service.
@@ -69,7 +55,7 @@ class VeganVerticalTest extends TestCase
         $this->assertInstanceOf(VeganProduct::class, $product);
         $this->assertEquals('Organic Almond Milk', $product->name);
         $this->assertEquals($correlationId, $product->correlation_id);
-        
+
         $this->assertDatabaseHas('vegan_products', [
             'id' => $product->id,
             'sku' => $product->sku,
@@ -149,7 +135,23 @@ class VeganVerticalTest extends TestCase
         // Assert
         $this->assertDatabaseHas('vegan_products', [
             'id' => $product->id,
-            'correlation_id' => $correlationId
+            'correlation_id' => $correlationId,
         ]);
+    }
+
+    /**
+     * Set up the test environment.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Mocking FraudControlService for simple unit/feature test
+        $this->instance(
+            FraudControlService::class,
+            \Mockery::mock(FraudControlService::class)->shouldReceive('check')->andReturn(true)->getMock()
+        );
+
+        $this->service = app(VeganProductService::class);
     }
 }

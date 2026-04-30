@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Shared\Domain\ValueObjects;
 
+use Illuminate\Filesystem\FilesystemManager;
+
 use InvalidArgumentException;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,15 +18,12 @@ use Illuminate\Support\Facades\Storage;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Shared\Domain\ValueObjects
  */
 final readonly class Photo
 {
-    public function __construct(
+    public function __construct(private readonly FilesystemManager $storage,
         public string $path,
-        private string $disk = 's3',
-    ) {
+        private readonly string $disk = 's3',) {
         if (empty($path)) {
             throw new InvalidArgumentException('Photo path cannot be empty.');
         }
@@ -37,7 +36,7 @@ final readonly class Photo
      */
     public function getUrl(): string
     {
-        return Storage::disk($this->disk)->url($this->path);
+        return $this->storage->disk($this->disk)->url($this->path);
     }
 
     /**
@@ -52,8 +51,6 @@ final readonly class Photo
 
     /**
      * Determine if this instance is valid for the current context.
-     *
-     * @return bool
      */
     public function isValid(): bool
     {

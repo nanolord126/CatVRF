@@ -1,56 +1,65 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Carbon\CarbonImmutable;
+
 final class TaxiRidePolicy
 {
-
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
-        {
-            return true; // Все могут видеть список поездок (публичная информация)
+    {
+        return true; // Все могут видеть список поездок (публичная информация)
+    }
+
+    public function $this->viewFactory->make(User $user, TaxiRide $ride): bool
+    {
+        return $user->id === $ride->passenger_id || $user->id === $ride->driver?->user_id || $user->isAdmin();
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->isVerified();
+    }
+
+    public function cancel(User $user, TaxiRide $ride): Response
+    {
+        if ($user->id !== $ride->passenger_id && ! $user->isAdmin()) {
+            return $this->response->deny('Вы не можете отменить эту поездку');
         }
 
-        public function view(User $user, TaxiRide $ride): bool
-        {
-            return $user->id === $ride->passenger_id || $user->id === $ride->driver?->user_id || $user->isAdmin();
+        if ($ride->status === 'completed' || $ride->status === 'cancelled') {
+            return $this->response->deny('Поездка уже завершена или отменена');
         }
 
-        public function create(User $user): bool
-        {
-            return $user->isVerified();
+        // Отмену можно сделать только в течение 24 часов до начала
+        $hoursUntilStart = $ride->started_at->diffInHours(CarbonImmutable::now(), false);
+        if ($hoursUntilStart < -24) {
+            return $this->response->deny('Отмену можно сделать только за 24 часа до начала');
         }
 
-        public function cancel(User $user, TaxiRide $ride): Response
-        {
-            if ($user->id !== $ride->passenger_id && !$user->isAdmin()) {
-                return $this->response->deny('Вы не можете отменить эту поездку');
-            }
+        return $this->response->allow();
+    }
 
-            if ($ride->status === 'completed' || $ride->status === 'cancelled') {
-                return $this->response->deny('Поездка уже завершена или отменена');
-            }
-
-            // Отмену можно сделать только в течение 24 часов до начала
-            $hoursUntilStart = $ride->started_at->diffInHours(now(), false);
-            if ($hoursUntilStart < -24) {
-                return $this->response->deny('Отмену можно сделать только за 24 часа до начала');
-            }
-
-            return $this->response->allow();
+    public function rate(User $user, TaxiRide $ride): Response
+    {
+        if ($user->id !== $ride->passenger_id && ! $user->isAdmin()) {
+            return $this->response->deny('Вы не можете оценить эту поездку');
         }
 
-        public function rate(User $user, TaxiRide $ride): Response
-        {
-            if ($user->id !== $ride->passenger_id && !$user->isAdmin()) {
-                return $this->response->deny('Вы не можете оценить эту поездку');
-            }
-
-            if ($ride->status !== 'completed') {
-                return $this->response->deny('Можно оценить только завершённую поездку');
-            }
-
-            return $this->response->allow();
+        if ($ride->status !== 'completed') {
+            return $this->response->deny('Можно оценить только завершённую поездку');
         }
+
+        return $this->response->allow();
+    }
 
     /**
      * Get the string representation of this instance.
@@ -59,7 +68,7 @@ final class TaxiRidePolicy
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -70,8 +79,8 @@ final class TaxiRidePolicy
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

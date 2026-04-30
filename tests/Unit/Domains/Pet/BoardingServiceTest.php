@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Pet;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Pet\Domain\Services\BoardingService;
 
 /**
  * Unit tests for BoardingService.
@@ -14,7 +17,7 @@ final class BoardingServiceTest extends TestCase
     public function test_class_is_final(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Pet\Domain\Services\BoardingService::class
+            BoardingService::class
         );
         $this->assertTrue($reflection->isFinal(), 'BoardingService must be final');
     }
@@ -22,7 +25,7 @@ final class BoardingServiceTest extends TestCase
     public function test_class_is_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Pet\Domain\Services\BoardingService::class
+            BoardingService::class
         );
         $this->assertTrue($reflection->isReadOnly(), 'BoardingService must be readonly');
     }
@@ -30,35 +33,34 @@ final class BoardingServiceTest extends TestCase
     public function test_has_constructor_injection(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Pet\Domain\Services\BoardingService::class
+            BoardingService::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor, 'BoardingService must have __construct');
         $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
     }
 
-    public function test_createReservation_method_exists(): void
+    public function test_create_reservation_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Pet\Domain\Services\BoardingService::class, 'createReservation'),
+            method_exists(BoardingService::class, 'createReservation'),
             'BoardingService must implement createReservation()'
         );
     }
 
-    public function test_completeReservation_method_exists(): void
+    public function test_complete_reservation_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Pet\Domain\Services\BoardingService::class, 'completeReservation'),
+            method_exists(BoardingService::class, 'completeReservation'),
             'BoardingService must implement completeReservation()'
         );
     }
 
-    public function test_cancelReservation_method_exists(): void
+    public function test_cancel_reservation_method_exists(): void
     {
         $this->assertTrue(
-            method_exists(\App\Domains\Pet\Domain\Services\BoardingService::class, 'cancelReservation'),
+            method_exists(BoardingService::class, 'cancelReservation'),
             'BoardingService must implement cancelReservation()'
         );
     }
-
 }

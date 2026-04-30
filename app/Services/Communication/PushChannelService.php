@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Communication;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Communication\Models\Message;
 use Illuminate\Http\Client\Factory as HttpClient;
 use Illuminate\Log\LogManager;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Sends a Message record as a Firebase push notification.
@@ -14,9 +18,13 @@ use Illuminate\Log\LogManager;
  */
 final readonly class PushChannelService
 {
+    use WithAuditLogging;
+
     public function __construct(
-        private HttpClient $http,
-        private LogManager $logger,
+        private readonly LoggerInterface $logger,
+        private readonly HttpClient $http,
+        private readonly LogManager $log,
+        private readonly AuditService $auditService,
     ) {}
 
     public function send(Message $message): void
@@ -28,6 +36,7 @@ final readonly class PushChannelService
                 'message_id'     => $message->id,
                 'correlation_id' => $message->correlation_id,
             ]);
+
             return;
         }
 
@@ -47,7 +56,7 @@ final readonly class PushChannelService
                 ],
             ]);
 
-        $this->logger->channel('audit')->info('Push notification dispatched', [
+        $this->logger->channel('audit')->$this->logger->info('Push notification dispatched', [
             'message_id'     => $message->id,
             'firebase_status' => $response->status(),
             'correlation_id' => $message->correlation_id,
@@ -61,6 +70,6 @@ final readonly class PushChannelService
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
-     */}
+     */
+}

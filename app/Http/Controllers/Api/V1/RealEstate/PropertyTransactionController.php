@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\RealEstate;
 
+use Carbon\CarbonImmutable;
+
 use App\Http\Controllers\Controller;
 use App\Domains\RealEstate\Services\PropertyTransactionService;
 use App\Domains\RealEstate\DTOs\CreatePropertyDto;
@@ -14,12 +16,14 @@ use App\Domains\RealEstate\Models\PropertyViewing;
 use App\Domains\RealEstate\Resources\PropertyViewingResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\LogManager;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 final class PropertyTransactionController extends Controller
 {
     public function __construct(
+        private readonly LogManager $log,
         private readonly PropertyTransactionService $transactionService
     ) {}
 
@@ -32,7 +36,7 @@ final class PropertyTransactionController extends Controller
                 (int) $request->user()->id
             );
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'property' => [
                     'id' => $property->id,
@@ -46,13 +50,13 @@ final class PropertyTransactionController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Property creation failed', [
+            $this->log->channel('audit')->error('Property creation failed', [
                 'error' => $e->getMessage(),
                 'user_id' => $request->user()->id,
                 'correlation_id' => $request->header('X-Correlation-ID'),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Failed to create property',
                 'error' => $e->getMessage(),
@@ -73,13 +77,13 @@ final class PropertyTransactionController extends Controller
             );
 
             $viewing = PropertyViewing::create([
-                'uuid' => \Illuminate\Support\Str::uuid(),
+                'uuid' => Str::uuid(),
                 'tenant_id' => $dto->tenantId,
                 'business_group_id' => $dto->businessGroupId,
                 'property_id' => $dto->propertyId,
                 'user_id' => $dto->userId,
                 'scheduled_at' => $dto->scheduledAt,
-                'held_at' => now(),
+                'held_at' => CarbonImmutable::now(),
                 'hold_expires_at' => Carbon::parse($result['hold_expires_at']),
                 'status' => 'held',
                 'is_b2b' => $dto->isB2B,
@@ -87,7 +91,7 @@ final class PropertyTransactionController extends Controller
                 'correlation_id' => $dto->correlationId,
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'viewing' => new PropertyViewingResource($viewing),
                 'hold_expires_at' => $result['hold_expires_at'],
@@ -98,20 +102,20 @@ final class PropertyTransactionController extends Controller
             ], 201);
 
         } catch (\RuntimeException $e) {
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => $e->getMessage(),
                 'correlation_id' => $request->header('X-Correlation-ID'),
             ], 400);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Viewing booking failed', [
+            $this->log->channel('audit')->error('Viewing booking failed', [
                 'error' => $e->getMessage(),
                 'user_id' => $request->user()->id,
                 'correlation_id' => $request->header('X-Correlation-ID'),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Failed to book viewing',
                 'error' => $e->getMessage(),
@@ -123,7 +127,7 @@ final class PropertyTransactionController extends Controller
     {
         try {
             $property = Property::findOrFail($propertyId);
-            $correlationId = $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
+            $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
             $result = $this->transactionService->calculatePredictiveScoring(
                 $property,
@@ -131,21 +135,21 @@ final class PropertyTransactionController extends Controller
                 $correlationId
             );
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'scoring' => $result,
                 'correlation_id' => $correlationId,
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Predictive scoring failed', [
+            $this->log->channel('audit')->error('Predictive scoring failed', [
                 'error' => $e->getMessage(),
                 'property_id' => $propertyId,
                 'user_id' => $request->user()->id,
                 'correlation_id' => $request->header('X-Correlation-ID'),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Failed to calculate predictive scoring',
                 'error' => $e->getMessage(),
@@ -158,7 +162,7 @@ final class PropertyTransactionController extends Controller
         try {
             $property = Property::findOrFail($propertyId);
             $isB2B = $request->has('inn') && $request->has('business_card_id');
-            $correlationId = $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
+            $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
             $result = $this->transactionService->calculateDynamicPrice(
                 $property,
@@ -166,20 +170,20 @@ final class PropertyTransactionController extends Controller
                 $correlationId
             );
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'pricing' => $result,
                 'correlation_id' => $correlationId,
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Dynamic pricing failed', [
+            $this->log->channel('audit')->error('Dynamic pricing failed', [
                 'error' => $e->getMessage(),
                 'property_id' => $propertyId,
                 'correlation_id' => $request->header('X-Correlation-ID'),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Failed to calculate dynamic price',
                 'error' => $e->getMessage(),
@@ -192,10 +196,10 @@ final class PropertyTransactionController extends Controller
         try {
             $property = Property::findOrFail($propertyId);
             $documentHashes = $request->input('document_hashes', []);
-            $correlationId = $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
+            $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
             if (empty($documentHashes)) {
-                return response()->json([
+                return new JsonResponse([
                     'success' => false,
                     'message' => 'Document hashes are required',
                 ], 400);
@@ -207,20 +211,20 @@ final class PropertyTransactionController extends Controller
                 $correlationId
             );
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'verification' => $result,
                 'correlation_id' => $correlationId,
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Blockchain verification failed', [
+            $this->log->channel('audit')->error('Blockchain verification failed', [
                 'error' => $e->getMessage(),
                 'property_id' => $propertyId,
                 'correlation_id' => $request->header('X-Correlation-ID'),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Failed to verify documents on blockchain',
                 'error' => $e->getMessage(),
@@ -233,10 +237,10 @@ final class PropertyTransactionController extends Controller
         try {
             $property = Property::findOrFail($propertyId);
             $amount = (float) $request->input('amount');
-            $correlationId = $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
+            $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
             if ($amount <= 0) {
-                return response()->json([
+                return new JsonResponse([
                     'success' => false,
                     'message' => 'Amount must be greater than 0',
                 ], 400);
@@ -249,21 +253,21 @@ final class PropertyTransactionController extends Controller
                 $correlationId
             );
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'escrow' => $result,
                 'correlation_id' => $correlationId,
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Escrow payment initiation failed', [
+            $this->log->channel('audit')->error('Escrow payment initiation failed', [
                 'error' => $e->getMessage(),
                 'property_id' => $propertyId,
                 'user_id' => $request->user()->id,
                 'correlation_id' => $request->header('X-Correlation-ID'),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Failed to initiate escrow payment',
                 'error' => $e->getMessage(),
@@ -275,7 +279,7 @@ final class PropertyTransactionController extends Controller
     {
         try {
             $property = Property::findOrFail($propertyId);
-            $correlationId = $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
+            $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
             $result = $this->transactionService->releaseEscrowPayment(
                 $property,
@@ -283,21 +287,21 @@ final class PropertyTransactionController extends Controller
                 $correlationId
             );
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => true,
                 'release' => $result,
                 'correlation_id' => $correlationId,
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Escrow payment release failed', [
+            $this->log->channel('audit')->error('Escrow payment release failed', [
                 'error' => $e->getMessage(),
                 'property_id' => $propertyId,
                 'user_id' => $request->user()->id,
                 'correlation_id' => $request->header('X-Correlation-ID'),
             ]);
 
-            return response()->json([
+            return new JsonResponse([
                 'success' => false,
                 'message' => 'Failed to release escrow payment',
                 'error' => $e->getMessage(),

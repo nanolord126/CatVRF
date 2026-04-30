@@ -1,7 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Jobs;
 
+use Psr\Log\LoggerInterface;
+
+use Illuminate\Support\Str;
 
 use App\Domains\Logistics\Models\Courier;
 use App\Domains\Logistics\Models\DeliveryOrder;
@@ -13,7 +18,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Log\LogManager;
 
-
 /**
  * RouteOptimizationJob — перерасчёт маршрутов курьеров каждые 3 минуты.
  *
@@ -24,20 +28,26 @@ use Illuminate\Log\LogManager;
  */
 final class RouteOptimizationJob implements ShouldQueue
 {
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
     public int $tries   = 2;
+
     public int $timeout = 60;
 
     /** @param int[] $orderIds */
-    public function __construct(
-        private readonly int   $courierId,
-        private array $orderIds = [],
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly int $courierId,
+        private readonly array $orderIds,
         private readonly LogManager $logger,
-    ) {}
+    ,
+        public readonly string $correlationId = '') {}
 
     public function handle(RouteOptimizationService $optimizer): void
     {
+        $correlationId = $this->correlationId ?: (string) Str::uuid();
         $courier = Courier::where('id', $this->courierId)
             ->where('is_online', true)
             ->first();
@@ -61,7 +71,7 @@ final class RouteOptimizationJob implements ShouldQueue
         try {
             $result = $optimizer->optimizeForCourier($this->courierId, $orderIds);
 
-            $this->logger->channel('audit')->info('RouteOptimizationJob done', [
+            $this->logger->channel('audit')->$this->logger->info('RouteOptimizationJob done', [
                 'courier_id'       => $this->courierId,
                 'orders'           => count($orderIds),
                 'total_minutes'    => $result['total_minutes'],
@@ -81,4 +91,3 @@ final class RouteOptimizationJob implements ShouldQueue
         return 'route-opt';
     }
 }
-

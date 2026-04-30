@@ -1,18 +1,24 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Marketing;
 
+use Illuminate\Support\Collection;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
 use App\Services\ML\AnonymizationService;
 use App\Services\ML\UserBehaviorAnalyzerService;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
+use App\Jobs\NewsletterBatchJob;
 
 /**
  * NewsletterService — рассылки (Email, Push, SMS, In-app).
@@ -27,15 +33,15 @@ use Illuminate\Database\DatabaseManager;
  */
 final readonly class NewsletterService
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private FraudControlService         $fraud,
-        private UserBehaviorAnalyzerService  $behaviorAnalyzer,
-        private AnonymizationService         $anonymizer,
-        private AuditService                 $audit,
+        private readonly FraudControlService $fraud,
+        private readonly UserBehaviorAnalyzerService $behaviorAnalyzer,
+        private readonly AnonymizationService $anonymizer,
+        private readonly AuditService $audit,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
-    ) {}
+        private readonly BusDispatcher $bus,) {}
 
     /**
      * Создать и запустить рассылку по сегменту.
@@ -57,7 +63,7 @@ final readonly class NewsletterService
 
         $this->fraud->check($senderId, 'newsletter_send', 0, (string) $this->request->ip(), null, $correlationId);
 
-        return $this->db->transaction(function () use ($dto, $tenantId, $senderId, $correlationId): array {
+        return $this->db->transaction(function () use ($dto, $tenantId, $correlationId): array {
             // 1. Определить получателей по сегменту
             $recipients = $this->resolveRecipients(
                 tenantId: $tenantId,
@@ -77,21 +83,21 @@ final readonly class NewsletterService
                 'recipients_count' => count($recipients),
                 'status'         => 'sending',
                 'correlation_id' => $correlationId,
-                'created_at'     => now(),
-                'updated_at'     => now(),
+                'created_at'     => CarbonImmutable::now(),
+                'updated_at'     => CarbonImmutable::now(),
             ]);
 
             // 3. Поставить в очередь отправки (batch по 100)
-            collect($recipients)->chunk(100)->each(function ($batch) use ($newsletterId, $dto, $correlationId): void {
-                \Illuminate\Support\Facades\Bus::dispatchToQueue(
-                    job: new \App\Jobs\NewsletterBatchJob($newsletterId, $batch->toArray(), $dto['channel'], $correlationId),
+            new Collection($recipients)->chunk(100)->each(function ($batch) use ($newsletterId, $dto, $correlationId): void {
+                $this->bus->dispatchToQueue(
+                    job: new NewsletterBatchJob($newsletterId, $batch->toArray(), $dto['channel'], $correlationId),
                     queue: 'newsletters',
                 );
             });
 
             $this->audit->record('newsletter_created', 'newsletter_campaigns', $newsletterId, [], $dto, $correlationId);
 
-            $this->logger->channel('audit')->info('Newsletter campaign created', [
+            $this->logger->channel('audit')->$this->logger->info('Newsletter campaign created', [
                 'newsletter_id'   => $newsletterId,
                 'channel'         => $dto['channel'],
                 'segment'         => $dto['segment'],
@@ -118,7 +124,7 @@ final readonly class NewsletterService
             'newsletter_id'      => $newsletterId,
             'anonymized_user_id' => $anonId,  // НЕ raw user_id!
             'correlation_id'     => $correlationId,
-            'opened_at'          => now(),
+            'opened_at'          => CarbonImmutable::now(),
         ]);
     }
 
@@ -134,7 +140,7 @@ final readonly class NewsletterService
             'anonymized_user_id' => $anonId,  // НЕ raw user_id!
             'link_url'           => $linkUrl,
             'correlation_id'     => $correlationId,
-            'clicked_at'         => now(),
+            'clicked_at'         => CarbonImmutable::now(),
         ]);
     }
 
@@ -152,7 +158,7 @@ final readonly class NewsletterService
             ->whereNotNull('email');
 
         return match ($segment) {
-            'returning'  => $query->where('created_at', '<', now()->subDays(7))->pluck('id')->toArray(),
+            'returning'  => $query->where('created_at', '<', CarbonImmutable::now()->subDays(7))->pluck('id')->toArray(),
             'churn_risk' => $this->resolveChurnRiskUsers($tenantId),
             'vip'        => $this->resolveVipUsers($tenantId),
             default      => str_starts_with($segment, 'vertical:')
@@ -167,10 +173,10 @@ final readonly class NewsletterService
             ->where('tenant_id', $tenantId)
             ->whereExists(fn ($q) => $q->from('orders')
                 ->whereColumn('orders.user_id', 'users.id')
-                ->where('orders.created_at', '<', now()->subDays(14)))
+                ->where('orders.created_at', '<', CarbonImmutable::now()->subDays(14)))
             ->whereNotExists(fn ($q) => $q->from('orders')
                 ->whereColumn('orders.user_id', 'users.id')
-                ->where('orders.created_at', '>=', now()->subDays(14)))
+                ->where('orders.created_at', '>=', CarbonImmutable::now()->subDays(14)))
             ->pluck('id')
             ->toArray();
     }

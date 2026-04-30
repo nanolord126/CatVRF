@@ -1,12 +1,17 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Payment\Gateways;
+
+use Psr\Log\LoggerInterface;
 
 use App\Models\PaymentTransaction;
 use App\Services\Fraud\FraudControlService;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
+use App\Exceptions\FraudException;
 
 /**
  * TochkaGateway
@@ -16,28 +21,23 @@ use Illuminate\Support\Str;
  *
  * API: https://api.tochka.com/api/v1/
  * Документация: https://tochka.com/business/
- *
- * @final
  */
 final class TochkaGateway implements PaymentGatewayInterface
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly string $clientId,
         private readonly string $clientSecret,
         private readonly string $apiKey,
         private readonly PendingRequest $http,
         private readonly LogManager $log,
         private readonly FraudControlService $fraud,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     /**
      * Инициировать платёж через Tochka API
      *
-     * @param array $data
-     * @return array
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      */
     public function initPayment(array $data): array
     {
@@ -51,7 +51,7 @@ final class TochkaGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('Tochka: Payment initialization started', [
+        $this->logger->channel('audit')->$this->logger->info('Tochka: Payment initialization started', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'order_id' => $data['order_id'] ?? null,
@@ -68,7 +68,7 @@ final class TochkaGateway implements PaymentGatewayInterface
         $response = $this->http->withToken($this->apiKey)
             ->post('https://api.tochka.com/api/v1/payments', $payload);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             $this->logger->channel('audit')->error('Tochka: Payment init failed', [
                 'correlation_id' => $correlationId,
                 'status' => $response->status(),
@@ -77,7 +77,7 @@ final class TochkaGateway implements PaymentGatewayInterface
             throw new \RuntimeException("Tochka init failed: {$response->status()}");
         }
 
-        $this->logger->channel('audit')->info('Tochka: Payment init succeeded', [
+        $this->logger->channel('audit')->$this->logger->info('Tochka: Payment init succeeded', [
             'correlation_id' => $correlationId,
             'payment_id' => $response->json()['payment_id'] ?? null,
         ]);
@@ -88,11 +88,8 @@ final class TochkaGateway implements PaymentGatewayInterface
     /**
      * Захватить (списать) платёж
      *
-     * @param PaymentTransaction $transaction
-     * @param string|null $correlationId
-     * @return bool
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      */
     public function capture(PaymentTransaction $transaction, ?string $correlationId = null): bool
     {
@@ -107,7 +104,7 @@ final class TochkaGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('Tochka: Payment capture started', [
+        $this->logger->channel('audit')->$this->logger->info('Tochka: Payment capture started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider_payment_id' => $transaction->provider_payment_id,
@@ -118,14 +115,14 @@ final class TochkaGateway implements PaymentGatewayInterface
             $response = $this->http->withToken($this->apiKey)
                 ->post("https://api.tochka.com/api/v1/payments/{$transaction->provider_payment_id}/capture", []);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 throw new \RuntimeException("HTTP {$response->status()}");
             }
 
             $success = $response->json()['status'] === 'captured';
 
             if ($success) {
-                $this->logger->channel('audit')->info('Tochka: Payment capture succeeded', [
+                $this->logger->channel('audit')->$this->logger->info('Tochka: Payment capture succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                 ]);
@@ -152,12 +149,8 @@ final class TochkaGateway implements PaymentGatewayInterface
     /**
      * Вернуть (возместить) платёж
      *
-     * @param PaymentTransaction $transaction
-     * @param int $amount
-     * @param string|null $correlationId
-     * @return bool
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      */
     public function refund(PaymentTransaction $transaction, int $amount, ?string $correlationId = null): bool
     {
@@ -172,7 +165,7 @@ final class TochkaGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('Tochka: Payment refund initiated', [
+        $this->logger->channel('audit')->$this->logger->info('Tochka: Payment refund initiated', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'refund_amount' => $amount,
@@ -185,14 +178,14 @@ final class TochkaGateway implements PaymentGatewayInterface
                     'amount' => $amount,
                 ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 throw new \RuntimeException("HTTP {$response->status()}");
             }
 
             $success = ($response->json()['status'] ?? '') === 'refunded';
 
             if ($success) {
-                $this->logger->channel('audit')->info('Tochka: Payment refund succeeded', [
+                $this->logger->channel('audit')->$this->logger->info('Tochka: Payment refund succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'refunded_amount' => $amount,
@@ -214,9 +207,6 @@ final class TochkaGateway implements PaymentGatewayInterface
 
     /**
      * Получить статус платежа
-     *
-     * @param string $providerPaymentId
-     * @return array
      */
     public function getStatus(string $providerPaymentId): array
     {
@@ -228,10 +218,8 @@ final class TochkaGateway implements PaymentGatewayInterface
     /**
      * Создать выплату (массовая выплата)
      *
-     * @param array $data
-     * @return array
      *
-     * @throws \App\Exceptions\FraudException
+     * @throws FraudException
      */
     public function createPayout(array $data): array
     {
@@ -245,7 +233,7 @@ final class TochkaGateway implements PaymentGatewayInterface
             'correlation_id' => $correlationId,
         ]);
 
-        $this->logger->channel('audit')->info('Tochka: Payout initiated', [
+        $this->logger->channel('audit')->$this->logger->info('Tochka: Payout initiated', [
             'correlation_id' => $correlationId,
             'amount' => $data['amount'],
             'order_id' => $data['order_id'] ?? null,
@@ -262,15 +250,12 @@ final class TochkaGateway implements PaymentGatewayInterface
 
     /**
      * Обработать webhook от Tochka
-     *
-     * @param array $payload
-     * @return array
      */
     public function handleWebhook(array $payload): array
     {
         $correlationId = $payload['correlation_id'] ?? Str::uuid()->toString();
 
-        $this->logger->channel('audit')->info('Tochka: Webhook received', [
+        $this->logger->channel('audit')->$this->logger->info('Tochka: Webhook received', [
             'correlation_id' => $correlationId,
             'order_id' => $payload['order_id'] ?? null,
             'payment_id' => $payload['payment_id'] ?? null,
@@ -293,16 +278,12 @@ final class TochkaGateway implements PaymentGatewayInterface
      *
      * Точка использует внешний ОФД (CloudPayments / АТОЛ)
      * Реализация зависит от подключённого ОФД-провайдера
-     *
-     * @param PaymentTransaction $transaction
-     * @param string|null $correlationId
-     * @return bool
      */
     public function fiscalize(PaymentTransaction $transaction, ?string $correlationId = null): bool
     {
         $correlationId ??= $transaction->correlation_id ?? Str::uuid()->toString();
 
-        $this->logger->channel('audit')->info('Tochka: Fiscalization started', [
+        $this->logger->channel('audit')->$this->logger->info('Tochka: Fiscalization started', [
             'correlation_id' => $correlationId,
             'payment_id' => $transaction->id,
             'provider_payment_id' => $transaction->provider_payment_id,
@@ -323,7 +304,7 @@ final class TochkaGateway implements PaymentGatewayInterface
             $success = $response->successful();
 
             if ($success) {
-                $this->logger->channel('audit')->info('Tochka: Fiscalization succeeded', [
+                $this->logger->channel('audit')->$this->logger->info('Tochka: Fiscalization succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                 ]);

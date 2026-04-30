@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Beauty\Events\LoyaltyPointsEarnedEvent;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
+use Carbon\CarbonImmutable;
 
 final class LoyaltyPointsEarnedListener
 {
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,) {}
     public function handle(LoyaltyPointsEarnedEvent $event): void
     {
-        Log::channel('audit')->info('Loyalty points earned event handled', [
+        $this->log->channel('audit')->$this->logger->info('Loyalty points earned event handled', [
             'correlation_id' => $event->correlationId,
             'user_id' => $event->userId,
             'points' => $event->points,
@@ -26,14 +32,14 @@ final class LoyaltyPointsEarnedListener
     private function trackUserEngagement(LoyaltyPointsEarnedEvent $event): void
     {
         $key = "beauty:loyalty:engagement:{$event->userId}";
-        Redis::incrby($key, $event->points);
-        Redis::expire($key, 86400 * 30);
+        $this->redis->incrby($key, $event->points);
+        $this->redis->expire($key, 86400 * 30);
     }
 
     private function checkTierUpgrade(LoyaltyPointsEarnedEvent $event): void
     {
         $userKey = "beauty:loyalty:user:{$event->userId}";
-        $data = json_decode(Redis::get($userKey) ?: '{}', true);
+        $data = json_decode($this->redis->get($userKey) ?: '{}', true);
 
         $currentTier = $data['tier'] ?? 'bronze';
         $totalPoints = $data['total_points'] ?? 0;
@@ -64,13 +70,13 @@ final class LoyaltyPointsEarnedListener
 
     private function notifyTierUpgrade(int $userId, string $fromTier, string $toTier): void
     {
-        $key = "beauty:loyalty:tier_upgrades";
-        Redis::lpush($key, json_encode([
-            'timestamp' => now()->toIso8601String(),
+        $key = 'beauty:loyalty:tier_upgrades';
+        $this->redis->lpush($key, json_encode([
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
             'user_id' => $userId,
             'from_tier' => $fromTier,
             'to_tier' => $toTier,
         ]));
-        Redis::expire($key, 86400 * 30);
+        $this->redis->expire($key, 86400 * 30);
     }
 }

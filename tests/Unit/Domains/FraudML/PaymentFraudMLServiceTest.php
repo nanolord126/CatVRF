@@ -7,7 +7,6 @@ namespace Tests\Unit\Domains\FraudML;
 use App\Domains\FraudML\DTOs\PaymentFraudMLDto;
 use App\Domains\FraudML\Services\PaymentFraudMLService;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 final class PaymentFraudMLServiceTest extends TestCase

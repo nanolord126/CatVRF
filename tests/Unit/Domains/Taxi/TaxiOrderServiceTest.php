@@ -1,13 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Taxi;
 
 use App\Domains\Taxi\DTOs\CreateTaxiOrderDto;
 use App\Domains\Taxi\Models\TaxiRide;
 use App\Domains\Taxi\Services\TaxiOrderService;
-use App\Services\FraudControlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 final class TaxiOrderServiceTest extends TestCase
@@ -15,12 +15,6 @@ final class TaxiOrderServiceTest extends TestCase
     use RefreshDatabase;
 
     private readonly TaxiOrderService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(TaxiOrderService::class);
-    }
 
     public function test_create_order_successfully(): void
     {
@@ -189,5 +183,11 @@ final class TaxiOrderServiceTest extends TestCase
         $orders->each(function ($order) {
             $this->assertEquals(1, $order->passenger_id);
         });
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(TaxiOrderService::class);
     }
 }

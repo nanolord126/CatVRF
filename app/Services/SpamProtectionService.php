@@ -1,22 +1,27 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Queue\Queue;
-use Illuminate\Log\Logger;
-use Illuminate\Support\Str;
+use App\Domains\Beauty\Jobs\ReportSpamJob;
 
 final readonly class SpamProtectionService
 {
     private const SPAM_THRESHOLD = 10;
+
     private const BLACKLIST_THRESHOLD = 50;
+
     private const WINDOW_SECONDS = 60;
 
     public function __construct(
-        private CacheRepository $cache,
-        private Queue $queue,
-        private Logger $logger,
+        private readonly LoggerInterface $logger,
+        private readonly CacheRepository $cache,
+        private readonly Queue $queue,
     ) {}
 
     public function checkSpam(int $userId, string $action, string $ipAddress, string $correlationId): array
@@ -43,7 +48,7 @@ final readonly class SpamProtectionService
                 'ip_count' => $ipCount,
             ]);
 
-            $this->queue->push(new \App\Domains\Beauty\Jobs\ReportSpamJob($userId, $ipAddress, $action, $correlationId));
+            $this->queue->push(new ReportSpamJob($userId, $ipAddress, $action, $correlationId));
         }
 
         if ($isSpam) {

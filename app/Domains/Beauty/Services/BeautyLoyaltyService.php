@@ -4,28 +4,39 @@ declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Psr\Log\LoggerInterface;
+
 use App\Domains\Beauty\DTOs\BeautyLoyaltyDto;
 use App\Domains\Beauty\Events\LoyaltyPointsEarnedEvent;
 use App\Services\AuditService;
 use App\Services\FraudControlService;
 use App\Services\Bonus\BonusService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Log\LogManager;
+use Illuminate\Redis\Connections\Connection as RedisConnection;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 
 final readonly class BeautyLoyaltyService
 {
     private const CACHE_TTL = 3600;
+
     private const STREAK_BONUS_MULTIPLIER = 1.5;
+
     private const REFERRAL_BONUS = 500;
+
     private const REFERRER_BONUS = 1000;
 
-    public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private BonusService $bonusService,
-    ) {}
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly LoggerInterface $logger,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly BonusService $bonusService,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,
+        private readonly RedisConnection $redis,) {}
 
     public function processAction(BeautyLoyaltyDto $dto): array
     {
@@ -38,7 +49,7 @@ final readonly class BeautyLoyaltyService
             correlationId: $dto->correlationId,
         );
 
-        return DB::transaction(function () use ($dto) {
+        return $this->db->transaction(function () use ($dto) {
             $points = $this->calculatePoints($dto);
             $multiplier = $this->getStreakMultiplier($dto->userId);
             $finalPoints = (int) round($points * $multiplier);
@@ -67,7 +78,7 @@ final readonly class BeautyLoyaltyService
                 'correlation_id' => $dto->correlationId,
             ];
 
-            Log::channel('audit')->info('Loyalty action processed', [
+            $this->log->channel('audit')->$this->logger->info('Loyalty action processed', [
                 'correlation_id' => $dto->correlationId,
                 'user_id' => $dto->userId,
                 'action' => $dto->action,
@@ -75,7 +86,7 @@ final readonly class BeautyLoyaltyService
                 'tenant_id' => $dto->tenantId,
             ]);
 
-            event(new LoyaltyPointsEarnedEvent(
+            $this->eventDispatcher->dispatch(new LoyaltyPointsEarnedEvent(
                 userId: $dto->userId,
                 points: $finalPoints,
                 action: $dto->action,
@@ -93,6 +104,34 @@ final readonly class BeautyLoyaltyService
 
             return $result;
         });
+    }
+
+    public function generateReferralCode(int $userId): string
+    {
+        $code = 'BEAUTY'.Str::upper(Str::random(8));
+        $key = "beauty:referral:{$code}";
+
+        $this->redis->setex($key, 86400 * 365, $userId);
+
+        return $code;
+    }
+
+    public function getLoyaltyStatus(int $userId): array
+    {
+        $data = $this->getUserLoyaltyData($userId);
+        $streak = $this->getCurrentStreak($userId);
+
+        $referralCode = $this->getUserReferralCode($userId);
+        $referralCount = $this->getReferralCount($userId);
+
+        return [
+            'total_points' => $data['total_points'],
+            'current_streak' => $streak,
+            'tier' => $this->calculateTier($data['total_points']),
+            'referral_code' => $referralCode,
+            'referrals_count' => $referralCount,
+            'next_tier_points' => $this->getNextTierPoints($data['total_points']),
+        ];
     }
 
     private function calculatePoints(BeautyLoyaltyDto $dto): int
@@ -126,7 +165,8 @@ final readonly class BeautyLoyaltyService
     private function getCurrentStreak(int $userId): int
     {
         $key = "beauty:loyalty:streak:{$userId}";
-        return (int) Redis::get($key) ?? 0;
+
+        return (int) $this->redis->get($key) ?? 0;
     }
 
     private function updateStreak(int $userId, string $action): int
@@ -134,29 +174,29 @@ final readonly class BeautyLoyaltyService
         $key = "beauty:loyalty:streak:{$userId}";
         $lastActionKey = "beauty:loyalty:last_action:{$userId}";
 
-        $lastActionDate = Redis::get($lastActionKey);
-        $today = now()->toDateString();
+        $lastActionDate = $this->redis->get($lastActionKey);
+        $today = CarbonImmutable::now()->toDateString();
 
         if ($lastActionDate === $today) {
             return $this->getCurrentStreak($userId);
         }
 
-        if ($lastActionDate === now()->subDay()->toDateString()) {
-            Redis::incr($key);
+        if ($lastActionDate === CarbonImmutable::now()->subDay()->toDateString()) {
+            $this->redis->incr($key);
         } else {
-            Redis::set($key, 1);
+            $this->redis->set($key, 1);
         }
 
-        Redis::setex($lastActionKey, 86400 * 7, $today);
+        $this->redis->setex($lastActionKey, 86400 * 7, $today);
 
-        return (int) Redis::get($key);
+        return (int) $this->redis->get($key);
     }
 
     private function processReferral(string $referralCode, int $referrerId): array
     {
         $referrerId = $this->validateReferralCode($referralCode);
 
-        if (!$referrerId) {
+        if (! $referrerId) {
             return ['referrer_bonus' => 0, 'referee_bonus' => 0];
         }
 
@@ -174,7 +214,7 @@ final readonly class BeautyLoyaltyService
     private function validateReferralCode(string $code): ?int
     {
         $key = "beauty:referral:{$code}";
-        $userId = Redis::get($key);
+        $userId = $this->redis->get($key);
 
         return $userId ? (int) $userId : null;
     }
@@ -182,14 +222,14 @@ final readonly class BeautyLoyaltyService
     private function trackReferralChain(int $referrerId, int $refereeId): void
     {
         $key = "beauty:referral_chain:{$referrerId}";
-        Redis::sadd($key, $refereeId);
-        Redis::expire($key, 86400 * 365);
+        $this->redis->sadd($key, $refereeId);
+        $this->redis->expire($key, 86400 * 365);
     }
 
     private function getUserLoyaltyData(int $userId): array
     {
         $key = "beauty:loyalty:user:{$userId}";
-        $data = Redis::get($key);
+        $data = $this->redis->get($key);
 
         if ($data) {
             return json_decode($data, true);
@@ -206,7 +246,7 @@ final readonly class BeautyLoyaltyService
     private function saveUserLoyaltyData(int $userId, array $data): void
     {
         $key = "beauty:loyalty:user:{$userId}";
-        Redis::setex($key, self::CACHE_TTL, json_encode($data));
+        $this->redis->setex($key, self::CACHE_TTL, json_encode($data));
     }
 
     private function calculateTier(int $totalPoints): string
@@ -226,41 +266,13 @@ final readonly class BeautyLoyaltyService
         return 'bronze';
     }
 
-    public function generateReferralCode(int $userId): string
-    {
-        $code = 'BEAUTY' . Str::upper(Str::random(8));
-        $key = "beauty:referral:{$code}";
-
-        Redis::setex($key, 86400 * 365, $userId);
-
-        return $code;
-    }
-
-    public function getLoyaltyStatus(int $userId): array
-    {
-        $data = $this->getUserLoyaltyData($userId);
-        $streak = $this->getCurrentStreak($userId);
-
-        $referralCode = $this->getUserReferralCode($userId);
-        $referralCount = $this->getReferralCount($userId);
-
-        return [
-            'total_points' => $data['total_points'],
-            'current_streak' => $streak,
-            'tier' => $this->calculateTier($data['total_points']),
-            'referral_code' => $referralCode,
-            'referrals_count' => $referralCount,
-            'next_tier_points' => $this->getNextTierPoints($data['total_points']),
-        ];
-    }
-
     private function getUserReferralCode(int $userId): ?string
     {
-        $pattern = "beauty:referral:*";
-        $keys = Redis::keys($pattern);
+        $pattern = 'beauty:referral:*';
+        $keys = $this->redis->keys($pattern);
 
         foreach ($keys as $key) {
-            $storedUserId = Redis::get($key);
+            $storedUserId = $this->redis->get($key);
             if ((int) $storedUserId === $userId) {
                 return str_replace('beauty:referral:', '', $key);
             }
@@ -272,7 +284,8 @@ final readonly class BeautyLoyaltyService
     private function getReferralCount(int $userId): int
     {
         $key = "beauty:referral_chain:{$userId}";
-        return Redis::scard($key);
+
+        return $this->redis->scard($key);
     }
 
     private function getNextTierPoints(int $currentPoints): int

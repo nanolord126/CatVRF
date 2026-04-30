@@ -2,10 +2,17 @@
 
 namespace App\Services\Payment;
 
+use Illuminate\Support\Collection;
+
+use Psr\Log\LoggerInterface;
+
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use RuntimeException;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * Redis-based Idempotency Service for Payment Operations
@@ -18,14 +25,18 @@ use RuntimeException;
  */
 final readonly class PaymentIdempotencyService
 {
-    private const string LOCK_PREFIX = 'payment:lock:';
-    private const string IDEMPOTENCY_PREFIX = 'payment:idempotency:';
-    private const int DEFAULT_TTL_SECONDS = 86400; // 24 hours
-    private const int LOCK_TTL_SECONDS = 300; // 5 minutes
+    use WithAuditLogging;
+
+    private const LOCK_PREFIX = 'payment:lock:';
+    private const IDEMPOTENCY_PREFIX = 'payment:idempotency:';
+    private const DEFAULT_TTL_SECONDS = 86400; // 24 hours
+    private const LOCK_TTL_SECONDS = 300; // 5 minutes
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly CacheRepository $cache,
-        private readonly LogManager $logger,
+        private readonly LogManager $log,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
@@ -50,7 +61,7 @@ final readonly class PaymentIdempotencyService
         $cached = $this->cache->get($key);
 
         if ($cached === null) {
-            return null;
+            throw new \RuntimeException('No cached result for this idempotency key');
         }
 
         // Verify payload hash to prevent replay attacks
@@ -69,7 +80,7 @@ final readonly class PaymentIdempotencyService
             );
         }
 
-        $this->logger->channel('audit')->info('Idempotency cache hit', [
+        $this->logger->channel('audit')->$this->logger->info('Idempotency cache hit', [
             'operation' => $operation,
             'idempotency_key' => $idempotencyKey,
             'tenant_id' => $tenantId,
@@ -105,7 +116,7 @@ final readonly class PaymentIdempotencyService
         $data = [
             'payload_hash' => $payloadHash,
             'response' => $response,
-            'cached_at' => now()->toIso8601String(),
+            'cached_at' => CarbonImmutable::now()->toIso8601String(),
             'operation' => $operation,
             'tenant_id' => $tenantId,
         ];
@@ -113,7 +124,7 @@ final readonly class PaymentIdempotencyService
         $result = $this->cache->put($key, $data, $ttlSeconds);
 
         if ($result) {
-            $this->logger->channel('audit')->info('Idempotency record stored', [
+            $this->logger->channel('audit')->$this->logger->info('Idempotency record stored', [
                 'operation' => $operation,
                 'idempotency_key' => $idempotencyKey,
                 'tenant_id' => $tenantId,
@@ -160,7 +171,7 @@ final readonly class PaymentIdempotencyService
         );
 
         if ($acquired) {
-            $this->logger->channel('audit')->info('Payment lock acquired', [
+            $this->logger->channel('audit')->$this->logger->info('Payment lock acquired', [
                 'operation' => $operation,
                 'idempotency_key' => $idempotencyKey,
                 'tenant_id' => $tenantId,
@@ -177,7 +188,7 @@ final readonly class PaymentIdempotencyService
             'tenant_id' => $tenantId,
         ]);
 
-        return null;
+        throw new \RuntimeException('Payment lock already held by another process');
     }
 
     /**
@@ -214,7 +225,7 @@ final readonly class PaymentIdempotencyService
         );
 
         if ($result) {
-            $this->logger->channel('audit')->info('Payment lock released', [
+            $this->logger->channel('audit')->$this->logger->info('Payment lock released', [
                 'operation' => $operation,
                 'idempotency_key' => $idempotencyKey,
                 'tenant_id' => $tenantId,
@@ -248,7 +259,7 @@ final readonly class PaymentIdempotencyService
         $key = $this->buildKey($operation, $idempotencyKey, $tenantId);
         $result = $this->cache->forget($key);
 
-        $this->logger->channel('audit')->info('Idempotency record invalidated', [
+        $this->logger->channel('audit')->$this->logger->info('Idempotency record invalidated', [
             'operation' => $operation,
             'idempotency_key' => $idempotencyKey,
             'tenant_id' => $tenantId,
@@ -282,7 +293,7 @@ final readonly class PaymentIdempotencyService
     private function generateHash(array $payload): string
     {
         // Exclude service fields that may differ between requests
-        $filtered = collect($payload)
+        $filtered = new Collection($payload)
             ->except(['correlation_id', 'timestamp', 'X-Correlation-ID', 'X-Request-ID', '_token'])
             ->sortKeys()
             ->all();

@@ -1,41 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\BeverageSubscriptionResource\Pages;
 
-
-
 use Psr\Log\LoggerInterface;
-use Illuminate\Contracts\Auth\Guard;
+
+use Carbon\CarbonImmutable;
+
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Log\LogManager;
 
 final class CreateBeverageSubscription extends CreateRecord
 {
-    public function __construct(
-        private readonly LoggerInterface $logger,
-    ) {}
-
-
     protected static string $resource = BeverageSubscriptionResource::class;
 
-        protected function mutateFormDataBeforeCreate(array $data): array
-        {
-            $data['uuid'] = (string) Str::uuid();
-            $data['tenant_id'] = tenant()->id;
-            $data['correlation_id'] = (string) Str::uuid();
-            $data['starts_at'] = now();
-
-            return $data;
-        }
-
-        protected function afterCreate(): void
-        {
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Beverage Subscription Manual Grant', [
-                'subscription_id' => $this->record->id,
-                'tenant_id' => $this->record->tenant_id,
-                'correlation_id' => $this->record->correlation_id,
-                'user_id' => auth()->id(),
-            ]);
-        }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,) {}
 
     /**
      * Get the string representation of this instance.
@@ -44,7 +25,7 @@ final class CreateBeverageSubscription extends CreateRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -55,8 +36,28 @@ final class CreateBeverageSubscription extends CreateRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['uuid'] = (string) Str::uuid();
+        $data['tenant_id'] = tenant()->id;
+        $data['correlation_id'] = (string) Str::uuid();
+        $data['starts_at'] = CarbonImmutable::now();
+
+        return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $this->log->channel('audit')->$this->logger->info('Beverage Subscription Manual Grant', [
+            'subscription_id' => $this->record->id,
+            'tenant_id' => $this->record->tenant_id,
+            'correlation_id' => $this->record->correlation_id,
+            'user_id' => auth()->id(),
+        ]);
     }
 }

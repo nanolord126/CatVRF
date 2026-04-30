@@ -18,11 +18,10 @@ interface PaymentGatewayInterface
     /**
      * Инициировать платёж (создать сессию у провайдера).
      *
-     * @param int    $amountKopecks  сумма в копейках
-     * @param string $idempotencyKey ключ идемпотентности
-     * @param string $correlationId  correlation_id для аудита
-     * @param string $description    описание платежа
-     *
+     * @param  int  $amountKopecks  сумма в копейках
+     * @param  string  $idempotencyKey  ключ идемпотентности
+     * @param  string  $correlationId  correlation_id для аудита
+     * @param  string  $description  описание платежа
      * @return array{payment_id: string, redirect_url: string, provider_response: array<string, mixed>}
      */
     public function initPayment(
@@ -35,10 +34,9 @@ interface PaymentGatewayInterface
     /**
      * Подтвердить (capture) ранее авторизованный платёж.
      *
-     * @param string $providerPaymentId идентификатор у провайдера
-     * @param int    $amountKopecks     сумма к подтверждению
-     * @param string $correlationId     correlation_id для аудита
-     *
+     * @param  string  $providerPaymentId  идентификатор у провайдера
+     * @param  int  $amountKopecks  сумма к подтверждению
+     * @param  string  $correlationId  correlation_id для аудита
      * @return array{status: string, provider_response: array<string, mixed>}
      */
     public function capture(
@@ -50,10 +48,9 @@ interface PaymentGatewayInterface
     /**
      * Выполнить возврат (полный или частичный).
      *
-     * @param string $providerPaymentId идентификатор у провайдера
-     * @param int    $amountKopecks     сумма возврата
-     * @param string $correlationId     correlation_id для аудита
-     *
+     * @param  string  $providerPaymentId  идентификатор у провайдера
+     * @param  int  $amountKopecks  сумма возврата
+     * @param  string  $correlationId  correlation_id для аудита
      * @return array{refund_id: string, status: string, provider_response: array<string, mixed>}
      */
     public function refund(
@@ -65,10 +62,9 @@ interface PaymentGatewayInterface
     /**
      * Обработать вебхук от провайдера.
      *
-     * @param array<string, mixed> $payload     тело запроса
-     * @param string               $signature   подпись от провайдера
-     * @param string               $correlationId correlation_id
-     *
+     * @param  array<string, mixed>  $payload  тело запроса
+     * @param  string  $signature  подпись от провайдера
+     * @param  string  $correlationId  correlation_id
      * @return array{payment_id: string, status: string, amount_kopecks: int}
      */
     public function handleWebhook(

@@ -1,8 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
 
+use DatabaseManager;
+
 use App\Http\Controllers\Api\V1\Beauty\ConsumableController as BaseConsumableController;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Domain-level proxy — делегирует в Api\V1\Beauty\ConsumableController.
@@ -14,15 +22,19 @@ final class ConsumableController extends BaseConsumableController
     /**
      * GET /consumables/logs — логи расхода материалов.
      */
-    public function logs(\Illuminate\Http\Request $request): \Illuminate\Http\JsonResponse
+    public function __construct(
+        private readonly DatabaseManager $databaseManager,
+    ) {}
+
+    public function logs(Request $request): JsonResponse
     {
-        $correlationId = $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
+        $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
 
         try {
             $tenantId = (int) $request->header('X-Tenant-ID', '0');
 
-            /** @var \Illuminate\Database\DatabaseManager $db */
-            $db = app(\Illuminate\Database\DatabaseManager::class);
+            /** @var DatabaseManager $db */
+            $db = $this->databaseManager /* TODO: inject via constructor DI */ /* TODO: inject via DI */;
 
             $logs = $db->table('beauty_consumable_logs')
                 ->where('tenant_id', $tenantId)
@@ -55,6 +67,6 @@ final class ConsumableController extends BaseConsumableController
      * Implements tenant-aware, fraud-checked business logic
      * with full correlation_id tracing and audit logging.
      *
-     * @package CatVRF
      * @version 2026.1
-     */}
+     */
+}

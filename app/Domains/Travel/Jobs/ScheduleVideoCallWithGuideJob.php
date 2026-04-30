@@ -2,13 +2,15 @@
 
 namespace App\Domains\Travel\Jobs;
 
+use Carbon\CarbonImmutable;
+
 use App\Domains\Travel\Models\TourBooking;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\Factory as HttpClientFactory;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -17,10 +19,9 @@ use Psr\Log\LoggerInterface;
  * Schedules an instant video call with a tour guide.
  * Integration with video conferencing service (Zoom, Jitsi, or custom).
  */
-final readonly class ScheduleVideoCallWithGuideJob implements ShouldQueue
+final class ScheduleVideoCallWithGuideJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
+    public array $backoff = [60, 300, 900];
     public int $tries = 3;
     public int $timeout = 30;
 
@@ -30,13 +31,18 @@ final readonly class ScheduleVideoCallWithGuideJob implements ShouldQueue
         private readonly LoggerInterface $logger,
     ) {}
 
-    public function handle(): void
+    public function tags(): array
+    {
+        return ['travel', 'job'];
+    }
+
+    public function handle(HttpClientFactory $http): void
     {
         $booking = TourBooking::with('tour')->findOrFail($this->bookingId);
 
-        $scheduledTime = $booking->video_call_time ?? now()->addHours(24);
+        $scheduledTime = $booking->video_call_time ?? \Carbon\CarbonImmutable::now()->addHours(24);
 
-        $response = Http::timeout(10)->post(config('services.video_call.endpoint'), [
+        $response = $http->timeout(10)->post(config('services.video_call.endpoint'), [
             'booking_id' => $booking->id,
             'user_id' => $booking->user_id,
             'tour_id' => $booking->tour_id,

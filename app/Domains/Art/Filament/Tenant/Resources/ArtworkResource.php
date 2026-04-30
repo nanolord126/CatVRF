@@ -1,8 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Filament\Tenant\Resources;
 
+use Illuminate\Support\Collection;
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Art\Models\Artwork;
@@ -17,13 +19,16 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use Illuminate\Database\DatabaseManager;
 
 final class ArtworkResource extends Resource
 {
-    public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
-
     protected static ?string $model = Artwork::class;
+
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
     public static function form(Form $form): Form
     {
@@ -103,7 +108,7 @@ final class ArtworkResource extends Resource
             TextColumn::make('tags')->label('Теги')->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', array_keys($state)) : '—')->limit(30)->toggleable(),
             TextColumn::make('meta.dimensions')
                 ->label('Размеры')
-                ->state(fn (Artwork $record) => collect(data_get($record->meta, 'dimensions', []))->map(fn ($item) => trim(($item['width'] ?? '') . 'x' . ($item['height'] ?? '')))->filter()->implode('; '))
+                ->state(fn (Artwork $record) => new Collection(data_get($record->meta, 'dimensions', []))->map(fn ($item) => trim(($item['width'] ?? '').'x'.($item['height'] ?? '')))->filter()->implode('; '))
                 ->toggleable(),
             TextColumn::make('correlation_id')->label('Correlation')->copyable(),
             TextColumn::make('created_at')->label('Создан')->dateTime()->sortable(),
@@ -129,12 +134,12 @@ final class ArtworkResource extends Resource
                         $correlationId = (string) Str::uuid();
                         $this->db->transaction(static function () use ($record, $correlationId): void {
                             $record->update([
-                                'is_visible' => !$record->is_visible,
+                                'is_visible' => ! $record->is_visible,
                                 'correlation_id' => $record->correlation_id ?: $correlationId,
                             ]);
                         });
 
-                        $this->logger->info('Artwork visibility toggled from Filament', [
+                        $this->logger->$this->logger->info('Artwork visibility toggled from Filament', [
                             'artwork_id' => $record->id,
                             'new_state' => $record->is_visible,
                             'correlation_id' => $record->correlation_id ?: $correlationId,

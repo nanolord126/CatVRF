@@ -19,34 +19,34 @@ interface PropertySearchServiceInterface
      * @return Collection<int, Property>
      */
     public function search(
-        ?string           $query,
+        ?string $query,
         ?PropertyTypeEnum $type,
-        ?int              $minPriceKopecks,
-        ?int              $maxPriceKopecks,
-        ?float            $minAreaSqm,
-        ?int              $rooms,
-        ?float            $lat,
-        ?float            $lon,
-        ?int              $radiusMeters,
-        int               $tenantId,
-        int               $perPage,
-        int               $page,
+        ?int $minPriceKopecks,
+        ?int $maxPriceKopecks,
+        ?float $minAreaSqm,
+        ?int $rooms,
+        ?float $lat,
+        ?float $lon,
+        ?int $radiusMeters,
+        int $tenantId,
+        int $perPage,
+        int $page,
     ): Collection;
 
     /**
      * Count results for pagination metadata.
      */
     public function count(
-        ?string           $query,
+        ?string $query,
         ?PropertyTypeEnum $type,
-        ?int              $minPriceKopecks,
-        ?int              $maxPriceKopecks,
-        ?float            $minAreaSqm,
-        ?int              $rooms,
-        ?float            $lat,
-        ?float            $lon,
-        ?int              $radiusMeters,
-        int               $tenantId,
+        ?int $minPriceKopecks,
+        ?int $maxPriceKopecks,
+        ?float $minAreaSqm,
+        ?int $rooms,
+        ?float $lat,
+        ?float $lon,
+        ?int $radiusMeters,
+        int $tenantId,
     ): int;
 
     /**
@@ -57,8 +57,8 @@ interface PropertySearchServiceInterface
     public function findNearby(
         float $lat,
         float $lon,
-        int   $radiusMeters,
-        int   $tenantId,
-        int   $limit = 10,
+        int $radiusMeters,
+        int $tenantId,
+        int $limit = 10,
     ): Collection;
 }

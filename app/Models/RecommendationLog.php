@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Builder;
 
 final class RecommendationLog extends Model
 {
@@ -42,17 +43,17 @@ final class RecommendationLog extends Model
 
     // --- Scopes ---
 
-    public function scopeForTenant(\Illuminate\Database\Eloquent\Builder $query, int $tenantId): \Illuminate\Database\Eloquent\Builder
+    public function scopeForTenant(Builder $query, int $tenantId): Builder
     {
         return $query->where('tenant_id', $tenantId);
     }
 
-    public function scopeForVertical(\Illuminate\Database\Eloquent\Builder $query, string $vertical): \Illuminate\Database\Eloquent\Builder
+    public function scopeForVertical(Builder $query, string $vertical): Builder
     {
         return $query->where('vertical', $vertical);
     }
 
-    public function scopeByCorrelation(\Illuminate\Database\Eloquent\Builder $query, string $correlationId): \Illuminate\Database\Eloquent\Builder
+    public function scopeByCorrelation(Builder $query, string $correlationId): Builder
     {
         return $query->where('correlation_id', $correlationId);
     }

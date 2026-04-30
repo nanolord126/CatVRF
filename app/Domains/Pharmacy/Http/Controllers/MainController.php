@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * MainController — CatVRF 2026 Component.
@@ -7,34 +9,36 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/maincontroller
  */
 
-
 namespace App\Domains\Pharmacy\Http\Controllers;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 
 final class MainController extends Controller
 {
-
     public function __construct(private readonly PharmacyService $service) {}
 
-        public function index(Request $request): JsonResponse
-        {
-            $correlationId = (string) Str::uuid();
-            try {
-                $isB2B = $request->has('inn') && $request->has('business_card_id');
-                return new \Illuminate\Http\JsonResponse(['data' => [], 'b2b' => $isB2B, 'correlation_id' => $correlationId]);
-            } catch (\Throwable $e) {
-                return new \Illuminate\Http\JsonResponse(['error' => $e->getMessage()], 500);
-            }
+    public function index(Request $request): JsonResponse
+    {
+        $correlationId = (string) Str::uuid();
+        try {
+            $isB2B = $request->has('inn') && $request->has('business_card_id');
+
+            return new \Illuminate\Http\JsonResponse(['data' => [], 'b2b' => $isB2B, 'correlation_id' => $correlationId]);
+        } catch (\Throwable $e) {
+            return new \Illuminate\Http\JsonResponse(['error' => $e->getMessage()], 500);
         }
+    }
 
     /**
      * Get the string representation of this instance.
@@ -43,7 +47,7 @@ final class MainController extends Controller
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -54,8 +58,8 @@ final class MainController extends Controller
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

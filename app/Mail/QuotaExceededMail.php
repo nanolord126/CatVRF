@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Mail;
 
@@ -14,16 +16,18 @@ use Illuminate\Queue\SerializesModels;
  * Production 2026 CANON - Quota Alert System
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final readonly class QuotaExceededMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable;
+    use SerializesModels;
 
     public function __construct(
-        private int $tenantId,
-        private string $resourceType,
-        private array $quotaData,
+        private readonly int $tenantId,
+        private readonly string $resourceType,
+        private readonly array $quotaData,
     ) {}
 
     public function envelope(): Envelope

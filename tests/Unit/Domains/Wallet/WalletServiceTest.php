@@ -1,64 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Wallet;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for WalletService.
- *
- * @covers \App\Domains\Wallet\Domain\Services\WalletService
- */
-final class WalletServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Wallet\Domain\Services\WalletService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'WalletService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Wallet\Domain\Services\WalletService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'WalletService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Wallet');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Wallet\Domain\Services\WalletService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'WalletService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('WalletService exists and is instantiable', function () {
+    $this->assertServiceExists('WalletService');
+});
 
-    public function test_credit_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Wallet\Domain\Services\WalletService::class, 'credit'),
-            'WalletService must implement credit()'
-        );
-    }
+test('WalletService follows clean architecture', function () {
+    $this->assertCleanArchitecture('WalletService');
+});
 
-    public function test_debit_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Wallet\Domain\Services\WalletService::class, 'debit'),
-            'WalletService must implement debit()'
-        );
-    }
+test('WalletService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('WalletService', 'process', []);
+});
 
-    public function test_hold_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Wallet\Domain\Services\WalletService::class, 'hold'),
-            'WalletService must implement hold()'
-        );
-    }
+test('WalletService enforces quota limits', function () {
+    $this->testServiceWithQuota('WalletService', 'process', 1, 10, []);
+});
 
-}
+test('WalletService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('WalletService'));
+        $service->process([]);
+    }, 10);
+});
+
+test('WalletService has proper caching', function () {
+    $cacheKey = 'wallet:data:1';
+
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('WalletService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('WalletService dispatches proper events', function () {
+    $eventClass = "App\Domains\Wallet\Events\WalletProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('WalletService'));
+        $service->process([]);
+    });
+});
+
+test('WalletService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Wallet\Jobs\ProcessWalletJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('WalletService'));
+        $service->processAsync([]);
+    });
+});
+
+test('WalletService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('WalletService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('WalletService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('WalletService'));
+        $service->process([]);
+    }, 'WalletService processed');
+});
+
+test('WalletService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

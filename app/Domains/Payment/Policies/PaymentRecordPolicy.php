@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\Payment\Policies;
 
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
 use App\Domains\Payment\Models\PaymentRecord;
 use App\Models\User;
 
@@ -18,6 +20,10 @@ final class PaymentRecordPolicy
     /**
      * Может ли пользователь просматривать список платежей.
      */
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return $user->tenant_id !== null;
@@ -26,7 +32,7 @@ final class PaymentRecordPolicy
     /**
      * Может ли пользователь просматривать конкретный платёж.
      */
-    public function view(User $user, PaymentRecord $record): bool
+    public function $this->viewFactory->make(User $user, PaymentRecord $record): bool
     {
         if ($user->tenant_id !== $record->tenant_id) {
             return false;

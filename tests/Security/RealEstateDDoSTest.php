@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Security;
 
@@ -12,53 +14,41 @@ final class RealEstateDDoSTest extends SecurityTestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Tenant $tenant;
+
     private Property $property;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->property = Property::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'type' => 'apartment',
-            'area_sqm' => 75.5,
-            'price' => 10000000.00,
-        ]);
-    }
 
     public function test_property_search_ddos_blocked(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 100; $i++) {
             $responses[] = $this->actingAs($this->user)
-                ->getJson('/api/real-estate/properties/search?q=test' . $i);
+                ->getJson('/api/real-estate/properties/search?q=test'.$i);
         }
 
-        $rateLimitedCount = collect($responses)->filter(fn($r) => $r->status() === 429)->count();
+        $rateLimitedCount = collect($responses)->filter(fn ($r) => $r->status() === 429)->count();
         $this->assertGreaterThan(20, $rateLimitedCount, 'Search DDoS should trigger rate limiting');
     }
 
     public function test_property_detail_ddos_blocked(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 50; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->getJson("/api/real-estate/properties/{$this->property->id}");
         }
 
-        $rateLimitedCount = collect($responses)->filter(fn($r) => $r->status() === 429)->count();
+        $rateLimitedCount = collect($responses)->filter(fn ($r) => $r->status() === 429)->count();
         $this->assertGreaterThan(10, $rateLimitedCount, 'Property detail DDoS should trigger rate limiting');
     }
 
     public function test_scoring_endpoint_ddos_blocked(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 30; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->postJson('/api/real-estate/scoring', [
@@ -68,7 +58,7 @@ final class RealEstateDDoSTest extends SecurityTestCase
                 ]);
         }
 
-        $rateLimitedCount = collect($responses)->filter(fn($r) => $r->status() === 429)->count();
+        $rateLimitedCount = collect($responses)->filter(fn ($r) => $r->status() === 429)->count();
         $this->assertGreaterThan(5, $rateLimitedCount, 'Scoring DDoS should trigger rate limiting');
     }
 
@@ -82,14 +72,14 @@ final class RealEstateDDoSTest extends SecurityTestCase
         ];
 
         $totalRateLimited = 0;
-        
+
         foreach ($endpoints as $endpoint) {
             $responses = [];
             for ($i = 0; $i < 25; $i++) {
                 $responses[] = $this->actingAs($this->user)
                     ->getJson($endpoint);
             }
-            $totalRateLimited += collect($responses)->filter(fn($r) => $r->status() === 429)->count();
+            $totalRateLimited += collect($responses)->filter(fn ($r) => $r->status() === 429)->count();
         }
 
         $this->assertGreaterThan(15, $totalRateLimited, 'API flooding should trigger rate limiting across endpoints');
@@ -98,34 +88,34 @@ final class RealEstateDDoSTest extends SecurityTestCase
     public function test_concurrent_requests_ddos_mitigated(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 20; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->getJson("/api/real-estate/properties/{$this->property->id}");
         }
 
-        $successfulCount = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
+        $successfulCount = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
         $this->assertLessThan(15, $successfulCount, 'Concurrent requests should be throttled');
     }
 
     public function test_ip_based_rate_limiting(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 40; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->withHeader('X-Forwarded-For', '192.168.1.100')
                 ->getJson('/api/real-estate/properties');
         }
 
-        $rateLimitedCount = collect($responses)->filter(fn($r) => $r->status() === 429)->count();
+        $rateLimitedCount = collect($responses)->filter(fn ($r) => $r->status() === 429)->count();
         $this->assertGreaterThan(10, $rateLimitedCount, 'IP-based rate limiting should work');
     }
 
     public function test_user_based_rate_limiting(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 35; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->postJson('/api/real-estate/inquiries', [
@@ -134,7 +124,7 @@ final class RealEstateDDoSTest extends SecurityTestCase
                 ]);
         }
 
-        $rateLimitedCount = collect($responses)->filter(fn($r) => $r->status() === 429)->count();
+        $rateLimitedCount = collect($responses)->filter(fn ($r) => $r->status() === 429)->count();
         $this->assertGreaterThan(8, $rateLimitedCount, 'User-based rate limiting should work');
     }
 
@@ -153,28 +143,28 @@ final class RealEstateDDoSTest extends SecurityTestCase
             }
         }
 
-        $rateLimitedCount = collect($responses)->filter(fn($r) => $r->status() === 429)->count();
+        $rateLimitedCount = collect($responses)->filter(fn ($r) => $r->status() === 429)->count();
         $this->assertGreaterThan(20, $rateLimitedCount, 'Tenant-level DDoS protection should activate');
     }
 
     public function test_slowloris_attack_prevention(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 15; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->withHeader('Connection', 'keep-alive')
                 ->getJson('/api/real-estate/properties');
         }
 
-        $rateLimitedCount = collect($responses)->filter(fn($r) => $r->status() === 429)->count();
+        $rateLimitedCount = collect($responses)->filter(fn ($r) => $r->status() === 429)->count();
         $this->assertGreaterThan(3, $rateLimitedCount, 'Slowloris-like connections should be rate-limited');
     }
 
     public function test_burst_request_limiting(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 50; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->getJson('/api/real-estate/properties');
@@ -182,7 +172,7 @@ final class RealEstateDDoSTest extends SecurityTestCase
 
         $burstCount = 0;
         $consecutiveSuccess = 0;
-        
+
         foreach ($responses as $response) {
             if ($response->status() === 200) {
                 $consecutiveSuccess++;
@@ -200,14 +190,14 @@ final class RealEstateDDoSTest extends SecurityTestCase
     public function test_ddos_retry_after_header(): void
     {
         $responses = [];
-        
+
         for ($i = 0; $i < 30; $i++) {
             $responses[] = $this->actingAs($this->user)
                 ->getJson('/api/real-estate/properties');
         }
 
-        $rateLimitedResponses = collect($responses)->filter(fn($r) => $r->status() === 429);
-        
+        $rateLimitedResponses = collect($responses)->filter(fn ($r) => $r->status() === 429);
+
         foreach ($rateLimitedResponses as $response) {
             $this->assertNotNull($response->headers->get('Retry-After'), 'Rate limited response should include Retry-After header');
         }
@@ -217,11 +207,11 @@ final class RealEstateDDoSTest extends SecurityTestCase
     {
         $tenants = [];
         $usersPerTenant = [];
-        
+
         for ($i = 0; $i < 5; $i++) {
             $tenants[] = Tenant::factory()->create();
             $usersPerTenant[$i] = [];
-            
+
             for ($j = 0; $j < 5; $j++) {
                 $usersPerTenant[$i][] = User::factory()->create(['tenant_id' => $tenants[$i]->id]);
             }
@@ -237,7 +227,21 @@ final class RealEstateDDoSTest extends SecurityTestCase
             }
         }
 
-        $rateLimitedCount = collect($responses)->filter(fn($r) => $r->status() === 429)->count();
+        $rateLimitedCount = collect($responses)->filter(fn ($r) => $r->status() === 429)->count();
         $this->assertGreaterThan(25, $rateLimitedCount, 'Distributed DDoS should be detected and mitigated');
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $this->property = Property::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'type' => 'apartment',
+            'area_sqm' => 75.5,
+            'price' => 10000000.00,
+        ]);
     }
 }

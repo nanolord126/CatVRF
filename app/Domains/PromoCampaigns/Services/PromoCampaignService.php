@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\PromoCampaigns\Services;
 
+use Carbon\CarbonImmutable;
 
 use Psr\Log\LoggerInterface;
 use App\Domains\PromoCampaigns\DTOs\DiscountResult;
@@ -16,7 +17,8 @@ use App\Domains\PromoCampaigns\Models\PromoUse;
 use App\Services\FraudControlService;
 use App\Services\WalletService;
 use Illuminate\Support\Collection;
-use Throwable;
+use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Исключительно массивный и центральный оркестратор маркетинговых промо-кампаний (PromoCampaignService).
@@ -31,20 +33,20 @@ final readonly class PromoCampaignService
     /**
      * Безусловный конструктор с внедрением требуемых защищенных зависимостей.
      */
-    public function __construct(private FraudControlService $fraud,
-        private WalletService $walletService,
-        private \Illuminate\Contracts\Cache\Repository $cache,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {
-
-    }
+    public function __construct(
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $walletService,
+        private readonly Repository $cache,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Абсолютно безопасно регистрирует новую маркетинговую акцию в системе.
      *
-     * @param array<string, mixed> $data Строго проверенные данные Форм-реквеста.
-     * @param int $tenantId ИД изолированного тенанта.
-     * @param int $userId ИД пользователя-создателя (овнера или менеджера).
-     * @param string $correlationId
+     * @param  array<string, mixed>  $data  Строго проверенные данные Форм-реквеста.
+     * @param  int  $tenantId  ИД изолированного тенанта.
+     * @param  int  $userId  ИД пользователя-создателя (овнера или менеджера).
      * @return PromoCampaign Свежесозданная сущность-акция.
      */
     public function createCampaign(array $data, int $tenantId, int $userId, string $correlationId): PromoCampaign
@@ -64,10 +66,10 @@ final readonly class PromoCampaignService
                 'user_id' => $userId,
                 'details' => ['initial_budget' => $campaign->budget],
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
+                'created_at' => CarbonImmutable::now(),
             ]);
 
-            $this->logger->info('Категорически успешное создание промо-кампании', [
+            $this->logger->$this->logger->info('Категорически успешное создание промо-кампании', [
                 'campaign_id' => $campaign->id,
                 'code' => $campaign->code,
                 'correlation_id' => $correlationId,
@@ -84,11 +86,10 @@ final readonly class PromoCampaignService
     /**
      * Безусловно валидирует применимость кода ДО фактического применения к сущности Cart/Order.
      *
-     * @param string $code Маркетинговый код.
-     * @param int $tenantId Контекст бизнеса.
-     * @param int $userId Покупатель.
-     * @param int $cartSubtotal Сумма корзины до скидок (в копейках).
-     * @param string $correlationId
+     * @param  string  $code  Маркетинговый код.
+     * @param  int  $tenantId  Контекст бизнеса.
+     * @param  int  $userId  Покупатель.
+     * @param  int  $cartSubtotal  Сумма корзины до скидок (в копейках).
      * @return ValidationResult Исключительно точный ответ.
      */
     public function validatePromo(string $code, int $tenantId, int $userId, int $cartSubtotal, string $correlationId): ValidationResult
@@ -99,11 +100,11 @@ final readonly class PromoCampaignService
             ->where('status', PromoStatus::ACTIVE)
             ->first();
 
-        if (!$campaign) {
+        if (! $campaign) {
             return new ValidationResult(false, 'Промокод не найден или категорически неактивен', null);
         }
 
-        if (now()->lessThan($campaign->start_at) || now()->greaterThan($campaign->end_at)) {
+        if (CarbonImmutable::now()->lessThan($campaign->start_at) || CarbonImmutable::now()->greaterThan($campaign->end_at)) {
             return new ValidationResult(false, 'Безусловный срок действия акции истек или еще не начался', null);
         }
 
@@ -145,13 +146,11 @@ final readonly class PromoCampaignService
      * Категорически применяет скидку, списывает бюджет акции и генерирует аудит.
      * Требует строгой изоляции внутри транзакции.
      *
-     * @param string $code Секретный код.
-     * @param int $tenantId Идентификатор тенанта.
-     * @param int $userId Идентификатор юзера.
-     * @param int $orderId Идентификатор оформляемого заказа или брони (сгенерированный заранее).
-     * @param int $cartSubtotal Оригинальная сумма (в копейках).
-     * @param string $correlationId
-     * @return DiscountResult
+     * @param  string  $code  Секретный код.
+     * @param  int  $tenantId  Идентификатор тенанта.
+     * @param  int  $userId  Идентификатор юзера.
+     * @param  int  $orderId  Идентификатор оформляемого заказа или брони (сгенерированный заранее).
+     * @param  int  $cartSubtotal  Оригинальная сумма (в копейках).
      */
     public function applyPromo(
         string $code,
@@ -174,7 +173,7 @@ final readonly class PromoCampaignService
 
             // 3. Повторная строгая валидация под локом (чтобы исключить гонки)
             $validation = $this->validatePromo($code, $tenantId, $userId, $cartSubtotal, $correlationId);
-            if (!$validation->isValid || $validation->calculatedDiscount === null) {
+            if (! $validation->isValid || $validation->calculatedDiscount === null) {
                 return new DiscountResult(false, $cartSubtotal, 0, $cartSubtotal, $validation->message);
             }
 
@@ -188,12 +187,12 @@ final readonly class PromoCampaignService
                 'order_id' => $orderId,
                 'discount_amount' => $discountAmount,
                 'correlation_id' => $correlationId,
-                'used_at' => now(),
+                'used_at' => CarbonImmutable::now(),
             ]);
 
             // 5. Жесткое инкрементирование потраченного бюджета
             $campaign->spent_budget += $discountAmount;
-            
+
             if ($campaign->spent_budget >= $campaign->budget) {
                 $campaign->status = PromoStatus::EXHAUSTED;
                 PromoAuditLog::create([
@@ -202,7 +201,7 @@ final readonly class PromoCampaignService
                     'user_id' => $userId,
                     'details' => ['spent' => $campaign->spent_budget],
                     'correlation_id' => $correlationId,
-                    'created_at' => now(),
+                    'created_at' => CarbonImmutable::now(),
                 ]);
             }
             $campaign->save();
@@ -213,10 +212,10 @@ final readonly class PromoCampaignService
                 'user_id' => $userId,
                 'details' => ['order_id' => $orderId, 'discount' => $discountAmount],
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
+                'created_at' => CarbonImmutable::now(),
             ]);
 
-            $this->logger->info('Безусловное применение промокода с жестким списанием бюджета', [
+            $this->logger->$this->logger->info('Безусловное применение промокода с жестким списанием бюджета', [
                 'campaign_id' => $campaign->id,
                 'user_id' => $userId,
                 'discount' => $discountAmount,
@@ -238,10 +237,8 @@ final readonly class PromoCampaignService
      * Бескомпромиссно отменяет применение промокода (например, при отмене заказа),
      * с возвратом холдированного бюджета обратно в кампанию.
      *
-     * @param string $useId ИД использования.
-     * @param int $userId ИД клиента/менеджера.
-     * @param string $correlationId
-     * @return bool
+     * @param  string  $useId  ИД использования.
+     * @param  int  $userId  ИД клиента/менеджера.
      */
     public function cancelPromoUse(string $useId, int $userId, string $correlationId): bool
     {
@@ -256,10 +253,10 @@ final readonly class PromoCampaignService
 
             // Возврат бюджета
             $campaign->spent_budget -= $promoUse->discount_amount;
-            
+
             // Если бюджет был исчерпан, но вернулся - возобновляем (если сроки живы)
             if ($campaign->status === PromoStatus::EXHAUSTED && $campaign->spent_budget < $campaign->budget) {
-                if (now()->lessThan($campaign->end_at)) {
+                if (CarbonImmutable::now()->lessThan($campaign->end_at)) {
                     $campaign->status = PromoStatus::ACTIVE;
                 }
             }
@@ -271,10 +268,10 @@ final readonly class PromoCampaignService
                 'user_id' => $userId,
                 'details' => ['restored_amount' => $promoUse->discount_amount],
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
+                'created_at' => CarbonImmutable::now(),
             ]);
 
-            $this->logger->info('Исключительный возврат реферально/промо бюджета кампании', [
+            $this->logger->$this->logger->info('Исключительный возврат реферально/промо бюджета кампании', [
                 'campaign_id' => $campaign->id,
                 'use_id' => $promoUse->id,
                 'amount' => $promoUse->discount_amount,
@@ -289,10 +286,6 @@ final readonly class PromoCampaignService
 
     /**
      * Вытягивает из Redis кэша список абсолютно активных кампаний тенанта.
-     *
-     * @param int $tenantId
-     * @param string $vertical
-     * @return Collection
      */
     public function getActiveCampaigns(int $tenantId, string $vertical = 'all'): Collection
     {
@@ -301,8 +294,8 @@ final readonly class PromoCampaignService
         return $this->cache->remember($cacheKey, 300, function () use ($tenantId, $vertical) {
             $query = PromoCampaign::where('tenant_id', $tenantId)
                 ->where('status', PromoStatus::ACTIVE)
-                ->where('start_at', '<=', now())
-                ->where('end_at', '>=', now());
+                ->where('start_at', '<=', CarbonImmutable::now())
+                ->where('end_at', '>=', CarbonImmutable::now());
 
             if ($vertical !== 'all') {
                 $query->whereJsonContains('applicable_verticals', $vertical);
@@ -312,10 +305,6 @@ final readonly class PromoCampaignService
         });
     }
 
-    /**
-     * @param int $tenantId
-     * @param string $vertical
-     */
     private function invalidateActiveCampaignsCache(int $tenantId, string $vertical): void
     {
         $this->cache->forget("promo:active:tenant:{$tenantId}:vertical:{$vertical}");
@@ -328,7 +317,7 @@ final readonly class PromoCampaignService
     private function calculateDiscountLogic(PromoCampaign $campaign, int $subtotal): int
     {
         return match ($campaign->type) {
-            PromoType::DISCOUNT_PERCENT => (int) round($subtotal * ((int)$campaign->description / 100)), // description хранит процент в данной реализации
+            PromoType::DISCOUNT_PERCENT => (int) round($subtotal * ((int) $campaign->description / 100)), // description хранит процент в данной реализации
             PromoType::FIXED_AMOUNT => (int) $campaign->description, // description хранит копейки
             PromoType::GIFT_CARD => (int) $campaign->description, // аналогично фиксу
             default => 0, // bundle и buy_x_get_y требуют сложной логики парсинга корзины (внешний резолвер)

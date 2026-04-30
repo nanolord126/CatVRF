@@ -6,7 +6,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Tenant;
-use Illuminate\Support\Str;
 
 /**
  * Медицинская вертикаль (НЕ ЗАПУСКАТЬ В PRODUCTION).
@@ -33,7 +32,7 @@ final class ClinicVerticalSeeder extends Seeder
 
         foreach ($tenants as $tData) {
             $tenant = Tenant::find($tData['id']);
-            if (!$tenant) {
+            if (! $tenant) {
                 $tenant = Tenant::create([
                     'id' => $tData['id'],
                     'name' => $tData['name'],
@@ -47,7 +46,7 @@ final class ClinicVerticalSeeder extends Seeder
             // 2. Создание Врачей/Персонала
             $doctorEmail = "doctor@{$tData['id']}.local";
             $doctor = User::where('email', $doctorEmail)->first();
-            if (!$doctor) {
+            if (! $doctor) {
                 $doctor = User::create([
                     'name' => $tData['type'] === 'clinic' ? 'Dr. Gregory House' : 'Dr. Dolittle',
                     'email' => $doctorEmail,
@@ -79,17 +78,17 @@ final class ClinicVerticalSeeder extends Seeder
                             'status' => 'scheduled',
                             'created_at' => now(),
                             'updated_at' => now(),
-                        ]
+                        ],
                     ]);
                 }
             }
 
             // 4. Клиническая инфраструктура (clinics_vertical_tables если есть)
             if (Schema::hasTable('clinic_rooms')) {
-                 DB::table('clinic_rooms')->insertOrIgnore([
+                DB::table('clinic_rooms')->insertOrIgnore([
                     ['name' => 'Room 101', 'type' => 'consultation'],
                     ['name' => 'Surgery A', 'type' => 'operating'],
-                 ]);
+                ]);
             }
 
             tenancy()->end();

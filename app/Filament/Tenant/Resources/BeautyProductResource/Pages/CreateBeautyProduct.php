@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreateBeautyProduct — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createbeautyproduct
  * @see https://catvrf.ru/docs/createbeautyproduct
  * @see https://catvrf.ru/docs/createbeautyproduct
@@ -31,23 +34,15 @@
  * @see https://catvrf.ru/docs/createbeautyproduct
  */
 
-
 namespace App\Filament\Tenant\Resources\BeautyProductResource\Pages;
+
+use Carbon\CarbonImmutable;
 
 use Filament\Resources\Pages\CreateRecord;
 
 final class CreateBeautyProduct extends CreateRecord
 {
-
     protected static string $resource = BeautyProductResource::class;
-
-        protected function mutateFormDataBeforeCreate(array $data): array
-        {
-            $data['tenant_id'] = filament()->getTenant()->id;
-            $data['uuid'] = Str::uuid()->toString();
-            $data['correlation_id'] = Str::uuid()->toString();
-            return $data;
-        }
 
     /**
      * Get the string representation of this instance.
@@ -56,7 +51,7 @@ final class CreateBeautyProduct extends CreateRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -67,8 +62,17 @@ final class CreateBeautyProduct extends CreateRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['tenant_id'] = filament()->getTenant()->id;
+        $data['uuid'] = Str::uuid()->toString();
+        $data['correlation_id'] = Str::uuid()->toString();
+
+        return $data;
     }
 }

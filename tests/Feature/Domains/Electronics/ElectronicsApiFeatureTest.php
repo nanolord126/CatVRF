@@ -1,13 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Domains\Electronics;
 
 use App\Domains\Electronics\Models\ElectronicProduct;
 use App\Domains\Electronics\Models\ElectronicOrder;
-use App\Domains\Electronics\Models\ElectronicsStore;
-use App\Domains\Electronics\Models\ElectronicsCategory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\BaseTestCase;
+use App\Models\User;
 
 final class ElectronicsApiFeatureTest extends BaseTestCase
 {
@@ -254,6 +255,6 @@ final class ElectronicsApiFeatureTest extends BaseTestCase
 
     protected function createUser()
     {
-        return \App\Models\User::factory()->create();
+        return User::factory()->create();
     }
 }

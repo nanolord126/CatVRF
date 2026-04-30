@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +14,20 @@ use Illuminate\Support\Str;
 
 final class TaxiDriverWallet extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
+    use TenantScoped;
+
+    /**
+     * Статусы кошелька.
+     */
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_FROZEN = 'frozen';
+
+    public const STATUS_BLOCKED = 'blocked';
+
+    public const STATUS_CLOSED = 'closed';
 
     protected $table = 'taxi_driver_wallets';
 
@@ -30,7 +46,7 @@ final class TaxiDriverWallet extends Model
         'last_withdrawal_at',
         'correlation_id',
         'metadata',
-        'tags'
+        'tags',
     ];
 
     protected $casts = [
@@ -45,34 +61,6 @@ final class TaxiDriverWallet extends Model
     ];
 
     protected $hidden = ['metadata'];
-
-    /**
-     * Статусы кошелька.
-     */
-    public const STATUS_ACTIVE = 'active';
-    public const STATUS_FROZEN = 'frozen';
-    public const STATUS_BLOCKED = 'blocked';
-    public const STATUS_CLOSED = 'closed';
-
-    protected static function booted(): void
-    {
-        static::creating(function (TaxiDriverWallet $wallet) {
-            $wallet->uuid = $wallet->uuid ?? (string) Str::uuid();
-            $wallet->tenant_id = $wallet->tenant_id ?? (tenant()->id ?? 1);
-            $wallet->status = $wallet->status ?? self::STATUS_ACTIVE;
-            $wallet->balance_kopeki = $wallet->balance_kopeki ?? 0;
-            $wallet->frozen_kopeki = $wallet->frozen_kopeki ?? 0;
-            $wallet->total_earned_kopeki = $wallet->total_earned_kopeki ?? 0;
-            $wallet->total_withdrawn_kopeki = $wallet->total_withdrawn_kopeki ?? 0;
-            $wallet->correlation_id = $wallet->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            if (tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
 
     /**
      * Отношения.
@@ -216,5 +204,25 @@ final class TaxiDriverWallet extends Model
     public function markAsBlocked(): void
     {
         $this->update(['status' => self::STATUS_BLOCKED]);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (TaxiDriverWallet $wallet) {
+            $wallet->uuid = $wallet->uuid ?? (string) Str::uuid();
+            $wallet->tenant_id = $wallet->tenant_id ?? (tenant()->id ?? 1);
+            $wallet->status = $wallet->status ?? self::STATUS_ACTIVE;
+            $wallet->balance_kopeki = $wallet->balance_kopeki ?? 0;
+            $wallet->frozen_kopeki = $wallet->frozen_kopeki ?? 0;
+            $wallet->total_earned_kopeki = $wallet->total_earned_kopeki ?? 0;
+            $wallet->total_withdrawn_kopeki = $wallet->total_withdrawn_kopeki ?? 0;
+            $wallet->correlation_id = $wallet->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            if (tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

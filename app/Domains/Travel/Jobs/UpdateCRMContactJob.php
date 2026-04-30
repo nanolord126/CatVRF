@@ -17,10 +17,9 @@ use Psr\Log\LoggerInterface;
  * Syncs booking status changes to CRM system (HubSpot, Salesforce, AmoCRM, or custom).
  * Ensures CRM has up-to-date information at every stage: booking, check-in, review.
  */
-final readonly class UpdateCRMContactJob implements ShouldQueue
+final class UpdateCRMContactJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
+    public array $backoff = [60, 300, 900];
     public int $tries = 3;
     public int $timeout = 30;
 
@@ -56,7 +55,7 @@ final readonly class UpdateCRMContactJob implements ShouldQueue
         try {
             $crmContactId = $crm->updateOrCreateContact($crmData);
 
-            if ($crmContactId && !$booking->user->crm_contact_id) {
+            if ($crmContactId !== null && !$booking->user->crm_contact_id) {
                 $booking->user->update(['crm_contact_id' => $crmContactId]);
             }
 

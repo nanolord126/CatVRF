@@ -6,16 +6,17 @@ namespace App\Services\AI\Prompts;
 
 /**
  * Prompt builder for Collectibles AI
- * 
+ *
  * Vertical: collectibles
  * Type: ai_constructor
- * 
+ *
  * Generates prompts for AI-powered features in Collectibles vertical.
  */
 final class CollectiblesPromptBuilder extends AbstractPromptBuilder
 {
-    protected string $version = '1.0.0';
-    protected array $metadata = [
+    protected readonly string $version = '1.0.0';
+
+    protected readonly array $metadata = [
         'vertical' => 'collectibles',
         'type' => 'ai_constructor',
         'description' => 'AI constructor for Collectibles vertical',
@@ -24,7 +25,7 @@ final class CollectiblesPromptBuilder extends AbstractPromptBuilder
 
     public function getSystemPrompt(array $context = []): string
     {
-        $prompt = <<<PROMPT
+        $prompt = <<<'PROMPT'
 Ты — эксперт в вертикали Collectibles. 
 Твоя задача — анализировать данные и предоставлять качественные рекомендации.
 
@@ -46,7 +47,7 @@ PROMPT;
 
     public function getUserPrompt(array $context = []): string
     {
-        $prompt = <<<PROMPT
+        $prompt = <<<'PROMPT'
 Проанализируй следующие данные:
 
 {{context_data}}
