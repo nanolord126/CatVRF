@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Education;
 
@@ -6,20 +8,21 @@ use App\Http\Controllers\Controller;
 use App\Domains\Education\Services\LiveClassService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 final readonly class LiveClassController extends Controller
 {
     public function __construct(
-        private LiveClassService $liveClassService,
+        private readonly LiveClassService $liveClassService,
     ) {}
 
     public function createSession(int $slotId, Request $request): JsonResponse
     {
-        $correlationId = $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
 
         $session = $this->liveClassService->createLiveSession($slotId, $correlationId);
 
-        return response()->json($session)
+        return new JsonResponse($session)
             ->header('X-Correlation-ID', $correlationId);
     }
 
@@ -30,23 +33,23 @@ final readonly class LiveClassController extends Controller
             'role' => ['required', 'in:teacher,student'],
         ]);
 
-        $correlationId = $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
         $userId = (int) $request->input('user_id');
         $role = $request->input('role');
 
         $result = $this->liveClassService->joinSession($sessionId, $userId, $role, $correlationId);
 
-        return response()->json($result)
+        return new JsonResponse($result)
             ->header('X-Correlation-ID', $correlationId);
     }
 
     public function startSession(string $sessionId, Request $request): JsonResponse
     {
-        $correlationId = $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
 
         $this->liveClassService->startSession($sessionId, $correlationId);
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Session started',
             'session_id' => $sessionId,
         ])
@@ -55,11 +58,11 @@ final readonly class LiveClassController extends Controller
 
     public function endSession(string $sessionId, Request $request): JsonResponse
     {
-        $correlationId = $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
 
         $this->liveClassService->endSession($sessionId, $correlationId);
 
-        return response()->json([
+        return new JsonResponse([
             'message' => 'Session ended',
             'session_id' => $sessionId,
         ])
@@ -74,14 +77,14 @@ final readonly class LiveClassController extends Controller
             'sender_type' => ['required', 'in:teacher,student,ai'],
         ]);
 
-        $correlationId = $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
         $userId = (int) $request->input('user_id');
         $message = $request->input('message');
         $senderType = $request->input('sender_type');
 
         $result = $this->liveClassService->sendChatMessage($sessionId, $userId, $message, $senderType, $correlationId);
 
-        return response()->json($result)
+        return new JsonResponse($result)
             ->header('X-Correlation-ID', $correlationId);
     }
 
@@ -91,7 +94,7 @@ final readonly class LiveClassController extends Controller
 
         $history = $this->liveClassService->getChatHistory($sessionId, $limit);
 
-        return response()->json([
+        return new JsonResponse([
             'session_id' => $sessionId,
             'messages' => $history,
             'count' => count($history),
@@ -104,12 +107,12 @@ final readonly class LiveClassController extends Controller
             'message' => ['required', 'string', 'max:1000'],
         ]);
 
-        $correlationId = $request->header('X-Correlation-ID') ?? (string) \Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid();
         $message = $request->input('message');
 
         $result = $this->liveClassService->triggerAIAssistance($sessionId, $message, $correlationId);
 
-        return response()->json($result)
+        return new JsonResponse($result)
             ->header('X-Correlation-ID', $correlationId);
     }
 }

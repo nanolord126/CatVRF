@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pages;
 
@@ -20,15 +22,6 @@ final class ListGifts extends ListRecords
         return 'Подарки';
     }
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make()
-                ->label('Добавить подарок')
-                ->icon('heroicon-m-plus'),
-        ];
-    }
-
     public function table(Table $table): Table
     {
         return $table
@@ -46,7 +39,7 @@ final class ListGifts extends ListRecords
                     ->sortable(),
                 TextColumn::make('price')
                     ->label('Цена')
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(fn (int $state): string => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable(),
                 TextColumn::make('business_group_id')
                     ->label('Бизнес-группа')
@@ -71,5 +64,14 @@ final class ListGifts extends ListRecords
             ])
             ->defaultSort('created_at', 'desc')
             ->striped();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Добавить подарок')
+                ->icon('heroicon-m-plus'),
+        ];
     }
 }

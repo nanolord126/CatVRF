@@ -16,6 +16,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Тесты Layer 4 (Requests) + Layer 5 (Resources) + Controller.
@@ -32,7 +34,7 @@ use ReflectionClass;
 final class InventoryHttpTest extends TestCase
 {
     /* ================================================================== */
-    /*  Providers                                                          */
+    /*  Providers */
     /* ================================================================== */
 
     /** @return list<array{class-string}> */
@@ -55,7 +57,7 @@ final class InventoryHttpTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Requests — structural                                              */
+    /*  Requests — structural */
     /* ================================================================== */
 
     #[Test]
@@ -70,7 +72,7 @@ final class InventoryHttpTest extends TestCase
     public function request_extends_form_request(string $class): void
     {
         $ref = new ReflectionClass($class);
-        self::assertTrue($ref->isSubclassOf(\Illuminate\Foundation\Http\FormRequest::class));
+        self::assertTrue($ref->isSubclassOf(FormRequest::class));
     }
 
     #[Test]
@@ -113,7 +115,7 @@ final class InventoryHttpTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  ReserveStockRequest — rules                                        */
+    /*  ReserveStockRequest — rules */
     /* ================================================================== */
 
     #[Test]
@@ -157,7 +159,7 @@ final class InventoryHttpTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  AdjustStockRequest — rules                                         */
+    /*  AdjustStockRequest — rules */
     /* ================================================================== */
 
     #[Test]
@@ -186,7 +188,7 @@ final class InventoryHttpTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Resources — structural                                             */
+    /*  Resources — structural */
     /* ================================================================== */
 
     #[Test]
@@ -201,7 +203,7 @@ final class InventoryHttpTest extends TestCase
     public function resource_extends_json_resource(string $class): void
     {
         $ref = new ReflectionClass($class);
-        self::assertTrue($ref->isSubclassOf(\Illuminate\Http\Resources\Json\JsonResource::class));
+        self::assertTrue($ref->isSubclassOf(JsonResource::class));
     }
 
     #[Test]
@@ -239,7 +241,7 @@ final class InventoryHttpTest extends TestCase
     }
 
     /* ================================================================== */
-    /*  Controller — structural                                            */
+    /*  Controller — structural */
     /* ================================================================== */
 
     #[Test]

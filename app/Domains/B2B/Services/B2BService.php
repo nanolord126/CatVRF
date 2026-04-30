@@ -1,26 +1,36 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\B2B\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\B2B\DTOs\CreateApiKeyDto;
 use App\Domains\B2B\DTOs\CreateOrderDto;
 use App\Domains\B2B\Models\BusinessGroup;
 use App\Domains\B2B\Models\B2BApiKey;
-use App\Services\FraudControlService;
+use App\Services\Fraud\FraudControlService;
 use App\Services\AuditService;
+use App\Traits\WithAuditLogging;
+use App\Traits\WithAnalyticsTracking;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Auth\Guard;
 use Carbon\CarbonInterface;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final readonly class B2BService
 {
+    use WithAuditLogging;
+    use WithAnalyticsTracking;
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
         private readonly AuditService $audit,
+        /** @var \App\Services\Fraud\FraudControlService */
         private readonly FraudControlService $fraud,
         private readonly Request $request,
         private readonly Guard $guard,
@@ -34,13 +44,21 @@ final readonly class B2BService
     {
         $correlationId ??= Str::uuid()->toString();
 
-        $this->fraud->check([
+        $fraudResult = $this->fraud->checkRequest([
             'operation_type' => 'b2b_api_key_create',
             'correlation_id' => $correlationId,
+            'user_id' => $this->guard->id(),
+            'tenant_id' => function_exists('tenant') && tenant() ? tenant()->id : 1,
+            'action' => 'b2b_api_key_create',
+            'ip_address' => request()->ip(),
         ]);
 
+        if ($fraudResult['should_block'] ?? false) {
+            throw new \RuntimeException('API key creation blocked by fraud detection');
+        }
+
         return $this->db->transaction(function () use ($dto, $correlationId) {
-            $rawKey = 'b2b_' . bin2hex(random_bytes(32));
+            $rawKey = 'b2b_'.bin2hex(random_bytes(32));
             $hashedKey = hash('sha256', $rawKey);
 
             $apiKey = B2BApiKey::create([
@@ -83,19 +101,19 @@ final readonly class B2BService
             ->active()
             ->first();
 
-        if (!$apiKey) {
-            throw new \Symfony\Component\HttpKernel\Exception\HttpException(401, 'Invalid B2B API key');
+        if (! $apiKey) {
+            throw new HttpException(401, 'Invalid B2B API key');
         }
 
         if ($apiKey->isExpired()) {
-            throw new \Symfony\Component\HttpKernel\Exception\HttpException(401, 'B2B API key expired');
+            throw new HttpException(401, 'B2B API key expired');
         }
 
-        if ($requiredPermission && !$apiKey->hasPermission($requiredPermission)) {
-            throw new \Symfony\Component\HttpKernel\Exception\HttpException(403, "Permission denied: {$requiredPermission}");
+        if ($requiredPermission && ! $apiKey->hasPermission($requiredPermission)) {
+            throw new HttpException(403, "Permission denied: {$requiredPermission}");
         }
 
-        $apiKey->update(['last_used_at' => $this->carbon->now(), 'last_ip' => $this->request->ip()]);
+        $apiKey->update(['last_used_at' => CarbonImmutable::now(), 'last_ip' => $this->request->ip()]);
 
         return $apiKey->businessGroup;
     }
@@ -135,17 +153,25 @@ final readonly class B2BService
 
         $total = $this->calculateTotal($dto->items);
 
-        $this->fraud->check([
+        $fraudResult = $this->fraud->checkRequest([
             'operation_type' => 'b2b_order_create',
             'amount' => $total,
             'correlation_id' => $correlationId,
+            'user_id' => $this->guard->id(),
+            'tenant_id' => function_exists('tenant') && tenant() ? tenant()->id : 1,
+            'action' => 'b2b_order_create',
+            'ip_address' => request()->ip(),
         ]);
+
+        if ($fraudResult['should_block'] ?? false) {
+            throw new \RuntimeException('B2B order creation blocked by fraud detection');
+        }
 
         return $this->db->transaction(function () use ($dto, $total, $correlationId) {
             $group = BusinessGroup::findOrFail($dto->businessGroupId);
 
             if ($dto->useCredit) {
-                if (!$group->hasCredit($total)) {
+                if (! $group->hasCredit($total)) {
                     throw new \DomainException('Insufficient credit limit');
                 }
                 $group->decrement('credit_limit', $total);
@@ -162,8 +188,8 @@ final readonly class B2BService
                 'payment_type' => $dto->useCredit ? 'credit' : 'prepaid',
                 'delivery_address' => $dto->deliveryAddress,
                 'correlation_id' => $correlationId,
-                'created_at' => $this->carbon->now(),
-                'updated_at' => $this->carbon->now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
             $this->audit->record(
@@ -198,6 +224,7 @@ final readonly class B2BService
             $price = $this->getWholesalePrice($item['product_id']);
             $total += $price * $item['quantity'];
         }
+
         return $total;
     }
 
@@ -211,6 +238,7 @@ final readonly class B2BService
             $retail = (int) $this->db->table('products')
                 ->where('id', $productId)
                 ->value('price_kopecks');
+
             return (int) round($retail * 0.8);
         }
 

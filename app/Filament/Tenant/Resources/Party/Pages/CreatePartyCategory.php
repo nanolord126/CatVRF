@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * CreatePartyCategory — CatVRF 2026 Component.
@@ -7,11 +9,12 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/createpartycategory
  * @see https://catvrf.ru/docs/createpartycategory
  * @see https://catvrf.ru/docs/createpartycategory
@@ -19,13 +22,12 @@
  * @see https://catvrf.ru/docs/createpartycategory
  */
 
-
 namespace App\Filament\Tenant\Resources\Party\Pages;
-
 
 use Illuminate\Http\Request;
 use App\Filament\Tenant\Resources\Party\PartyCategoryResource;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Str;
 
 /**
  * Class CreatePartyCategory
@@ -33,42 +35,36 @@ use Filament\Resources\Pages\CreateRecord;
  * Filament admin panel component.
  * Tenant-scoped: all data filtered by current tenant.
  * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Party\Pages
  */
 final class CreatePartyCategory extends CreateRecord
 {
+    protected static string $resource = PartyCategoryResource::class;
+
     public function __construct(
         private readonly Request $request,
     ) {}
 
-    protected static string $resource = PartyCategoryResource::class;
-
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        $data['tenant_id'] = tenant()->id ?? null;
-        $data['correlation_id'] = $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid());
-
-        return $data;
-    }
-
     /**
      * Get the string representation of this object.
-     *
-     * @return string
      */
     public function __toString(): string
     {
-        return static::class . '::' . ($this->id ?? 'new');
+        return self::class.'::'.($this->id ?? 'new');
     }
 
     /**
      * Determine if this instance is valid for the current context.
-     *
-     * @return bool
      */
     public function isValid(): bool
     {
         return true;
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['tenant_id'] = tenant()->id ?? null;
+        $data['correlation_id'] = $this->request->header('X-Correlation-ID', Str::uuid());
+
+        return $data;
     }
 }

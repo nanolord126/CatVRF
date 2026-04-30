@@ -19,7 +19,7 @@ final class EloquentRideRepository implements RideRepositoryInterface
     {
         $rideModel = RideModel::find($id->toString());
 
-        if (!$rideModel) {
+        if (! $rideModel) {
             throw new \DomainException("Ride not found: {$id->toString()}");
         }
 

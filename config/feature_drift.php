@@ -1,12 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * Feature Drift Detection Configuration
- * 
+ *
  * Mapping of critical features for each vertical and their thresholds.
  * Used by FeatureDriftDetectorTrait to automatically detect drift.
- * 
+ *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 return [

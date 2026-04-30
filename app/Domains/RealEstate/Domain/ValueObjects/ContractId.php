@@ -19,13 +19,12 @@ use Illuminate\Support\Str;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\RealEstate\Domain\ValueObjects
  */
 final readonly class ContractId
 {
     public function __construct(
-        private string $value) {
+        private readonly string $value
+    ) {
         if (trim($value) === '') {
             throw new InvalidArgumentException('ContractId value cannot be empty.');
         }

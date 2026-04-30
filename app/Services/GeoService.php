@@ -1,19 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Traits\WithAuditLogging;
+use App\Services\Audit\AuditService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Cache\CacheManager;
 
-
-
-
 final readonly class GeoService
 {
+    use WithAuditLogging;
+
     public function __construct(
-        private RateLimiterService $rateLimiterService,
+        private readonly RateLimiterService $rateLimiterService,
         private readonly DatabaseManager $db,
         private readonly CacheManager $cache,
+        private readonly AuditService $audit,
     ) {}
 
     public function getDistance(array $from, array $to, string $correlationId = ''): float

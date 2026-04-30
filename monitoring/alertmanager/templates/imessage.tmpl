@@ -1,0 +1,44 @@
+{{ define "imessage.default.json" }}
+{
+  "aps": {
+    "alert": {
+      "title": "{{ .CommonLabels.alertname }}",
+      "body": "{{ range $alert := .Alerts }}{{ $alert.Annotations.summary }}\n\nSeverity: {{ $alert.Labels.severity | toUpper }}\nDescription: {{ $alert.Annotations.description }}\nCluster: {{ $alert.Labels.cluster }}\nService: {{ $alert.Labels.service }}\nStarted: {{ $alert.StartsAt.Format \"2006-01-02 15:04:05\" }}\n{{ end }}"
+    }
+  }
+}
+{{ end }}
+
+{{ define "imessage.critical.json" }}
+{
+  "aps": {
+    "alert": {
+      "title": "🚨 CRITICAL: {{ .CommonLabels.alertname }}",
+      "body": "{{ range $alert := .Alerts }}Severity: CRITICAL\nSummary: {{ $alert.Annotations.summary }}\nDescription: {{ $alert.Annotations.description }}\n\nCluster: {{ $alert.Labels.cluster }}\nService: {{ $alert.Labels.service }}\n{{ if $alert.Labels.vertical }}Vertical: {{ $alert.Labels.vertical }}\n{{ end }}{{ if $alert.Labels.queue }}Queue: {{ $alert.Labels.queue }}\n{{ end }}Started: {{ $alert.StartsAt.Format \"2006-01-02 15:04:05\" }}\n\n{{ if $alert.Annotations.runbook }}Runbook: {{ $alert.Annotations.runbook }}\n{{ end }}{{ end }}",
+      "sound": "default"
+    }
+  }
+}
+{{ end }}
+
+{{ define "imessage.supermarket.json" }}
+{
+  "aps": {
+    "alert": {
+      "title": "🛒 Supermarket: {{ .CommonLabels.alertname }}",
+      "body": "{{ range $alert := .Alerts }}Severity: {{ $alert.Labels.severity | toUpper }}\nSummary: {{ $alert.Annotations.summary }}\nDescription: {{ $alert.Annotations.description }}\n\nQueue: {{ $alert.Labels.queue }}\nStarted: {{ $alert.StartsAt.Format \"2006-01-02 15:04:05\" }}\n\n{{ if $alert.Annotations.runbook }}Runbook: {{ $alert.Annotations.runbook }}\n{{ end }}{{ end }}"
+    }
+  }
+}
+{{ end }}
+
+{{ define "imessage.crm.json" }}
+{
+  "aps": {
+    "alert": {
+      "title": "🔄 CRM: {{ .CommonLabels.alertname }}",
+      "body": "{{ range $alert := .Alerts }}Severity: {{ $alert.Labels.severity | toUpper }}\nSummary: {{ $alert.Annotations.summary }}\nDescription: {{ $alert.Annotations.description }}\n\nService: {{ $alert.Labels.service }}\nStarted: {{ $alert.StartsAt.Format \"2006-01-02 15:04:05\" }}\n\n{{ if $alert.Annotations.runbook }}Runbook: {{ $alert.Annotations.runbook }}\n{{ end }}{{ end }}"
+    }
+  }
+}
+{{ end }}

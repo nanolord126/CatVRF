@@ -1,0 +1,52 @@
+{
+    "$schema": "https://raw.githubusercontent.com/infection/infection/0.27.0/resources/schema.json",
+    "source": {
+        "directories": [
+            "app"
+        ]
+    },
+    "logs": {
+        "text": "infection-log.txt",
+        "html": "infection-log.html",
+        "summary": "summary.log",
+        "debug": "debug.log"
+    },
+    "mutators": {
+        "@default": true,
+        "global-ignore": [
+            "::__construct"
+        ],
+        "TrueValue": {
+            "ignore": [
+                "App\\Domains\\Medical\\Services\\PiiAnonymizerService"
+            ]
+        },
+        "FalseValue": {
+            "ignore": [
+                "App\\Domains\\Medical\\Services\\PiiAnonymizerService"
+            ]
+        },
+        "PublicVisibility": {
+            "ignore": [
+                "App\\Domains\\*\\Models\\*"
+            ]
+        }
+    },
+    "testFramework": "pest",
+    "bootstrap": "vendor/autoload.php",
+    "phpUnit": {
+        "configDir": ".",
+        "customPath": "vendor/bin/pest"
+    },
+    "timeout": 30,
+    "threads": 4,
+    "minMsi": 80,
+    "minCoveredMsi": 90,
+    "filter": {
+        "whitelist": [
+            "App\\Domains\\Medical",
+            "App\\Domains\\Payment",
+            "App\\Domains\\FraudML"
+        ]
+    }
+}

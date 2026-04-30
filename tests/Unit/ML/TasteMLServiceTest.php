@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\ML;
 
@@ -23,18 +25,6 @@ final class TasteMLServiceTest extends TestCase
     private UserTasteProfile $profile;
 
     private int $tenantId = 1;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->mlService = app(TasteMLService::class);
-        $this->user = User::factory()->create(['tenant_id' => $this->tenantId]);
-        $this->profile = UserTasteProfile::factory()->create([
-            'user_id' => $this->user->id,
-            'tenant_id' => $this->tenantId,
-        ]);
-    }
 
     // ========== EMBEDDINGS TESTS ==========
 
@@ -125,7 +115,7 @@ final class TasteMLServiceTest extends TestCase
         foreach ($metrics as $key => $value) {
             $this->assertTrue(
                 is_numeric($value),
-                "Behavioral metric '{$key}' should be numeric, got " . gettype($value)
+                "Behavioral metric '{$key}' should be numeric, got ".gettype($value)
             );
         }
     }
@@ -252,5 +242,17 @@ final class TasteMLServiceTest extends TestCase
 
         // Processing 5 users should take < 20 seconds
         $this->assertLessThan(20, $duration);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->mlService = app(TasteMLService::class);
+        $this->user = User::factory()->create(['tenant_id' => $this->tenantId]);
+        $this->profile = UserTasteProfile::factory()->create([
+            'user_id' => $this->user->id,
+            'tenant_id' => $this->tenantId,
+        ]);
     }
 }

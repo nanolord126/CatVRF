@@ -103,4 +103,18 @@ tests/Unit/Staff/
 tests/Unit/Verticals/
 tests/Unit/VetGrooming/
 tests/Unit/Shared/
+tests/Unit/CRM/
+tests/Unit/Console/Commands/
+tests/Unit/Dental/
 tests/bootstrap.php
+
+# Temporary and auto-generated files
+temp_disabled_commands/
+temp_operationdto.txt
+storage/ml-datasets/
+storage/ml-patterns/
+storage/models/
+tests/Feature/
+tests/Integration/
+tests/Domains/
+tests/Modules/

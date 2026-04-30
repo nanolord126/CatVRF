@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Analytics;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for AnalyticsService.
- *
- * @covers \App\Domains\Analytics\Domain\Services\AnalyticsService
- */
-final class AnalyticsServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Analytics\Domain\Services\AnalyticsService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'AnalyticsService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Analytics\Domain\Services\AnalyticsService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'AnalyticsService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('Analytics');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\Analytics\Domain\Services\AnalyticsService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'AnalyticsService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('AnalyticsService exists and is instantiable', function () {
+    $this->assertServiceExists('AnalyticsService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Analytics\Domain\Services\AnalyticsService::class, 'create'),
-            'AnalyticsService must implement create()'
-        );
-    }
+test('AnalyticsService follows clean architecture', function () {
+    $this->assertCleanArchitecture('AnalyticsService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Analytics\Domain\Services\AnalyticsService::class, 'update'),
-            'AnalyticsService must implement update()'
-        );
-    }
+test('AnalyticsService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('AnalyticsService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Analytics\Domain\Services\AnalyticsService::class, 'delete'),
-            'AnalyticsService must implement delete()'
-        );
-    }
+test('AnalyticsService enforces quota limits', function () {
+    $this->testServiceWithQuota('AnalyticsService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Analytics\Domain\Services\AnalyticsService::class, 'list'),
-            'AnalyticsService must implement list()'
-        );
-    }
+test('AnalyticsService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('AnalyticsService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\Analytics\Domain\Services\AnalyticsService::class, 'getById'),
-            'AnalyticsService must implement getById()'
-        );
-    }
+test('AnalyticsService has proper caching', function () {
+    $cacheKey = 'analytics:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('AnalyticsService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('AnalyticsService dispatches proper events', function () {
+    $eventClass = "App\Domains\Analytics\Events\AnalyticsProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('AnalyticsService'));
+        $service->process([]);
+    });
+});
+
+test('AnalyticsService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\Analytics\Jobs\ProcessAnalyticsJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('AnalyticsService'));
+        $service->processAsync([]);
+    });
+});
+
+test('AnalyticsService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('AnalyticsService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('AnalyticsService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('AnalyticsService'));
+        $service->process([]);
+    }, 'AnalyticsService processed');
+});
+
+test('AnalyticsService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

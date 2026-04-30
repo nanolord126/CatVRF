@@ -1,11 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\Shared;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\View\View;
 use Livewire\Component;
 use Illuminate\Auth\AuthManager;
 use App\Models\BusinessGroup;
+use Illuminate\Support\Str;
 
 /**
  * B2BModeSwitcher — переключатель B2C ↔ B2B.
@@ -16,35 +23,39 @@ use App\Models\BusinessGroup;
  */
 final class B2BModeSwitcher extends Component
 {
-    public bool   $isB2B           = false;
-    public bool   $hasBusinessCard = false;
-    public array  $businessGroups  = [];
-    public int    $activeGroupId   = 0;
+    public bool $isB2B           = false;
+
+    public bool $hasBusinessCard = false;
+
+    public array $businessGroups  = [];
+
+    public int $activeGroupId   = 0;
+
     public string $correlationId   = '';
 
-    public function __construct(
+    public function __construct(private readonly ViewFactory $viewFactory,
+        private readonly LoggerInterface $logger,
         private readonly AuthManager $auth,
-        private readonly LogManager $logger,
-    ) {}
+        private readonly LogManager $logger,) {}
 
     public function mount(): void
     {
-        $this->correlationId = (string) \Illuminate\Support\Str::uuid();
+        $this->correlationId = (string) Str::uuid();
 
         // Определение B2B строго по канону
         $this->isB2B = request()->has('inn') && request()->has('business_card_id');
 
         $user = $this->auth->user();
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
         $groups = BusinessGroup::where('tenant_id', tenant()->id)
-            ->whereHas('users', fn($q) => $q->where('user_id', $user->id))
+            ->whereHas('users', fn ($q) => $q->where('user_id', $user->id))
             ->get(['id', 'legal_name', 'inn']);
 
         $this->hasBusinessCard = $groups->isNotEmpty();
-        $this->businessGroups  = $groups->map(fn($g) => [
+        $this->businessGroups  = $groups->map(fn ($g) => [
             'id'   => $g->id,
             'name' => $g->legal_name,
             'inn'  => $g->inn,
@@ -63,7 +74,7 @@ final class B2BModeSwitcher extends Component
         $this->activeGroupId = $group->id;
         $this->isB2B         = true;
 
-        $this->logger->channel('audit')->info('User switched to B2B', [
+        $this->logger->channel('audit')->$this->logger->info('User switched to B2B', [
             'user_id'           => $this->auth->id(),
             'business_group_id' => $group->id,
             'correlation_id'    => $this->correlationId,
@@ -79,7 +90,7 @@ final class B2BModeSwitcher extends Component
         $this->activeGroupId = 0;
         $this->isB2B         = false;
 
-        $this->logger->channel('audit')->info('User switched to B2C', [
+        $this->logger->channel('audit')->$this->logger->info('User switched to B2C', [
             'user_id'        => $this->auth->id(),
             'correlation_id' => $this->correlationId,
         ]);
@@ -90,6 +101,6 @@ final class B2BModeSwitcher extends Component
 
     public function render(): View
     {
-        return view('livewire.shared.b2b-mode-switcher');
+        return $this->viewFactory->make('livewire.shared.b2b-mode-switcher');
     }
 }

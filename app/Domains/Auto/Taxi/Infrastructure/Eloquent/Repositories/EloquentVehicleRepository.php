@@ -22,8 +22,6 @@ use App\Domains\Auto\Taxi\Infrastructure\Eloquent\Models\Vehicle as VehicleModel
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Auto\Taxi\Infrastructure\Eloquent\Repositories
  */
 final class EloquentVehicleRepository implements VehicleRepositoryInterface
 {
@@ -35,6 +33,7 @@ final class EloquentVehicleRepository implements VehicleRepositoryInterface
     public function findById(VehicleId $id): ?VehicleEntity
     {
         $model = VehicleModel::find($id->toString());
+
         return $model ? $this->toEntity($model) : null;
     }
 

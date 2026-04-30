@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Facades\Route;
 use App\Domains\Taxi\Http\Controllers\TaxiFinanceController;
 use App\Domains\Taxi\Http\Controllers\TaxiAnalyticsController;
@@ -16,7 +18,7 @@ use App\Domains\Taxi\Http\Controllers\TaxiClientPortalController;
 */
 
 Route::middleware(['auth:api', 'tenant'])->prefix('api/v1/taxi')->group(function () {
-    
+
     // Finance Routes
     Route::prefix('finance')->group(function () {
         Route::post('rides/{rideId}/payment', [TaxiFinanceController::class, 'processPayment']);

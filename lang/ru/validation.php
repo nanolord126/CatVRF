@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'accepted' => 'Поле :attribute должно быть принято.',
     'accepted_if' => 'Поле :attribute должно быть принято при :other = :value.',

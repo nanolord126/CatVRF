@@ -11,6 +11,10 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Filament\Courier\Resources\DeliveryResource\Pages\CreateDelivery;
+use App\Filament\Courier\Resources\DeliveryResource\Pages\EditDelivery;
+use App\Filament\Courier\Resources\DeliveryResource\Pages\ListDeliveries;
+use App\Filament\Courier\Resources\DeliveryResource\Pages\ViewDelivery;
 
 final class DeliveryResource extends Resource
 {
@@ -69,10 +73,10 @@ final class DeliveryResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Courier\Resources\DeliveryResource\Pages\ListDeliveries::class,
-            'create' => \App\Filament\Courier\Resources\DeliveryResource\Pages\CreateDelivery::class,
-            'edit' => \App\Filament\Courier\Resources\DeliveryResource\Pages\EditDelivery::class,
-            'view' => \App\Filament\Courier\Resources\DeliveryResource\Pages\ViewDelivery::class,
+            'index' => ListDeliveries::class,
+            'create' => CreateDelivery::class,
+            'edit' => EditDelivery::class,
+            'view' => ViewDelivery::class,
         ];
     }
 }

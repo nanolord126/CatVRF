@@ -6,6 +6,7 @@ namespace Database\Factories\AutoParts;
 
 use App\Domains\AutoParts\Models\AutoPart;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class AutoPartFactory extends Factory
 {
@@ -21,7 +22,7 @@ final class AutoPartFactory extends Factory
             'price' => $this->faker->numberBetween(50000, 300000),
             'current_stock' => $this->faker->numberBetween(20, 150),
             'status' => 'active',
-            'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
+            'correlation_id' => Str::uuid()->toString(),
             'tags' => ['autopart', $this->faker->word()],
             'meta' => [],
         ];

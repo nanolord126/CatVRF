@@ -1,14 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\B2B;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-
 use Illuminate\Support\Str;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use Carbon\Carbon;
 
 /**
  * B2BReportController — отчёты для B2B-клиентов.
@@ -39,12 +43,12 @@ final class B2BReportController extends Controller
         $tenantId       = $request->input('b2b_tenant_id');
 
         $from = $request->query('from')
-            ? \Carbon\Carbon::parse($request->query('from'))->startOfDay()
-            : \Carbon\Carbon::now()->startOfMonth();
+            ? Carbon::parse($request->query('from'))->startOfDay()
+            : CarbonImmutable::now()->startOfMonth();
 
         $to = $request->query('to')
-            ? \Carbon\Carbon::parse($request->query('to'))->endOfDay()
-            : \Carbon\Carbon::now()->endOfDay();
+            ? Carbon::parse($request->query('to'))->endOfDay()
+            : CarbonImmutable::now()->endOfDay();
 
         // Суммарный оборот из orders
         $stats = $this->db->table('orders')
@@ -87,7 +91,7 @@ final class B2BReportController extends Controller
                 'first_order_at'    => $stats->first_order_at ?? null,
                 'last_order_at'     => $stats->last_order_at ?? null,
             ],
-            'weekly'         => $weekly->map(fn(object $w): array => [
+            'weekly'         => $weekly->map(fn (object $w): array => [
                 'week_start'    => $w->week_start,
                 'orders_count'  => (int) $w->orders_count,
                 'total_kopecks' => (int) $w->total_kopecks,
@@ -134,7 +138,7 @@ final class B2BReportController extends Controller
                 'credit_free_rubles'   => round($freeKopecks  / 100, 2),
                 'payment_term_days'    => $businessGroup->payment_term_days ?? 14,
             ],
-            'history'        => $history->map(fn(object $t): array => [
+            'history'        => $history->map(fn (object $t): array => [
                 'id'             => $t->id,
                 'type'           => $t->type,
                 'amount_kopecks' => $t->amount,
@@ -156,11 +160,11 @@ final class B2BReportController extends Controller
 
         $status = $request->query('status');
         $from   = $request->query('from')
-            ? \Carbon\Carbon::parse($request->query('from'))->startOfDay()
-            : \Carbon\Carbon::now()->subDays(30)->startOfDay();
+            ? Carbon::parse($request->query('from'))->startOfDay()
+            : CarbonImmutable::now()->subDays(30)->startOfDay();
         $to     = $request->query('to')
-            ? \Carbon\Carbon::parse($request->query('to'))->endOfDay()
-            : \Carbon\Carbon::now()->endOfDay();
+            ? Carbon::parse($request->query('to'))->endOfDay()
+            : CarbonImmutable::now()->endOfDay();
 
         $query = $this->db->table('orders')
             ->where('tenant_id', $tenantId)

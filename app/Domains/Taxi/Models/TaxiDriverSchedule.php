@@ -1,7 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use Carbon\CarbonImmutable;
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +15,20 @@ use Illuminate\Support\Str;
 final class TaxiDriverSchedule extends Model
 {
     use HasFactory;
+    use TenantScoped;
+
+    /**
+     * Статусы смены.
+     */
+    public const STATUS_SCHEDULED = 'scheduled';
+
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
+    public const STATUS_NO_SHOW = 'no_show';
 
     protected $table = 'taxi_driver_schedules';
 
@@ -31,7 +50,7 @@ final class TaxiDriverSchedule extends Model
         'notes',
         'correlation_id',
         'metadata',
-        'tags'
+        'tags',
     ];
 
     protected $casts = [
@@ -50,34 +69,6 @@ final class TaxiDriverSchedule extends Model
     ];
 
     protected $hidden = ['metadata'];
-
-    /**
-     * Статусы смены.
-     */
-    public const STATUS_SCHEDULED = 'scheduled';
-    public const STATUS_ACTIVE = 'active';
-    public const STATUS_COMPLETED = 'completed';
-    public const STATUS_CANCELLED = 'cancelled';
-    public const STATUS_NO_SHOW = 'no_show';
-
-    protected static function booted(): void
-    {
-        static::creating(function (TaxiDriverSchedule $schedule) {
-            $schedule->uuid = $schedule->uuid ?? (string) Str::uuid();
-            $schedule->tenant_id = $schedule->tenant_id ?? (tenant()->id ?? 1);
-            $schedule->status = $schedule->status ?? self::STATUS_SCHEDULED;
-            $schedule->actual_rides = $schedule->actual_rides ?? 0;
-            $schedule->actual_earnings_kopeki = $schedule->actual_earnings_kopeki ?? 0;
-            $schedule->online_minutes = $schedule->online_minutes ?? 0;
-            $schedule->correlation_id = $schedule->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            if (tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
 
     /**
      * Отношения.
@@ -158,7 +149,7 @@ final class TaxiDriverSchedule extends Model
     {
         $this->update([
             'status' => self::STATUS_COMPLETED,
-            'end_time' => now(),
+            'end_time' => CarbonImmutable::now(),
         ]);
     }
 
@@ -171,5 +162,24 @@ final class TaxiDriverSchedule extends Model
             'status' => self::STATUS_CANCELLED,
             'metadata' => array_merge($this->metadata ?? [], ['cancellation_reason' => $reason]),
         ]);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (TaxiDriverSchedule $schedule) {
+            $schedule->uuid = $schedule->uuid ?? (string) Str::uuid();
+            $schedule->tenant_id = $schedule->tenant_id ?? (tenant()->id ?? 1);
+            $schedule->status = $schedule->status ?? self::STATUS_SCHEDULED;
+            $schedule->actual_rides = $schedule->actual_rides ?? 0;
+            $schedule->actual_earnings_kopeki = $schedule->actual_earnings_kopeki ?? 0;
+            $schedule->online_minutes = $schedule->online_minutes ?? 0;
+            $schedule->correlation_id = $schedule->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            if (tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Furniture\InteriorDesign\Services;
 
@@ -9,24 +11,24 @@ use App\Services\WalletService;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * InteriorDesignService — управление проектами интерьерного дизайна.
  *
  * Полный цикл: создание, завершение, отмена проектов
  * с fraud-check, wallet-интеграцией, 3D-визуализацией и audit-логированием.
- *
- * @package App\Domains\Furniture\InteriorDesign\Services
  */
 final readonly class InteriorDesignService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private AuditService $audit,
-        private \Illuminate\Database\DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
@@ -78,7 +80,7 @@ final readonly class InteriorDesignService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Interior design project created', [
+            $this->logger->$this->logger->info('Interior design project created', [
                 'project_id' => $project->id,
                 'designer_id' => $designerId,
                 'style' => $style,
@@ -125,7 +127,7 @@ final readonly class InteriorDesignService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Interior design project completed', [
+            $this->logger->$this->logger->info('Interior design project completed', [
                 'project_id' => $project->id,
                 'payout' => $project->payout_kopecks,
                 'correlation_id' => $correlationId,
@@ -175,7 +177,7 @@ final readonly class InteriorDesignService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Interior design project cancelled', [
+            $this->logger->$this->logger->info('Interior design project cancelled', [
                 'project_id' => $project->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -195,7 +197,7 @@ final readonly class InteriorDesignService
     /**
      * Получить список проектов клиента.
      */
-    public function getUserProjects(int $clientId): \Illuminate\Database\Eloquent\Collection
+    public function getUserProjects(int $clientId): Collection
     {
         return DesignProject::where('client_id', $clientId)
             ->orderBy('created_at', 'desc')

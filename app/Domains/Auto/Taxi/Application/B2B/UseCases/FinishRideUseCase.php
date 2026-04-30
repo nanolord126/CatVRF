@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\Taxi\Application\B2B\UseCases;
 
+use App\Services\Fraud\FraudControlService;
 
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use App\Domains\Auto\Taxi\Infrastructure\Eloquent\Models\Ride;
 use App\Services\AuditService;
 use App\Services\WalletService;
@@ -24,12 +25,11 @@ final readonly class FinishRideUseCase
 {
     private const COMMISSION_RATE = 0.12;
 
-    public function __construct(
-        private DatabaseManager $db,
-        private WalletService $wallet,
-        private AuditService $audit,
-        private LoggerInterface $logger,
-    ) {}
+    public function __construct(private readonly FraudControlService $fraudControlService,
+        private readonly DatabaseManager $db,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly LoggerInterface $logger,) {}
 
     /**
      * Завершить поездку, рассчитать стоимость и провести выплаты.
@@ -38,6 +38,7 @@ final readonly class FinishRideUseCase
      */
     public function execute(int $rideId, string $correlationId = ''): Ride
     {
+        $this->fraudControlService->check('execute', ['context' => __CLASS__]);
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
         return $this->db->transaction(function () use ($rideId, $correlationId): Ride {
@@ -48,7 +49,7 @@ final readonly class FinishRideUseCase
                 throw new \RuntimeException('Поездка уже завершена.', 400);
             }
 
-            $finishedAt = Carbon::now();
+            $finishedAt = CarbonImmutable::now();
             $durationMinutes = $ride->started_at
                 ? (int) $finishedAt->diffInMinutes($ride->started_at)
                 : 0;
@@ -74,7 +75,7 @@ final readonly class FinishRideUseCase
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('B2B ride finished', [
+            $this->logger->$this->logger->info('B2B ride finished', [
                 'ride_id'          => $ride->id,
                 'duration_minutes' => $durationMinutes,
                 'total_kopecks'    => $totalKopecks,

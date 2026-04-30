@@ -1,113 +1,120 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Services;
 
+use Carbon\CarbonImmutable;
 
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+
 final readonly class AITripPlannerService
 {
-
-    public function __construct(private RecommendationService $recommendation,
-            private AIAgentFramework $agent,
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger) {}
+    public function __construct(
+        private readonly RecommendationService $recommendation,
+        private readonly AIAgentFramework $agent,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger
+    ) {}
 
-        /**
-         * Построить персональный план путешествия на базе AI.
-         */
-        public function generateTripPlan(int $userId, array $preferences, string $correlationId): array
-        {
-            $this->logger->info('AI trip planning started', [
+    /**
+     * Построить персональный план путешествия на базе AI.
+     */
+    public function generateTripPlan(int $userId, array $preferences, string $correlationId): array
+    {
+        $this->logger->$this->logger->info('AI trip planning started', [
+            'user_id' => $userId,
+            'preferences' => $preferences,
+            'correlation_id' => $correlationId,
+        ]);
+
+        try {
+            // 1. Извлечь предпочтения (бюджет, тип: активный, семейный и т.д.)
+            $prompt = $this->buildPrompt($preferences);
+
+            // 2. Обращение к AI-агенту (Слой 5)
+            $aiResponse = $this->agent->run('travel_planner', $prompt, [
+                'correlation_id' => $correlationId,
                 'user_id' => $userId,
-                'preferences' => $preferences,
-                'correlation_id' => $correlationId
             ]);
 
-            try {
-                // 1. Извлечь предпочтения (бюджет, тип: активный, семейный и т.д.)
-                $prompt = $this->buildPrompt($preferences);
+            // 3. Сопоставить рекомендации AI с реальными данными из БД
+            $matchedTours = $this->matchTours($aiResponse['tags'] ?? []);
+            $matchedExcursions = $this->matchExcursions($aiResponse['tags'] ?? []);
 
-                // 2. Обращение к AI-агенту (Слой 5)
-                $aiResponse = $this->agent->run('travel_planner', $prompt, [
-                    'correlation_id' => $correlationId,
-                    'user_id' => $userId
-                ]);
+            // 4. Персонализация (Слой 5 + RecommendationService)
+            $personalizedTours = $this->recommendation->personalizeForUser($matchedTours, $userId);
 
-                // 3. Сопоставить рекомендации AI с реальными данными из БД
-                $matchedTours = $this->matchTours($aiResponse['tags'] ?? []);
-                $matchedExcursions = $this->matchExcursions($aiResponse['tags'] ?? []);
+            // 5. Кэширование и возврат результата
+            $result = [
+                'plan_id' => (string) Str::uuid(),
+                'summary' => $aiResponse['summary'] ?? 'Индивидуальный план путешествия',
+                'destinations' => $aiResponse['destinations'] ?? [],
+                'recommended_tours' => $personalizedTours->take(5)->toArray(),
+                'recommended_excursions' => $matchedExcursions->take(3)->toArray(),
+                'daily_activities' => $aiResponse['itinerary'] ?? [],
+                'estimated_price' => $aiResponse['total_budget'] ?? 0,
+                'correlation_id' => $correlationId,
+            ];
 
-                // 4. Персонализация (Слой 5 + RecommendationService)
-                $personalizedTours = $this->recommendation->personalizeForUser($matchedTours, $userId);
+            $this->savePlan($userId, $result);
 
-                // 5. Кэширование и возврат результата
-                $result = [
-                    'plan_id' => (string) Str::uuid(),
-                    'summary' => $aiResponse['summary'] ?? 'Индивидуальный план путешествия',
-                    'destinations' => $aiResponse['destinations'] ?? [],
-                    'recommended_tours' => $personalizedTours->take(5)->toArray(),
-                    'recommended_excursions' => $matchedExcursions->take(3)->toArray(),
-                    'daily_activities' => $aiResponse['itinerary'] ?? [],
-                    'estimated_price' => $aiResponse['total_budget'] ?? 0,
-                    'correlation_id' => $correlationId
-                ];
-
-                $this->savePlan($userId, $result);
-
-                $this->logger->info('AI trip planning successfully completed', [
-                    'user_id' => $userId,
-                    'plan_id' => $result['plan_id'],
-                    'correlation_id' => $correlationId
-                ]);
-
-                return $result;
-            } catch (\Throwable $e) {
-                $this->logger->error('AI trip planning failed', [
-                    'user_id' => $userId,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'correlation_id' => $correlationId
-                ]);
-
-                throw $e;
-            }
-        }
-
-        private function buildPrompt(array $preferences): string
-        {
-            return sprintf(
-                "Создай маршрут путешествия. Бюджет: %s. Тип: %s. Интересы: %s. Продолжительность: %s дней.",
-                $preferences['budget'] ?? 'средний',
-                $preferences['type'] ?? 'отдых',
-                implode(', ', $preferences['interests'] ?? []),
-                $preferences['days'] ?? 7
-            );
-        }
-
-        private function matchTours(array $tags): Collection
-        {
-            return Tour::where('is_active', true)
-                ->whereJsonContains('tags', $tags)
-                ->with(['destination', 'trips' => fn($q) => $q->where('departure_date', '>', now())])
-                ->get();
-        }
-
-        private function matchExcursions(array $tags): Collection
-        {
-            return Excursion::where('status', 'active')
-                ->whereJsonContains('tags', $tags)
-                ->get();
-        }
-
-        private function savePlan(int $userId, array $plan): void
-        {
-            // КАНОН: Сохранение в User AI Designs (Слой 5)
-            $this->db->table('user_ai_designs')->insert([
+            $this->logger->$this->logger->info('AI trip planning successfully completed', [
                 'user_id' => $userId,
-                'vertical' => 'travel',
-                'design_data' => json_encode($plan),
-                'correlation_id' => $plan['correlation_id'],
-                'created_at' => now(),
-                'updated_at' => now()
+                'plan_id' => $result['plan_id'],
+                'correlation_id' => $correlationId,
             ]);
+
+            return $result;
+        } catch (\Throwable $e) {
+            $this->logger->error('AI trip planning failed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            throw $e;
         }
+    }
+
+    private function buildPrompt(array $preferences): string
+    {
+        return sprintf(
+            'Создай маршрут путешествия. Бюджет: %s. Тип: %s. Интересы: %s. Продолжительность: %s дней.',
+            $preferences['budget'] ?? 'средний',
+            $preferences['type'] ?? 'отдых',
+            implode(', ', $preferences['interests'] ?? []),
+            $preferences['days'] ?? 7
+        );
+    }
+
+    private function matchTours(array $tags): Collection
+    {
+        return Tour::where('is_active', true)
+            ->whereJsonContains('tags', $tags)
+            ->with(['destination', 'trips' => fn ($q) => $q->where('departure_date', '>', CarbonImmutable::now())])
+            ->get();
+    }
+
+    private function matchExcursions(array $tags): Collection
+    {
+        return Excursion::where('status', 'active')
+            ->whereJsonContains('tags', $tags)
+            ->get();
+    }
+
+    private function savePlan(int $userId, array $plan): void
+    {
+        // КАНОН: Сохранение в User AI Designs (Слой 5)
+        $this->db->table('user_ai_designs')->insert([
+            'user_id' => $userId,
+            'vertical' => 'travel',
+            'design_data' => json_encode($plan),
+            'correlation_id' => $plan['correlation_id'],
+            'created_at' => CarbonImmutable::now(),
+            'updated_at' => CarbonImmutable::now(),
+        ]);
+    }
 }

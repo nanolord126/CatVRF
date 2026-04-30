@@ -56,4 +56,36 @@ return [
         'enable_predictive_segments' => false,
         'enable_anomaly_detection' => false,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | CLV (Customer Lifetime Value) Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for CLV prediction using ML models.
+    | Includes model settings, inference endpoints, and segment thresholds.
+    */
+    'clv' => [
+        'enabled' => env('CLV_ENABLED', true),
+        
+        'ml_inference_url' => env('ML_INFERENCE_URL', 'http://localhost:8000'),
+        'ml_deployment_mode' => env('ML_DEPLOYMENT_MODE', 'local'), // local, http, cloud, onnx
+        
+        'model_version' => env('CLV_MODEL_VERSION', 'latest'),
+        'cache_ttl' => env('CLV_CACHE_TTL', 3600), // 1 hour
+        
+        'segments' => [
+            'low' => ['min' => 0, 'max' => 5000],
+            'medium' => ['min' => 5000, 'max' => 20000],
+            'high' => ['min' => 20000, 'max' => 50000],
+            'vip' => ['min' => 50000, 'max' => PHP_FLOAT_MAX],
+        ],
+        
+        'churn_threshold' => env('CLV_CHURN_THRESHOLD', 0.5),
+    ],
+
+    'queues' => [
+        'analytics' => env('ANALYTICS_QUEUE', 'analytics'),
+        'ml_training' => env('ML_TRAINING_QUEUE', 'ml-training'),
+    ],
 ];

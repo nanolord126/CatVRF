@@ -1,0 +1,122 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Shared\Medical\Psychology\Services;
+
+use App\Domains\Shared\Medical\Psychology\Models\PsychologicalBooking;
+use App\Domains\Shared\Medical\Psychology\Models\PsychologicalService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Carbon\CarbonImmutable;
+
+/**
+ * Сервис ценообразования для психологических консультаций.
+ *
+ * Рассчитывает финальную стоимость с учётом:
+ * - базовой цены услуги;
+ * - скидки для первого визита;
+ * - пакетных скидок (количество сессий).
+ *
+ * Цены хранятся в копейках (int).  Никаких float для денег.
+ *
+ * @see PsychologicalService  модель услуги
+ * @see PsychologicalBooking  модель бронирования
+ */
+final readonly class PsychologicalPricingService
+{
+    /** Скидка (%) для первого визита клиента. */
+    private const FIRST_VISIT_DISCOUNT_PCT = 10;
+
+    /** Минимальное количество сессий для пакетной скидки. */
+    private const PACKAGE_THRESHOLD = 5;
+
+    /** Скидка (%) при покупке пакета сессий. */
+    private const PACKAGE_DISCOUNT_PCT = 15;
+
+    /**
+     * Рассчитать финальную стоимость услуги для клиента.
+     *
+     * @param  int  $serviceId  Идентификатор психологической услуги.
+     * @param  int  $clientId  Идентификатор клиента.
+     * @return int Финальная цена в копейках.
+     *
+     * @throws ModelNotFoundException Если услуга не найдена.
+     */
+    public function calculateFinalPrice(int $serviceId, int $clientId): int
+    {
+        /** @var PsychologicalService $service */
+        $service = PsychologicalService::findOrFail($serviceId);
+        $basePrice = (int) $service->price;
+
+        // Use unified PricingEngine for dynamic pricing
+        $result = $this->pricingEngine->calculatePrice(
+            'psychology',
+            $basePrice,
+            [
+                'client_id' => $clientId,
+                'is_first_visit' => $this->isFirstVisit($clientId),
+                'sessions_count' => $this->getTotalVisits($clientId),
+                'timestamp' => CarbonImmutable::now(),
+            ]
+        );
+
+        return $result['final_price'];
+    }
+
+    /**
+     * Рассчитать стоимость пакета сессий.
+     *
+     * @param  int  $serviceId  Идентификатор услуги.
+     * @param  int  $sessionsCount  Количество сессий в пакете.
+     * @return int Итоговая стоимость пакета в копейках.
+     *
+     * @throws ModelNotFoundException Если услуга не найдена.
+     * @throws \InvalidArgumentException Если количество сессий ≤ 0.
+     */
+    public function calculatePackagePrice(int $serviceId, int $sessionsCount): int
+    {
+        if ($sessionsCount <= 0) {
+            throw new \InvalidArgumentException('Sessions count must be positive.');
+        }
+
+        /** @var PsychologicalService $service */
+        $service = PsychologicalService::findOrFail($serviceId);
+        $unitPrice = (int) $service->price;
+
+        $totalBeforeDiscount = $unitPrice * $sessionsCount;
+
+        if ($sessionsCount >= self::PACKAGE_THRESHOLD) {
+            return (int) round($totalBeforeDiscount * (1 - self::PACKAGE_DISCOUNT_PCT / 100));
+        }
+
+        return $totalBeforeDiscount;
+    }
+
+    /**
+     * Определить применимый процент скидки для клиента.
+     *
+     * Приоритет: пакетная скидка (если >= 5 визитов) → скидка первого визита → 0.
+     *
+     * @param  int  $clientId  Идентификатор клиента.
+     * @return int Процент скидки (0–100).
+     */
+    private function resolveDiscountPercent(int $clientId): int
+    {
+        $totalVisits = PsychologicalBooking::where('client_id', $clientId)->count();
+
+        if ($totalVisits >= self::PACKAGE_THRESHOLD) {
+            return self::PACKAGE_DISCOUNT_PCT;
+        }
+
+        if ($totalVisits === 0) {
+            return self::FIRST_VISIT_DISCOUNT_PCT;
+        }
+
+        return 0;
+    }
+
+    private function getClientBookingCount(int $clientId): int
+    {
+        return PsychologicalBooking::where('client_id', $clientId)->count();
+    }
+}

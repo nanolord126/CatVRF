@@ -138,4 +138,107 @@ return [
         // Replay protection window in seconds
         'replay_protection_window' => env('PAYMENT_WEBHOOK_REPLAY_WINDOW', 300),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Gateway Providers Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for specific payment gateway providers.
+    |
+    */
+
+    'tinkoff' => [
+        'api_url' => env('TINKOFF_API_URL', 'https://securepay.tinkoff.ru/v2'),
+        'terminal_key' => env('TINKOFF_TERMINAL_KEY'),
+        'secret_key' => env('TINKOFF_SECRET_KEY'),
+        'timeout' => env('TINKOFF_TIMEOUT', 30),
+    ],
+
+    'tochka' => [
+        'api_url' => env('TOCHKA_API_URL', 'https://enter.tochka.com/api'),
+        'client_id' => env('TOCHKA_CLIENT_ID'),
+        'client_secret' => env('TOCHKA_CLIENT_SECRET'),
+        'payer_account' => env('TOCHKA_PAYER_ACCOUNT'),
+        'timeout' => env('TOCHKA_TIMEOUT', 30),
+    ],
+
+    'sber' => [
+        'api_url' => env('SBER_API_URL', 'https://securepayments.sberbank.ru/'),
+        'terminal_key' => env('SBER_TERMINAL_KEY'),
+        'secret_key' => env('SBER_SECRET_KEY'),
+        'login' => env('SBER_LOGIN'),
+        'password' => env('SBER_PASSWORD'),
+        'timeout' => env('SBER_TIMEOUT', 30),
+    ],
+
+    'default_gateway' => env('PAYMENT_DEFAULT_GATEWAY', 'tinkoff'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Smart Routing Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for intelligent gateway selection.
+    |
+    */
+    'smart_routing' => [
+        'enabled' => env('PAYMENT_SMART_ROUTING_ENABLED', true),
+        'metrics_ttl' => env('PAYMENT_SMART_ROUTING_METRICS_TTL', 86400),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Escrow Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for escrow hold operations.
+    |
+    */
+    'escrow' => [
+        'auto_release_enabled' => env('PAYMENT_ESCROW_AUTO_RELEASE', true),
+        'default_hold_days' => env('PAYMENT_ESCROW_DEFAULT_HOLD_DAYS', 7),
+        'max_hold_days' => env('PAYMENT_ESCROW_MAX_HOLD_DAYS', 30),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Recurring Payments Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for subscription billing.
+    |
+    */
+    'recurring' => [
+        'max_retry_attempts' => env('PAYMENT_RECURRING_MAX_RETRIES', 3),
+        'retry_delay_hours' => env('PAYMENT_RECURRING_RETRY_DELAY', 24),
+        'grace_period_days' => env('PAYMENT_RECURRING_GRACE_PERIOD', 3),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Outbox Pattern Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for reliable webhook delivery.
+    |
+    */
+    'outbox' => [
+        'max_retry_attempts' => env('PAYMENT_OUTBOX_MAX_RETRIES', 5),
+        'cleanup_days' => env('PAYMENT_OUTBOX_CLEANUP_DAYS', 30),
+        'batch_size' => env('PAYMENT_OUTBOX_BATCH_SIZE', 100),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Commission Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Default commission configuration for split payments.
+    |
+    */
+    'commission' => [
+        'platform_rate' => env('PAYMENT_PLATFORM_COMMISSION', 0.05),
+        'min_commission' => env('PAYMENT_MIN_COMMISSION', 100),
+    ],
 ];

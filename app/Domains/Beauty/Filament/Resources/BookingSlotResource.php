@@ -1,16 +1,22 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Filament\Resources;
 
 use App\Domains\Beauty\Models\BookingSlot;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use App\Domains\Beauty\Filament\Resources\BookingSlotResource\Pages\CreateBookingSlot;
+use App\Domains\Beauty\Filament\Resources\BookingSlotResource\Pages\EditBookingSlot;
+use App\Domains\Beauty\Filament\Resources\BookingSlotResource\Pages\ListBookingSlots;
+use App\Domains\Beauty\Filament\Resources\BookingSlotResource\Pages\ViewBookingSlot;
 
-final class BookingSlotResource extends Resource
+final class BookingSlotResource extends BaseOptimizedResource
 {
     protected static ?string $model = BookingSlot::class;
 
@@ -270,10 +276,18 @@ final class BookingSlotResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Beauty\Filament\Resources\BookingSlotResource\Pages\ListBookingSlots::route('/'),
-            'create' => \App\Domains\Beauty\Filament\Resources\BookingSlotResource\Pages\CreateBookingSlot::route('/create'),
-            'view' => \App\Domains\Beauty\Filament\Resources\BookingSlotResource\Pages\ViewBookingSlot::route('/{record}'),
-            'edit' => \App\Domains\Beauty\Filament\Resources\BookingSlotResource\Pages\EditBookingSlot::route('/{record}/edit'),
+            'index' => ListBookingSlots::route('/'),
+            'create' => CreateBookingSlot::route('/create'),
+            'view' => ViewBookingSlot::route('/{record}'),
+            'edit' => EditBookingSlot::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Relations to eager load for Beauty
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

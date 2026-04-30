@@ -1,7 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
+use Carbon\CarbonImmutable;
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +15,33 @@ use Illuminate\Support\Str;
 final class TaxiDispatcherQueue extends Model
 {
     use HasFactory;
+    use TenantScoped;
+
+    /**
+     * Статусы очереди диспетчера.
+     */
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_ASSIGNED = 'assigned';
+
+    public const STATUS_ACCEPTED = 'accepted';
+
+    public const STATUS_DECLINED = 'declined';
+
+    public const STATUS_TIMEOUT = 'timeout';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
+    /**
+     * Приоритеты.
+     */
+    public const PRIORITY_LOW = 1;
+
+    public const PRIORITY_NORMAL = 2;
+
+    public const PRIORITY_HIGH = 3;
+
+    public const PRIORITY_URGENT = 4;
 
     protected $table = 'taxi_dispatcher_queue';
 
@@ -27,7 +59,7 @@ final class TaxiDispatcherQueue extends Model
         'decline_reason',
         'correlation_id',
         'metadata',
-        'tags'
+        'tags',
     ];
 
     protected $casts = [
@@ -41,42 +73,6 @@ final class TaxiDispatcherQueue extends Model
     ];
 
     protected $hidden = ['metadata'];
-
-    /**
-     * Статусы очереди диспетчера.
-     */
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_ASSIGNED = 'assigned';
-    public const STATUS_ACCEPTED = 'accepted';
-    public const STATUS_DECLINED = 'declined';
-    public const STATUS_TIMEOUT = 'timeout';
-    public const STATUS_CANCELLED = 'cancelled';
-
-    /**
-     * Приоритеты.
-     */
-    public const PRIORITY_LOW = 1;
-    public const PRIORITY_NORMAL = 2;
-    public const PRIORITY_HIGH = 3;
-    public const PRIORITY_URGENT = 4;
-
-    protected static function booted(): void
-    {
-        static::creating(function (TaxiDispatcherQueue $queue) {
-            $queue->uuid = $queue->uuid ?? (string) Str::uuid();
-            $queue->tenant_id = $queue->tenant_id ?? (tenant()->id ?? 1);
-            $queue->status = $queue->status ?? self::STATUS_PENDING;
-            $queue->priority = $queue->priority ?? self::PRIORITY_NORMAL;
-            $queue->assigned_at = $queue->assigned_at ?? now();
-            $queue->correlation_id = $queue->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            if (tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
 
     /**
      * Отношения.
@@ -136,7 +132,7 @@ final class TaxiDispatcherQueue extends Model
      */
     public function hasTimedOut(): bool
     {
-        return $this->timeout_at && $this->timeout_at->isPast() && !$this->isAccepted();
+        return $this->timeout_at && $this->timeout_at->isPast() && ! $this->isAccepted();
     }
 
     /**
@@ -147,8 +143,8 @@ final class TaxiDispatcherQueue extends Model
         $this->update([
             'driver_id' => $driverId,
             'status' => self::STATUS_ASSIGNED,
-            'assigned_at' => now(),
-            'timeout_at' => now()->addSeconds(30), // 30 seconds to accept
+            'assigned_at' => CarbonImmutable::now(),
+            'timeout_at' => CarbonImmutable::now()->addSeconds(30), // 30 seconds to accept
         ]);
     }
 
@@ -159,7 +155,7 @@ final class TaxiDispatcherQueue extends Model
     {
         $this->update([
             'status' => self::STATUS_ACCEPTED,
-            'accepted_at' => now(),
+            'accepted_at' => CarbonImmutable::now(),
         ]);
     }
 
@@ -170,7 +166,7 @@ final class TaxiDispatcherQueue extends Model
     {
         $this->update([
             'status' => self::STATUS_DECLINED,
-            'declined_at' => now(),
+            'declined_at' => CarbonImmutable::now(),
             'decline_reason' => $reason,
         ]);
     }
@@ -183,5 +179,23 @@ final class TaxiDispatcherQueue extends Model
         $this->update([
             'status' => self::STATUS_TIMEOUT,
         ]);
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (TaxiDispatcherQueue $queue) {
+            $queue->uuid = $queue->uuid ?? (string) Str::uuid();
+            $queue->tenant_id = $queue->tenant_id ?? (tenant()->id ?? 1);
+            $queue->status = $queue->status ?? self::STATUS_PENDING;
+            $queue->priority = $queue->priority ?? self::PRIORITY_NORMAL;
+            $queue->assigned_at = $queue->assigned_at ?? CarbonImmutable::now();
+            $queue->correlation_id = $queue->correlation_id ?? (request()->header('X-Correlation-ID') ?? (string) Str::uuid());
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            if (tenant()) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

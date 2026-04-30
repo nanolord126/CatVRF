@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories\Domains\Beauty\Models;
 
 use App\Models\Domains\Beauty\Models\PortfolioItem;

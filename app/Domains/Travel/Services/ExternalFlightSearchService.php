@@ -1,41 +1,46 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Services;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Contracts\Cache\Repository as Cache;
 use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Log\LogManager;
 
 /**
  * External Flight Search Service
- * 
+ *
  * Integrates with external flight search APIs (Amadeus, Sabre, Skyscanner)
  * to provide real-time flight availability and pricing.
- * 
+ *
  * Supports multiple providers with fallback and caching.
  */
 final readonly class ExternalFlightSearchService
 {
-    public function __construct(
-        private LoggerInterface $logger,
-        private Cache $cache,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly LogManager $log,
+        private readonly Cache $cache,
+        private readonly HttpFactory $http,) {}
 
     /**
      * Search for flights across multiple providers.
-     * 
-     * @param array $params Search parameters (origin, destination, date, passengers, etc.)
-     * @param string $correlationId Correlation ID for tracing
+     *
+     * @param  array  $params  Search parameters (origin, destination, date, passengers, etc.)
+     * @param  string  $correlationId  Correlation ID for tracing
      * @return array Flight search results
      */
     public function searchFlights(array $params, string $correlationId = ''): array
     {
-$cacheKey = $this->getCacheKey($params);
-        
-        return $this->cache->tags(['travel', 'flight_search'])->remember($cacheKey, now()->addMinutes(30), function () use ($params, $correlationId) {
+        $cacheKey = $this->getCacheKey($params);
+
+        return $this->cache->tags(['travel', 'flight_search'])->remember($cacheKey, CarbonImmutable::now()->addMinutes(30), function () use ($params, $correlationId) {
             $provider = config('services.flight_search.default_provider', 'amadeus');
-            
+
             try {
                 $results = match ($provider) {
                     'amadeus' => $this->searchAmadeus($params, $correlationId),
@@ -43,23 +48,23 @@ $cacheKey = $this->getCacheKey($params);
                     'skyscanner' => $this->searchSkyscanner($params, $correlationId),
                     default => $this->searchAmadeus($params, $correlationId),
                 };
-                
-                $this->logger->info('External flight search completed', [
+
+                $this->log->$this->logger->info('External flight search completed', [
                     'provider' => $provider,
                     'origin' => $params['origin'] ?? null,
                     'destination' => $params['destination'] ?? null,
                     'results_count' => count($results['flights'] ?? []),
                     'correlation_id' => $correlationId,
                 ]);
-                
+
                 return $results;
             } catch (\Throwable $e) {
-                $this->logger->error('External flight search failed', [
+                $this->log->error('External flight search failed', [
                     'provider' => $provider,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
                 ]);
-                
+
                 return $this->getFallbackResults($params);
             }
         });
@@ -72,14 +77,14 @@ $cacheKey = $this->getCacheKey($params);
     {
         $apiKey = config('services.flight_search.amadeus.api_key');
         $apiSecret = config('services.flight_search.amadeus.api_secret');
-        
-        if (!$apiKey || !$apiSecret) {
+
+        if (! $apiKey || ! $apiSecret) {
             throw new \RuntimeException('Amadeus API credentials not configured');
         }
-        
+
         // Get access token
         $token = $this->getAmadeusToken($apiKey, $apiSecret);
-        
+
         // Build search URL
         $url = 'https://test.api.amadeus.com/v2/shopping/flight-offers';
         $queryParams = [
@@ -89,20 +94,20 @@ $cacheKey = $this->getCacheKey($params);
             'adults' => $params['passengers'] ?? 1,
             'currencyCode' => $params['currency'] ?? 'RUB',
         ];
-        
-        if (!empty($params['return_date'])) {
+
+        if (! empty($params['return_date'])) {
             $queryParams['returnDate'] = $params['return_date'];
         }
-        
-        $response = Http::withToken($token)
+
+        $response = $this->http->withToken($token)
             ->get($url, $queryParams);
-        
-        if (!$response->successful()) {
-            throw new \RuntimeException('Amadeus API request failed: ' . $response->status());
+
+        if (! $response->successful()) {
+            throw new \RuntimeException('Amadeus API request failed: '.$response->status());
         }
-        
+
         $data = $response->json();
-        
+
         return $this->normalizeAmadeusResults($data);
     }
 
@@ -113,17 +118,17 @@ $cacheKey = $this->getCacheKey($params);
     {
         $apiKey = config('services.flight_search.sabre.api_key');
         $apiSecret = config('services.flight_search.sabre.api_secret');
-        
-        if (!$apiKey || !$apiSecret) {
+
+        if (! $apiKey || ! $apiSecret) {
             throw new \RuntimeException('Sabre API credentials not configured');
         }
-        
+
         // Get access token
         $token = $this->getSabreToken($apiKey, $apiSecret);
-        
+
         // Build search request
         $url = 'https://api.test.sabre.com/v2/shop/flights';
-        
+
         $requestBody = [
             'OTA_AirLowFareSearchRQ' => [
                 'OriginDestinationInformation' => [
@@ -131,7 +136,7 @@ $cacheKey = $this->getCacheKey($params);
                         'DepartureDateTime' => $params['date'],
                         'OriginLocation' => ['LocationCode' => $params['origin']],
                         'DestinationLocation' => ['LocationCode' => $params['destination']],
-                    ]
+                    ],
                 ],
                 'PassengerTypeQuantity' => [
                     ['Code' => 'ADT', 'Quantity' => $params['passengers'] ?? 1],
@@ -141,24 +146,24 @@ $cacheKey = $this->getCacheKey($params);
                 ],
             ],
         ];
-        
-        if (!empty($params['return_date'])) {
+
+        if (! empty($params['return_date'])) {
             $requestBody['OTA_AirLowFareSearchRQ']['OriginDestinationInformation'][] = [
                 'DepartureDateTime' => $params['return_date'],
                 'OriginLocation' => ['LocationCode' => $params['destination']],
                 'DestinationLocation' => ['LocationCode' => $params['origin']],
             ];
         }
-        
-        $response = Http::withToken($token)
+
+        $response = $this->http->withToken($token)
             ->post($url, $requestBody);
-        
-        if (!$response->successful()) {
-            throw new \RuntimeException('Sabre API request failed: ' . $response->status());
+
+        if (! $response->successful()) {
+            throw new \RuntimeException('Sabre API request failed: '.$response->status());
         }
-        
+
         $data = $response->json();
-        
+
         return $this->normalizeSabreResults($data);
     }
 
@@ -168,13 +173,13 @@ $cacheKey = $this->getCacheKey($params);
     private function searchSkyscanner(array $params, string $correlationId = ''): array
     {
         $apiKey = config('services.flight_search.skyscanner.api_key');
-        
-        if (!$apiKey) {
+
+        if (! $apiKey) {
             throw new \RuntimeException('Skyscanner API key not configured');
         }
-        
+
         $url = 'https://partners.api.skyscanner.net/apiservices/v3/flights/live/search/create';
-        
+
         $requestBody = [
             'query' => [
                 'market' => 'RU',
@@ -185,30 +190,30 @@ $cacheKey = $this->getCacheKey($params);
                         'originPlaceId' => ['iata' => $params['origin']],
                         'destinationPlaceId' => ['iata' => $params['destination']],
                         'date' => ['year' => date('Y', strtotime($params['date'])), 'month' => date('n', strtotime($params['date'])), 'day' => date('j', strtotime($params['date']))],
-                    ]
+                    ],
                 ],
                 'adults' => $params['passengers'] ?? 1,
             ],
         ];
-        
-        if (!empty($params['return_date'])) {
+
+        if (! empty($params['return_date'])) {
             $requestBody['query']['queryLegs'][] = [
                 'originPlaceId' => ['iata' => $params['destination']],
                 'destinationPlaceId' => ['iata' => $params['origin']],
                 'date' => ['year' => date('Y', strtotime($params['return_date'])), 'month' => date('n', strtotime($params['return_date'])), 'day' => date('j', strtotime($params['return_date']))],
             ];
         }
-        
-        $response = Http::withHeaders([
+
+        $response = $this->http->withHeaders([
             'x-api-key' => $apiKey,
         ])->post($url, $requestBody);
-        
-        if (!$response->successful()) {
-            throw new \RuntimeException('Skyscanner API request failed: ' . $response->status());
+
+        if (! $response->successful()) {
+            throw new \RuntimeException('Skyscanner API request failed: '.$response->status());
         }
-        
+
         $data = $response->json();
-        
+
         return $this->normalizeSkyscannerResults($data);
     }
 
@@ -217,16 +222,16 @@ $cacheKey = $this->getCacheKey($params);
      */
     private function getAmadeusToken(string $apiKey, string $apiSecret): string
     {
-        $response = Http::asForm()->post('https://test.api.amadeus.com/v1/security/oauth2/token', [
+        $response = $this->http->asForm()->post('https://test.api.amadeus.com/v1/security/oauth2/token', [
             'grant_type' => 'client_credentials',
             'client_id' => $apiKey,
             'client_secret' => $apiSecret,
         ]);
-        
-        if (!$response->successful()) {
+
+        if (! $response->successful()) {
             throw new \RuntimeException('Failed to get Amadeus token');
         }
-        
+
         return $response->json()['access_token'];
     }
 
@@ -235,16 +240,16 @@ $cacheKey = $this->getCacheKey($params);
      */
     private function getSabreToken(string $apiKey, string $apiSecret): string
     {
-        $response = Http::asForm()->post('https://api.test.sabre.com/v2/auth/token', [
+        $response = $this->http->asForm()->post('https://api.test.sabre.com/v2/auth/token', [
             'grant_type' => 'client_credentials',
             'client_id' => $apiKey,
             'client_secret' => $apiSecret,
         ]);
-        
-        if (!$response->successful()) {
+
+        if (! $response->successful()) {
             throw new \RuntimeException('Failed to get Sabre token');
         }
-        
+
         return $response->json()['access_token'];
     }
 
@@ -254,7 +259,7 @@ $cacheKey = $this->getCacheKey($params);
     private function normalizeAmadeusResults(array $data): array
     {
         $flights = [];
-        
+
         foreach ($data['data'] ?? [] as $offer) {
             $flights[] = [
                 'id' => $offer['id'] ?? null,
@@ -272,7 +277,7 @@ $cacheKey = $this->getCacheKey($params);
                 'class' => $offer['offerItems'][0]['services'][0]['segments'][0]['flightSegment']['cabinClass'] ?? 'Economy',
             ];
         }
-        
+
         return [
             'flights' => $flights,
             'count' => count($flights),
@@ -286,7 +291,7 @@ $cacheKey = $this->getCacheKey($params);
     private function normalizeSabreResults(array $data): array
     {
         $flights = [];
-        
+
         foreach ($data['OTA_AirLowFareSearchRS']['PricedItineraries'] ?? [] as $itinerary) {
             $flights[] = [
                 'id' => $itinerary['SequenceNumber'] ?? null,
@@ -304,7 +309,7 @@ $cacheKey = $this->getCacheKey($params);
                 'class' => 'Economy',
             ];
         }
-        
+
         return [
             'flights' => $flights,
             'count' => count($flights),
@@ -318,7 +323,7 @@ $cacheKey = $this->getCacheKey($params);
     private function normalizeSkyscannerResults(array $data): array
     {
         $flights = [];
-        
+
         foreach ($data['content']['results']['itineraries']['buckets'] ?? [] as $bucket) {
             foreach ($bucket['items'] ?? [] as $item) {
                 $flights[] = [
@@ -338,7 +343,7 @@ $cacheKey = $this->getCacheKey($params);
                 ];
             }
         }
-        
+
         return [
             'flights' => $flights,
             'count' => count($flights),
@@ -364,6 +369,6 @@ $cacheKey = $this->getCacheKey($params);
      */
     private function getCacheKey(array $params): string
     {
-        return 'flight_search:' . md5(json_encode($params));
+        return 'flight_search:'.md5(json_encode($params));
     }
 }

@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Leisure\SubVerticals\WeddingPlanning\Models;
+
+use App\Traits\TenantScoped;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
+
+final class WeddingPackage extends Model
+{
+    use TenantScoped;
+
+    protected $table = 'wedding_packages';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'planner_id',
+        'title',
+        'description',
+        'price',
+        'max_guests',
+        'included_services',
+        'is_active',
+        'correlation_id',
+        'tags',
+    ];
+
+    protected $casts = [
+        'included_services' => 'json',
+        'tags' => 'json',
+        'price' => 'integer',
+        'max_guests' => 'integer',
+        'is_active' => 'boolean',
+    ];
+
+    /**
+     * Relation: Planner
+     */
+    public function planner(): BelongsTo
+    {
+        return $this->belongsTo(WeddingPlanner::class, 'planner_id');
+    }
+
+    /**
+     * Relation: Bookings
+     */
+    public function bookings(): HasMany
+    {
+        return $this->morphMany(WeddingBooking::class, 'bookable');
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant_id', function (Builder $builder) {
+            if (function_exists('tenant') && is_object(tenant()) && isset(tenant()->id)) {
+                $builder->where('wedding_packages.tenant_id', tenant()->id);
+            }
+        });
+
+        self::creating(function (Model $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            if (function_exists('tenant') && is_object(tenant()) && isset(tenant()->id)) {
+                $model->tenant_id = $model->tenant_id ?? tenant()->id;
+            }
+        });
+    }
+}

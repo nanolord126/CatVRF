@@ -29,12 +29,6 @@ final class CrmVerticalServicesTest extends TestCase
 
     private string $correlationId;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->correlationId = $this->faker->uuid();
-    }
-
     // ═══════════════════════════════════════════════════════
     //  BEAUTY CRM SERVICE
     // ═══════════════════════════════════════════════════════
@@ -327,5 +321,11 @@ final class CrmVerticalServicesTest extends TestCase
         $profile = $client->verticalProfile();
 
         $this->assertNull($profile);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->correlationId = $this->faker->uuid();
     }
 }

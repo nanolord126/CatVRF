@@ -1,112 +1,128 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Fashion;
 
+use FraudControlService;
+
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Log\LogManager;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Routing\ResponseFactory;
+use App\Services\FraudControlService;
 
 final class FashionB2BController extends Controller
 {
-
-    public function __construct(
+    public function __construct(private readonly FraudControlService $fraudControlService,
+        private readonly LoggerInterface $logger,
         private readonly Request $request,
-            private readonly FashionService $fashionService,
-            private readonly RateLimiterService $rateLimiter,
-            private readonly LogManager $logger,
-            private readonly Guard $guard,
-            private readonly ResponseFactory $response,
-    ) {}
-        /**
-         * @OA\Get(
-         *     path="/api/v1/fashion/b2b/catalog",
-         *     summary="Оптовый каталог товаров (B2B)",
-         *     tags={"Fashion B2B"},
-         *     @OA\Parameter(name="inn", in="query", required=true, @OA\Schema(type="string")),
-         *     @OA\Response(response=200, description="B2B catalog successfully fetched")
-         * )
-         */
-        public function catalog(Request $request): JsonResponse
-        {
-            $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
-            $request->validate([
-                'inn' => 'required|string|length:10',
+        private readonly FashionService $fashionService,
+        private readonly RateLimiterService $rateLimiter,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,) {}
+
+    /**
+     * @OA\Get(
+     *     path="/api/v1/fashion/b2b/catalog",
+     *     summary="Оптовый каталог товаров (B2B)",
+     *     tags={"Fashion B2B"},
+     *
+     *     @OA\Parameter(name="inn", in="query", required=true, @OA\Schema(type="string")),
+     *
+     *     @OA\Response(response=200, description="B2B catalog successfully fetched")
+     * )
+     */
+    public function catalog(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        $request->validate([
+            'inn' => 'required|string|length:10',
+        ]);
+        try {
+            $this->rateLimiter->check($request->ip(), 'fashion_b2b_browse');
+            // B2B каталог: показываем price_b2b
+            $products = FashionProduct::query()
+                ->where('is_active', true)
+                ->where('price_b2b', '>', 0)
+                ->select(['id', 'name', 'price_b2b', 'quantity', 'store_id'])
+                ->paginate(50);
+            $this->logger->channel('audit')->$this->logger->info('B2B catalog browsed', [
+                'inn' => $request->get('inn'),
+                'correlation_id' => $correlationId,
+                'count' => $products->count(),
             ]);
-            try {
-                $this->rateLimiter->check($request->ip(), 'fashion_b2b_browse');
-                // B2B каталог: показываем price_b2b
-                $products = FashionProduct::query()
-                    ->where('is_active', true)
-                    ->where('price_b2b', '>', 0)
-                    ->select(['id', 'name', 'price_b2b', 'quantity', 'store_id'])
-                    ->paginate(50);
-                $this->logger->channel('audit')->info('B2B catalog browsed', [
-                    'inn' => $request->get('inn'),
-                    'correlation_id' => $correlationId,
-                    'count' => $products->count(),
-                ]);
-                return $this->response->json([
-                    'success' => true,
-                    'data' => $products,
-                    'correlation_id' => $correlationId
-                ]);
-            } catch (\Throwable $e) {
-                $this->logger->channel('audit')->error('B2B catalog error', ['msg' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return $this->response->json(['error' => 'B2B access error', 'correlation_id' => $correlationId], 403);
-            }
-        }
-        /**
-         * @OA\Post(
-         *     path="/api/v1/fashion/b2b/order",
-         *     summary="Создание оптового заказа (B2B)",
-         *     tags={"Fashion B2B"},
-         *     @OA\RequestBody(required=true, @OA\JsonContent(
-         *         @OA\Property(property="inn", type="string"),
-         *         @OA\Property(property="items", type="array", @OA\Items(
-         *             @OA\Property(property="product_id", type="integer"),
-         *             @OA\Property(property="quantity", type="integer")
-         *         ))
-         *     )),
-         *     @OA\Response(response=201, description="B2B Order created")
-         * )
-         */
-        public function createOrder(Request $request): JsonResponse
-        {
-            $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
-            $request->validate([
-                'inn' => 'required|string|length:10',
-                'items' => 'required|array|min:1',
-                'items.*.product_id' => 'required|exists:fashion_products,id',
-                'items.*.quantity' => 'required|integer|min:1',
+
+            return $this->response->json([
+                'success' => true,
+                'data' => $products,
+                'correlation_id' => $correlationId,
             ]);
-            try {
-                app(\App\Services\FraudControlService::class)->check(
-                    userId: (int) ($this->guard->id() ?? 0),
-                    operationType: 'b2b_order_create',
-                    amount: 0,
-                    correlationId: $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
-                );
-                $order = $this->fashionService->createB2BOrder(
-                    $request->all(),
-                    $correlationId
-                );
-                $this->logger->channel('audit')->info('B2B order created', [
-                    'order_id' => $order->id,
-                    'inn' => $request->get('inn'),
-                    'correlation_id' => $correlationId
-                ]);
-                return $this->response->json([
-                    'success' => true,
-                    'order_id' => $order->id,
-                    'status' => 'pending_payment',
-                    'correlation_id' => $correlationId
-                ], 201);
-            } catch (\Throwable $e) {
-                $this->logger->channel('audit')->error('B2B order failure', ['msg' => $e->getMessage(), 'correlation_id' => $correlationId]);
-                return $this->response->json(['error' => 'Order creation failed', 'correlation_id' => $correlationId], 400);
-            }
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('B2B catalog error', ['msg' => $e->getMessage(), 'correlation_id' => $correlationId]);
+
+            return $this->response->json(['error' => 'B2B access error', 'correlation_id' => $correlationId], 403);
         }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/v1/fashion/b2b/order",
+     *     summary="Создание оптового заказа (B2B)",
+     *     tags={"Fashion B2B"},
+     *
+     *     @OA\RequestBody(required=true, @OA\JsonContent(
+     *
+     *         @OA\Property(property="inn", type="string"),
+     *         @OA\Property(property="items", type="array", @OA\Items(
+     *             @OA\Property(property="product_id", type="integer"),
+     *             @OA\Property(property="quantity", type="integer")
+     *         ))
+     *     )),
+     *
+     *     @OA\Response(response=201, description="B2B Order created")
+     * )
+     */
+    public function createOrder(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        $request->validate([
+            'inn' => 'required|string|length:10',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:fashion_products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+        ]);
+        try {
+            $this->fraudControlService /* TODO: inject via constructor DI */ /* TODO: inject via DI */->check(
+                userId: (int) ($this->guard->id() ?? 0),
+                operationType: 'b2b_order_create',
+                amount: 0,
+                correlationId: $this->request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
+            );
+            $order = $this->fashionService->createB2BOrder(
+                $request->all(),
+                $correlationId
+            );
+            $this->logger->channel('audit')->$this->logger->info('B2B order created', [
+                'order_id' => $order->id,
+                'inn' => $request->get('inn'),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $this->response->json([
+                'success' => true,
+                'order_id' => $order->id,
+                'status' => 'pending_payment',
+                'correlation_id' => $correlationId,
+            ], 201);
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('B2B order failure', ['msg' => $e->getMessage(), 'correlation_id' => $correlationId]);
+
+            return $this->response->json(['error' => 'Order creation failed', 'correlation_id' => $correlationId], 400);
+        }
+    }
 }

@@ -1,8 +1,8 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Http\Controllers;
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Art\Http\Requests\ArtworkRequest;
@@ -29,7 +29,7 @@ final class ArtController extends Controller
         try {
             $project = $this->artService->createProject($data);
 
-            return new \Illuminate\Http\JsonResponse([
+            return new JsonResponse([
                 'correlation_id' => $data['correlation_id'],
                 'project_id' => $project->id,
                 'status' => $project->status,
@@ -41,7 +41,7 @@ final class ArtController extends Controller
                 'message' => $exception->getMessage(),
             ]);
 
-            return new \Illuminate\Http\JsonResponse([
+            return new JsonResponse([
                 'correlation_id' => $data['correlation_id'],
                 'message' => 'Не удалось создать арт-проект',
             ], 422);
@@ -58,7 +58,7 @@ final class ArtController extends Controller
             $project = Project::query()->findOrFail($projectId);
             $artwork = $this->artService->addArtwork($project, $payload);
 
-            return new \Illuminate\Http\JsonResponse([
+            return new JsonResponse([
                 'correlation_id' => $payload['correlation_id'],
                 'artwork_id' => $artwork->id,
                 'project_id' => $project->id,
@@ -69,7 +69,7 @@ final class ArtController extends Controller
                 'message' => $exception->getMessage(),
             ]);
 
-            return new \Illuminate\Http\JsonResponse([
+            return new JsonResponse([
                 'correlation_id' => $payload['correlation_id'],
                 'message' => 'Не удалось сохранить арт-работу',
             ], 422);
@@ -86,7 +86,7 @@ final class ArtController extends Controller
             $project = Project::query()->findOrFail($projectId);
             $review = $this->artService->recordReview($project, $payload);
 
-            return new \Illuminate\Http\JsonResponse([
+            return new JsonResponse([
                 'correlation_id' => $payload['correlation_id'],
                 'review_id' => $review->id,
             ]);
@@ -96,11 +96,10 @@ final class ArtController extends Controller
                 'message' => $exception->getMessage(),
             ]);
 
-            return new \Illuminate\Http\JsonResponse([
+            return new JsonResponse([
                 'correlation_id' => $payload['correlation_id'],
                 'message' => 'Не удалось сохранить отзыв',
             ], 422);
         }
     }
-
 }

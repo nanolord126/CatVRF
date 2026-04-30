@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Fashion;
 
@@ -14,17 +16,6 @@ final class FashionInventoryForecastingServiceTest extends BaseTestCase
     use RefreshDatabase;
 
     private FashionInventoryForecastingService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = new FashionInventoryForecastingService(
-            $this->app->make(AuditService::class),
-            $this->app->make(FraudControlService::class),
-            $this->app->make('Illuminate\Database\DatabaseManager'),
-        );
-    }
 
     public function test_forecast_demand_returns_structure(): void
     {
@@ -57,6 +48,17 @@ final class FashionInventoryForecastingServiceTest extends BaseTestCase
         $this->assertArrayHasKey('tenant_id', $result);
         $this->assertArrayHasKey('total_events', $result);
         $this->assertArrayHasKey('total_lost_sales', $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = new FashionInventoryForecastingService(
+            $this->app->make(AuditService::class),
+            $this->app->make(FraudControlService::class),
+            $this->app->make('Illuminate\Database\DatabaseManager'),
+        );
     }
 
     private function createFashionProduct(array $overrides = []): int

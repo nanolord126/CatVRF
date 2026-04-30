@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * AdCampaign — CatVRF 2026 Component.
@@ -7,19 +9,20 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/adcampaign
  */
 
-
 namespace App\Models\Domains\Advertising;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Database\Factories\AdCampaignFactory;
 
 /**
  * Class AdCampaign
@@ -39,34 +42,31 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $uuid
  * @property string|null $correlation_id
  * @property array|null $tags
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
- * @package App\Models\Domains\Advertising
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class AdCampaign extends Model
 {
-
     protected $fillable = [
         'uuid',
         'correlation_id',
         'tenant_id',
     ];
 
+    protected $table = 'ad_campaigns';
 
-        protected $table = "ad_campaigns";
+    protected static function newFactory()
+    {
+        return AdCampaignFactory::new();
+    }
 
-        protected static function newFactory()
-        {
-            return \Database\Factories\AdCampaignFactory::new();
-        }
-
-        protected static function booted(): void
-        {
-            parent::booted();
-            static::addGlobalScope("tenant_id", function ($query) {
-                if (function_exists("tenant") && tenant("id")) {
-                    $query->where("tenant_id", tenant("id"));
-                }
-            });
-        }
+    protected static function booted(): void
+    {
+        parent::booted();
+        self::addGlobalScope('tenant_id', function ($query) {
+            if (function_exists('tenant') && tenant('id')) {
+                $query->where('tenant_id', tenant('id'));
+            }
+        });
+    }
 }

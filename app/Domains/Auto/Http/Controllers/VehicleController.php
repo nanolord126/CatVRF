@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Auto\Http\Controllers;
@@ -9,6 +10,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
 
 final class VehicleController extends Controller
 {
@@ -27,7 +29,7 @@ final class VehicleController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        $this->logger->info('Vehicles listed', [
+        $this->logger->$this->logger->info('Vehicles listed', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'count' => $items->total(),
@@ -62,12 +64,12 @@ final class VehicleController extends Controller
                 'tenant_id' => $request->get('tenant_id'),
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]));
         });
 
-        $this->logger->info('Vehicle created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Vehicle created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'Транспорт создан'], 201);
     }
@@ -105,10 +107,10 @@ final class VehicleController extends Controller
             $this->db->table('vehicles')
                 ->where('id', $id)
                 ->where('tenant_id', $request->get('tenant_id'))
-                ->update(array_merge($validated, ['updated_at' => now()]));
+                ->update(array_merge($validated, ['updated_at' => CarbonImmutable::now()]));
         });
 
-        $this->logger->info('Vehicle updated', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Vehicle updated', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Обновлено']);
     }
@@ -124,7 +126,7 @@ final class VehicleController extends Controller
                 ->delete();
         });
 
-        $this->logger->info('Vehicle deleted', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Vehicle deleted', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Удалено']);
     }

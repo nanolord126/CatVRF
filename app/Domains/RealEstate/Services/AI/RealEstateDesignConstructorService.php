@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services\AI;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
-
 use App\Services\FraudControlService;
 use App\Services\ML\UserTasteAnalyzerService;
 use App\Services\RecommendationService;
@@ -18,6 +17,8 @@ use App\Services\AuditService;
 use Illuminate\Support\Str;
 use OpenAI\Client as OpenAIClient;
 use Illuminate\Http\UploadedFile;
+use App\Exceptions\FraudBlockedException;
+use Illuminate\Database\DatabaseManager;
 
 /**
  * Виртуальный ремонт + 3D-визуализация + смета + подбор подрядчиков
@@ -29,20 +30,24 @@ use Illuminate\Http\UploadedFile;
  */
 final readonly class RealEstateDesignConstructorService
 {
-    public function __construct(private OpenAIClient          $openai,
-        private RecommendationService $recommendation,
-        private UserTasteAnalyzerService $tasteAnalyzer,
-        private FraudControlService   $fraud,
-        private InventoryService      $inventory,
-        private AuditService          $audit,
-        private readonly \Illuminate\Database\DatabaseManager $db,
-        private readonly Request $request, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+    public function __construct(
+        private readonly OpenAIClient $openai,
+        private readonly RecommendationService $recommendation,
+        private readonly UserTasteAnalyzerService $tasteAnalyzer,
+        private readonly FraudControlService $fraud,
+        private readonly InventoryService $inventory,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly Request $request,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
     /**
      * Главный метод — анализ и генерация рекомендаций.
      * Виртуальный ремонт + 3D-визуализация + смета + подбор подрядчиков
      *
-     * @throws \App\Exceptions\FraudBlockedException
+     * @throws FraudBlockedException
      */
     public function analyzeAndRecommend(UploadedFile $photo, int $userId, array $propertyData = []): array
     {
@@ -52,7 +57,7 @@ final readonly class RealEstateDesignConstructorService
         $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'ai_constructor_realestate', amount: 0, correlationId: $correlationId ?? '');
 
         // Кэширование результата
-        $cacheKey = "ai_realestate:virtual_renovation:$userId:" . md5(json_encode(func_get_args()));
+        $cacheKey = "ai_realestate:virtual_renovation:$userId:".md5(json_encode(func_get_args()));
         $cached = cache()->get($cacheKey);
 
         if ($cached !== null) {
@@ -67,7 +72,7 @@ final readonly class RealEstateDesignConstructorService
                     'role'    => 'user',
                     'content' => [
                         ['type' => 'text', 'text' => 'Анализ квартиры/дома для виртуального ремонта и дизайна. Определи: площадь, планировку, состояние, стиль. Рекомендуй дизайн, материалы, строительные работы, расчёт стоимости.'],
-                        ['type' => 'image_url', 'image_url' => ['url' => 'data:image/jpeg;base64,' . base64_encode(file_get_contents($photo->getRealPath()))]],
+                        ['type' => 'image_url', 'image_url' => ['url' => 'data:image/jpeg;base64,'.base64_encode(file_get_contents($photo->getRealPath()))]],
                     ],
                 ],
             ],
@@ -106,7 +111,7 @@ final readonly class RealEstateDesignConstructorService
             'success'        => true,
             'design_profile' => $design_profile,
             'recommendations' => $recArray,
-            'ar_link'        => url('realestate/design-preview/' . $userId),
+            'ar_link'        => url('realestate/design-preview/'.$userId),
             'correlation_id' => $correlationId,
         ];
 
@@ -122,7 +127,7 @@ final readonly class RealEstateDesignConstructorService
             correlationId: $correlationId
         );
 
-        $this->logger->info('RealEstateDesignConstructorService used', [
+        $this->logger->$this->logger->info('RealEstateDesignConstructorService used', [
             'user_id'        => $userId,
             'vertical'       => 'realestate',
             'type'           => 'virtual_renovation',
@@ -147,7 +152,7 @@ final readonly class RealEstateDesignConstructorService
         // Fallback: структурированный разбор текстового ответа
         return [
             'raw_analysis'   => $analysisText,
-            'parsed_at'      => now()->toISOString(),
+            'parsed_at'      => CarbonImmutable::now()->toISOString(),
             'confidence'     => 0.85,
         ];
     }
@@ -166,8 +171,8 @@ final readonly class RealEstateDesignConstructorService
                 [
                     'design_data'    => json_encode($data),
                     'correlation_id' => $correlationId,
-                    'updated_at'     => now(),
-                    'created_at'     => now(),
+                    'updated_at'     => CarbonImmutable::now(),
+                    'created_at'     => CarbonImmutable::now(),
                 ]
             );
         });

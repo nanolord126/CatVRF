@@ -1,7 +1,13 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Database\Seeders;
-class OtherVerticalsBrands extends BaseBrandSeeder {
-    public function run(): void {
+
+class OtherVerticalsBrands extends BaseBrandSeeder
+{
+    public function run(): void
+    {
         $this->seedBrands('TaxiAuto', [
             ['name' => 'Lyft', 'country' => 'USA'], ['name' => 'Didi Chuxing', 'country' => 'China'],
             ['name' => 'Grab', 'country' => 'Singapore'], ['name' => 'Gojek', 'country' => 'Indonesia'],
@@ -60,5 +66,3 @@ class OtherVerticalsBrands extends BaseBrandSeeder {
         ]);
     }
 }
-
-

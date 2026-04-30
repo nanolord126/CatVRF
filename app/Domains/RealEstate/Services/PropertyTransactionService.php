@@ -4,41 +4,52 @@ declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
 
+use Illuminate\Support\Collection;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
+
 use App\Domains\RealEstate\Models\Property;
 use App\Domains\RealEstate\DTOs\CreatePropertyDto;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\WalletService;
-use App\Services\Payment\PaymentService;
 use App\Services\FraudMLService;
 use App\Services\Analytics\DemandForecastMLService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Redis\Connections\Connection as RedisConnection;
-use Psr\Log\LoggerInterface;
+use Illuminate\Log\LogManager;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 final readonly class PropertyTransactionService
 {
     private const VIEWING_HOLD_MINUTES_B2C = 15;
+
     private const VIEWING_HOLD_MINUTES_B2B = 60;
+
     private const CACHE_TTL_SECONDS = 3600;
+
     private const FLASH_DISCOUNT_THRESHOLD = 0.85;
+
     private const HIGH_FRAUD_SCORE_THRESHOLD = 0.7;
 
     public function __construct(
-        private FraudControlService $fraud,
-        private AuditService $audit,
-        private WalletService $wallet,
-        private PaymentServiceAdapter $payment,
-        private AtomicWalletService $atomicWallet,
-        private PaymentEngine $paymentEngine,
-        private FraudMLService $fraudML,
-        private DemandForecastMLService $demandForecast,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Cache $cache,
-        private RedisConnection $redis,
+        private readonly FraudControlService $fraud,
+        private readonly AuditService $audit,
+        private readonly WalletService $wallet,
+        private readonly PaymentServiceAdapter $payment,
+        private readonly AtomicWalletService $atomicWallet,
+        private readonly PaymentEngine $paymentEngine,
+        private readonly FraudMLService $fraudML,
+        private readonly LogManager $log,
+        private readonly DemandForecastMLService $demandForecast,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Cache $cache,
+        private readonly RedisConnection $redis,
     ) {}
 
     public function createPropertyWithAI(CreatePropertyDto $dto, int $userId): Property
@@ -46,13 +57,13 @@ final readonly class PropertyTransactionService
         $fraudData = array_merge($dto->toArray(), ['user_id' => $userId]);
         $this->fraud->check($fraudData);
 
-        return $this->db->transaction(function () use ($dto, $userId): Property {
+        return $this->db->transaction(function () use ($dto): Property {
             $data = $dto->toArray();
             $tenantId = $data['tenant_id'] ?? $dto->tenantId;
             $correlationId = $data['correlation_id'] ?? $dto->correlationId;
 
             $property = Property::create(array_merge($data, [
-                'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+                'uuid' => Str::uuid()->toString(),
                 'status' => 'active',
                 'is_active' => true,
                 'features' => [
@@ -73,7 +84,7 @@ final readonly class PropertyTransactionService
                 correlationId: $correlationId
             );
 
-            $this->logger->info('Property created with AI features', [
+            $this->logger->$this->logger->info('Property created with AI features', [
                 'property_id' => $property->id,
                 'uuid' => $property->uuid,
                 'correlation_id' => $correlationId,
@@ -118,8 +129,8 @@ final readonly class PropertyTransactionService
 
         $this->redis->setex($slotKey, $holdMinutes * 60, json_encode([
             'user_id' => $userId,
-            'held_at' => now()->toIso8601String(),
-            'expires_at' => now()->addMinutes($holdMinutes)->toIso8601String(),
+            'held_at' => CarbonImmutable::now()->toIso8601String(),
+            'expires_at' => CarbonImmutable::now()->addMinutes($holdMinutes)->toIso8601String(),
         ]));
 
         $this->redis->setex($holdKey, $holdMinutes * 60, json_encode([
@@ -142,7 +153,7 @@ final readonly class PropertyTransactionService
             correlationId: $correlationId
         );
 
-        $this->logger->info('Viewing booked with hold', [
+        $this->logger->$this->logger->info('Viewing booked with hold', [
             'user_id' => $userId,
             'property_id' => $propertyId,
             'scheduled_at' => $scheduledAt,
@@ -154,8 +165,8 @@ final readonly class PropertyTransactionService
 
         return [
             'success' => true,
-            'viewing_id' => \Illuminate\Support\Str::uuid()->toString(),
-            'hold_expires_at' => now()->addMinutes($holdMinutes)->toIso8601String(),
+            'viewing_id' => Str::uuid()->toString(),
+            'hold_expires_at' => CarbonImmutable::now()->addMinutes($holdMinutes)->toIso8601String(),
             'webrtc_room_id' => $webrtcRoomId,
             'ar_viewing_url' => $property->features['ar_viewing_url'] ?? null,
             'virtual_tour_url' => $property->features['ai_virtual_tour_url'] ?? null,
@@ -197,7 +208,7 @@ final readonly class PropertyTransactionService
 
         $this->cache->put($cacheKey, json_encode($result), self::CACHE_TTL_SECONDS);
 
-        $this->logger->info('Predictive scoring calculated', [
+        $this->logger->$this->logger->info('Predictive scoring calculated', [
             'property_id' => $property->id,
             'user_id' => $userId,
             'overall_score' => $overallScore,
@@ -222,11 +233,11 @@ final readonly class PropertyTransactionService
             $verificationResults[$docType] = $this->verifyDocumentHash($hash);
         }
 
-        $allVerified = collect($verificationResults)->every(fn($result) => $result['verified'] === true);
+        $allVerified = new Collection($verificationResults)->every(fn ($result) => $result['verified'] === true);
 
         $features = $property->features ?? [];
         $features['blockchain_verified'] = $allVerified;
-        $features['blockchain_verification_date'] = now()->toIso8601String();
+        $features['blockchain_verification_date'] = CarbonImmutable::now()->toIso8601String();
         $features['document_hashes'] = $documentHashes;
 
         $property->update(['features' => $features]);
@@ -239,7 +250,7 @@ final readonly class PropertyTransactionService
             correlationId: $correlationId
         );
 
-        $this->logger->info('Blockchain verification completed', [
+        $this->logger->$this->logger->info('Blockchain verification completed', [
             'property_id' => $property->id,
             'all_verified' => $allVerified,
             'documents_count' => count($documentHashes),
@@ -284,10 +295,10 @@ final readonly class PropertyTransactionService
             'discount_percentage' => $discountPercentage,
             'is_flash_discount' => $discountPercentage > 0,
             'is_b2b' => $isB2B,
-            'price_valid_until' => now()->addHours(24)->toIso8601String(),
+            'price_valid_until' => CarbonImmutable::now()->addHours(24)->toIso8601String(),
         ];
 
-        Log::channel('audit')->info('Dynamic price calculated', [
+        $this->log->channel('audit')->$this->logger->info('Dynamic price calculated', [
             'property_id' => $property->id,
             'base_price' => $basePrice,
             'final_price' => $finalPrice,
@@ -345,7 +356,7 @@ final readonly class PropertyTransactionService
                 correlationId: $correlationId
             );
 
-            Log::channel('audit')->info('Escrow payment initiated', [
+            $this->log->channel('audit')->$this->logger->info('Escrow payment initiated', [
                 'property_id' => $property->id,
                 'user_id' => $userId,
                 'amount' => $amount,
@@ -384,12 +395,12 @@ final readonly class PropertyTransactionService
                 subjectId: $property->id,
                 newValues: [
                     'user_id' => $userId,
-                    'released_at' => now()->toIso8601String(),
+                    'released_at' => CarbonImmutable::now()->toIso8601String(),
                 ],
                 correlationId: $correlationId
             );
 
-            Log::channel('audit')->info('Escrow payment released', [
+            $this->log->channel('audit')->$this->logger->info('Escrow payment released', [
                 'property_id' => $property->id,
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
@@ -397,25 +408,25 @@ final readonly class PropertyTransactionService
 
             return [
                 'success' => true,
-                'released_at' => now()->toIso8601String(),
-                'transaction_id' => \Illuminate\Support\Str::uuid()->toString(),
+                'released_at' => CarbonImmutable::now()->toIso8601String(),
+                'transaction_id' => Str::uuid()->toString(),
             ];
         });
     }
 
     private function generateVirtualTourUrl(int $tenantId): string
     {
-        return url("/api/real-estate/{$tenantId}/virtual-tour/" . \Illuminate\Support\Str::uuid());
+        return url("/api/real-estate/{$tenantId}/virtual-tour/".Str::uuid());
     }
 
     private function generateARViewingUrl(int $tenantId): string
     {
-        return url("/api/real-estate/{$tenantId}/ar-viewing/" . \Illuminate\Support\Str::uuid());
+        return url("/api/real-estate/{$tenantId}/ar-viewing/".Str::uuid());
     }
 
     private function generateWebRTCRoom(int $propertyId, int $userId, Carbon $scheduledAt): string
     {
-        return 'room_' . md5($propertyId . $userId . $scheduledAt->toIso8601String());
+        return 'room_'.md5($propertyId.$userId.$scheduledAt->toIso8601String());
     }
 
     private function calculateViewingFraudScore(int $userId, int $propertyId): float
@@ -444,7 +455,7 @@ final readonly class PropertyTransactionService
             'permits_valid' => $features['permits_valid'] ?? true,
         ];
 
-        return collect($legalFactors)->filter(fn($val) => $val === true)->count() / max(1, count($legalFactors));
+        return new Collection($legalFactors)->filter(fn ($val) => $val === true)->count() / max(1, count($legalFactors));
     }
 
     private function calculateLiquidityScore(Property $property): float
@@ -460,12 +471,12 @@ final readonly class PropertyTransactionService
     {
         $cacheKey = "demand_score:{$propertyId}";
 
-        return $this->cache->tags(['realestate', 'property'])->remember($cacheKey, now()->addHours(6), function () use ($propertyId): float {
+        return $this->cache->tags(['realestate', 'property'])->remember($cacheKey, CarbonImmutable::now()->addHours(6), function () use ($propertyId): float {
             try {
                 $forecast = $this->demandForecast->forecastForItem(
                     $propertyId,
-                    now(),
-                    now()->addDays(30),
+                    CarbonImmutable::now(),
+                    CarbonImmutable::now()->addDays(30),
                     ['vertical' => 'real_estate']
                 );
 
@@ -518,13 +529,13 @@ final readonly class PropertyTransactionService
         return [
             'verified' => true,
             'hash' => $hash,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
             'block_height' => random_int(1000000, 9999999),
         ];
     }
 
     private function generateSmartContract(Property $property): string
     {
-        return '0x' . \Illuminate\Support\Str::random(40);
+        return '0x'.Str::random(40);
     }
 }

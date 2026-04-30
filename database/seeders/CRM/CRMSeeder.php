@@ -1,12 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders\CRM;
 
 use Illuminate\Database\Seeder;
 use App\Models\CRM\Pipeline;
-use App\Models\CRM\Stage;
 use App\Models\CRM\Deal;
-use App\Models\CRM\Task;
 use App\Models\CRM\Project;
 use App\Models\CRM\Robot;
 

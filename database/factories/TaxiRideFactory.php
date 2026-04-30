@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Domains\Taxi\Models\TaxiRide>
+ * @extends Factory<TaxiRide>
  */
 final class TaxiRideFactory extends Factory
 {
@@ -21,6 +21,7 @@ final class TaxiRideFactory extends Factory
      * @var string
      */
     protected $model = TaxiRide::class;
+
     /**
      * Define the model's default state.
      *

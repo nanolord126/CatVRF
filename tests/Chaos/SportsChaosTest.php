@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Chaos;
 
@@ -7,6 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
+use App\Services\Fraud\FraudMLService;
 
 /**
  * Chaos Engineering Tests for Sports Vertical
@@ -19,20 +22,13 @@ use Tests\TestCase;
  * - Connection pool exhaustion
  * - Concurrent booking conflicts
  */
-
 class SportsChaosTest extends TestCase
 {
     private Tenant $tenant;
-    private User $user;
-    private string $token;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create();
-        $this->token = $this->user->createToken('test')->plainTextToken;
-    }
+    private User $user;
+
+    private string $token;
 
     public function test_system_works_when_redis_is_down(): void
     {
@@ -59,7 +55,7 @@ class SportsChaosTest extends TestCase
     public function test_fraud_detection_fallback_when_unavailable(): void
     {
         // Mock FraudMLService as unavailable
-        $this->mock(\App\Services\Fraud\FraudMLService::class, function ($mock) {
+        $this->mock(FraudMLService::class, function ($mock) {
             $mock->shouldReceive('scoreOperation')
                 ->andThrow(new \Exception('ML service unavailable'));
             $mock->shouldReceive('fallbackRules')
@@ -86,6 +82,7 @@ class SportsChaosTest extends TestCase
         // Mock slow query (simulate delay)
         DB::shouldReceive('transaction')->andReturnUsing(function ($callback) {
             sleep(1); // Simulate delay
+
             return $callback();
         });
 
@@ -127,7 +124,7 @@ class SportsChaosTest extends TestCase
             if ($i >= 3) {
                 // After threshold, should fail fast with circuit breaker
                 $this->assertTrue(
-                    $response->status() === 503 || 
+                    $response->status() === 503 ||
                     $response->status() === 422
                 );
             }
@@ -158,8 +155,8 @@ class SportsChaosTest extends TestCase
         }
 
         // Only one should succeed, others should fail with conflict
-        $successCount = count(array_filter($responses, fn($r) => $r->status() === 201));
-        $conflictCount = count(array_filter($responses, fn($r) => $r->status() === 409));
+        $successCount = count(array_filter($responses, fn ($r) => $r->status() === 201));
+        $conflictCount = count(array_filter($responses, fn ($r) => $r->status() === 409));
 
         $this->assertEquals(1, $successCount);
         $this->assertGreaterThan(0, $conflictCount);
@@ -177,12 +174,12 @@ class SportsChaosTest extends TestCase
         }
 
         // Early requests should succeed
-        $successCount = count(array_filter($responses, fn($s) => $s === 200));
+        $successCount = count(array_filter($responses, fn ($s) => $s === 200));
         $this->assertGreaterThan($maxConnections - 2, $successCount);
 
         // Later requests may get 503
         $lastResponses = array_slice($responses, -5);
-        $unavailableCount = count(array_filter($lastResponses, fn($s) => $s === 503));
+        $unavailableCount = count(array_filter($lastResponses, fn ($s) => $s === 503));
         $this->assertGreaterThanOrEqual(0, $unavailableCount);
     }
 
@@ -352,7 +349,15 @@ class SportsChaosTest extends TestCase
         }
 
         // At least one should succeed (retry logic)
-        $successCount = count(array_filter($responses, fn($r) => $r->status() === 201));
+        $successCount = count(array_filter($responses, fn ($r) => $r->status() === 201));
         $this->assertGreaterThan(0, $successCount);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create();
+        $this->token = $this->user->createToken('test')->plainTextToken;
     }
 }

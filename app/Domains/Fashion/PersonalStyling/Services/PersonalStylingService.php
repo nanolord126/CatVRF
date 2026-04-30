@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\PersonalStyling\Services;
 
@@ -11,21 +13,25 @@ use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 final readonly class PersonalStylingService
 {
     private const COMMISSION_RATE = 0.14;
+
     private const RATE_LIMIT_KEY = 'styling:session:';
+
     private const RATE_LIMIT_MAX = 15;
+
     private const RATE_LIMIT_DECAY = 3600;
 
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private AuditService $audit,
-        private DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
@@ -75,7 +81,7 @@ final readonly class PersonalStylingService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Styling session created', [
+            $this->logger->$this->logger->info('Styling session created', [
                 'session_id' => $session->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -180,7 +186,7 @@ final readonly class PersonalStylingService
     /**
      * Получить список сессий клиента.
      */
-    public function getUserSessions(int $clientId, int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    public function getUserSessions(int $clientId, int $limit = 10): Collection
     {
         return StylingSession::where('client_id', $clientId)
             ->orderBy('created_at', 'desc')

@@ -1,12 +1,12 @@
 # ClickHouse Deployment Guide
 
-**Дата:** 17 апреля 2026  
+**Дата:** 28 апреля 2026  
 **Проект:** CatVRF  
-**Версия:** 1.0.0
+**Версия:** 2.0.0
 
 ## Обзор
 
-Руководство по развертыванию ClickHouse кластера для аналитики квот tenant'ов в production среде.
+Руководство по развертыванию ClickHouse для аналитики CatVRF marketplace.
 
 ## Требования
 
@@ -25,54 +25,66 @@
 
 ## Варианты развертывания
 
-### Вариант 1: Docker Compose (Development/Testing)
+### Вариант 1: Нативная установка (WSL/Linux)
 
-#### docker-compose.yml
+#### Установка на WSL (Windows)
 
-```yaml
-version: '3.8'
+```bash
+# Открыть WSL
+wsl -d Ubuntu
 
-services:
-  clickhouse:
-    image: clickhouse/clickhouse-server:24.3
-    container_name: catvrf-clickhouse
-    ports:
-      - "8123:8123"
-      - "9000:9000"
-    volumes:
-      - clickhouse_data:/var/lib/clickhouse
-      - clickhouse_logs:/var/log/clickhouse-server
-      - ./config/clickhouse/config.xml:/etc/clickhouse-server/config.d/custom.xml:ro
-      - ./config/clickhouse/users.xml:/etc/clickhouse-server/users.d/custom.xml:ro
-    environment:
-      CLICKHOUSE_DB: catvrf_analytics
-      CLICKHOUSE_USER: catvrf_admin
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
-      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
-    healthcheck:
-      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - catvrf_network
+# Установить ClickHouse
+sudo apt-get install -y apt-transport-https ca-certificates curl gnupg
+curl -fsSL 'https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key' | sudo gpg --dearmor -o /usr/share/keyrings/clickhouse-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/clickhouse-keyring.gpg] https://packages.clickhouse.com/deb stable main" | sudo tee /etc/apt/sources.list.d/clickhouse.list
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y clickhouse-server clickhouse-client
 
-volumes:
-  clickhouse_data:
-    driver: local
-  clickhouse_logs:
-    driver: local
+# Запустить сервер
+sudo -u clickhouse /usr/bin/clickhouse server --config-file /etc/clickhouse-server/config.xml &
 
-networks:
-  catvrf_network:
-    driver: bridge
+# Проверить
+clickhouse-client --query 'SELECT version()'
 ```
 
-#### config/clickhouse/config.xml
+#### Установка на Linux (Ubuntu/Debian)
+
+```bash
+sudo apt-get install -y apt-transport-https ca-certificates curl gnupg
+curl -fsSL 'https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key' | sudo gpg --dearmor -o /usr/share/keyrings/clickhouse-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/clickhouse-keyring.gpg] https://packages.clickhouse.com/deb stable main" | sudo tee /etc/apt/sources.list.d/clickhouse.list
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y clickhouse-server clickhouse-client
+
+# Запустить как сервис
+sudo systemctl enable clickhouse-server
+sudo systemctl start clickhouse-server
+```
+
+#### Создание базы данных и миграции
+
+```bash
+# Создать базу данных
+clickhouse-client --query 'CREATE DATABASE IF NOT EXISTS catvrf_bigdata'
+
+# Выполнить миграции Big Data
+clickhouse-client --database catvrf_bigdata --queries-file database/clickhouse/bigdata_schema.sql
+
+# Выполнить миграции feature store
+clickhouse-client --database catvrf_bigdata --queries-file database/clickhouse/feature_store.sql
+
+# Проверить таблицы
+clickhouse-client --database catvrf_bigdata --query 'SHOW TABLES'
+```
+
+#### Настройка конфигурации
+
+```bash
+# Редактировать конфигурацию
+sudo nano /etc/clickhouse-server/config.xml
+```
+
+Рекомендуемые настройки:
 
 ```xml
 <clickhouse>
@@ -85,108 +97,44 @@ networks:
     </logger>
 
     <mark_cache_size>5368709120</mark_cache_size>
-
     <path>/var/lib/clickhouse/</path>
     <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
-
     <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
-
-    <users_config>users.d/custom.xml</users_config>
-    <default_profile>default</default_profile>
-    <default_database>catvrf_analytics</default_database>
+    <default_database>catvrf_bigdata</default_database>
 
     <http_port>8123</http_port>
     <tcp_port>9000</tcp_port>
-
-    <listen_host>::</listen_host>
+    <listen_host>0.0.0.0</listen_host>
 
     <max_connections>4096</max_connections>
     <keep_alive_timeout>3</keep_alive_timeout>
-
     <max_concurrent_queries>100</max_concurrent_queries>
-
     <uncompressed_cache_size>8589934592</uncompressed_cache_size>
 
-    <mark_cache_size>5368709120</mark_cache_size>
-
-    <distributed_ddl>
-        <enable>true</enable>
-    </distributed_ddl>
+    <prometheus>
+        <endpoint>/metrics</endpoint>
+        <port>9363</port>
+        <events>true</events>
+        <asynchronous_metrics>true</asynchronous_metrics>
+        <status_info>true</status_info>
+    </prometheus>
 </clickhouse>
 ```
 
-#### config/clickhouse/users.xml
-
-```xml
-<clickhouse>
-    <users>
-        <catvrf_admin>
-            <password>${CLICKHOUSE_PASSWORD}</password>
-            <access_management>1</access_management>
-            <networks>
-                <ip>::/0</ip>
-            </networks>
-            <profile>default</profile>
-            <quota>default</quota>
-            <databases>
-                <database>catvrf_analytics</database>
-            </databases>
-        </catvrf_admin>
-
-        <catvrf_app>
-            <password>${CLICKHOUSE_APP_PASSWORD}</password>
-            <networks>
-                <ip>::/0</ip>
-            </networks>
-            <profile>default</profile>
-            <quota>default</quota>
-            <databases>
-                <database>catvrf_analytics</database>
-            </databases>
-            <readonly>1</readonly>
-        </catvrf_app>
-    </users>
-
-    <profiles>
-        <default>
-            <max_memory_usage>10000000000</max_memory_usage>
-            <use_uncompressed_cache>0</use_uncompressed_cache>
-            <load_balancing>random</load_balancing>
-        </default>
-    </profiles>
-
-    <quotas>
-        <default>
-            <interval>
-                <duration>3600</duration>
-                <queries>0</queries>
-                <errors>0</errors>
-                <result_rows>0</result_rows>
-                <read_rows>0</read_rows>
-                <execution_time>0</execution_time>
-            </interval>
-        </default>
-    </quotas>
-</clickhouse>
-```
-
-#### Запуск
+#### Управление сервером (WSL)
 
 ```bash
-# Создать .env файл
-cat > .env.clickhouse << EOF
-CLICKHOUSE_PASSWORD=your_secure_password_here
-CLICKHOUSE_APP_PASSWORD=your_app_password_here
-EOF
+# Запуск
+wsl -d Ubuntu -- bash -c "sudo -u clickhouse /usr/bin/clickhouse server --config-file /etc/clickhouse-server/config.xml &"
 
-# Запустить ClickHouse
-docker-compose -f docker-compose.clickhouse.yml up -d
+# Проверка статуса (из Windows)
+Invoke-WebRequest -Uri "http://localhost:8123/ping"
 
-# Проверить статус
-docker-compose -f docker-compose.clickhouse.yml ps
+# Остановка
+wsl -d Ubuntu -- bash -c "clickhouse-client --query 'SYSTEM SHUTDOWN'"
 
-# Просмотреть логи
-docker-compose -f docker-compose.clickhouse.yml logs -f clickhouse
+# Логи
+wsl -d Ubuntu -- bash -c "sudo tail -f /var/log/clickhouse-server/clickhouse-server.log"
 ```
 
 ### Вариант 2: Kubernetes (Production)
@@ -222,9 +170,7 @@ data:
         <path>/var/lib/clickhouse/</path>
         <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
         <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
-        <users_config>users.d/custom.xml</users_config>
-        <default_profile>default</default_profile>
-        <default_database>catvrf_analytics</default_database>
+        <default_database>catvrf_bigdata</default_database>
         <http_port>8123</http_port>
         <tcp_port>9000</tcp_port>
         <listen_host>::</listen_host>
@@ -236,42 +182,6 @@ data:
         <distributed_ddl>
             <enable>true</enable>
         </distributed_ddl>
-    </clickhouse>
-  users.xml: |
-    <clickhouse>
-        <users>
-            <catvrf_admin>
-                <password_sha256_hex>YOUR_SHA256_HASH</password_sha256_hex>
-                <access_management>1</access_management>
-                <networks>
-                    <ip>::/0</ip>
-                </networks>
-                <profile>default</profile>
-                <quota>default</quota>
-                <databases>
-                    <database>catvrf_analytics</database>
-                </databases>
-            </catvrf_admin>
-        </users>
-        <profiles>
-            <default>
-                <max_memory_usage>10000000000</max_memory_usage>
-                <use_uncompressed_cache>0</use_uncompressed_cache>
-                <load_balancing>random</load_balancing>
-            </default>
-        </profiles>
-        <quotas>
-            <default>
-                <interval>
-                    <duration>3600</duration>
-                    <queries>0</queries>
-                    <errors>0</errors>
-                    <result_rows>0</result_rows>
-                    <read_rows>0</read_rows>
-                    <execution_time>0</execution_time>
-                </interval>
-            </default>
-        </quotas>
     </clickhouse>
 ```
 
@@ -296,7 +206,7 @@ spec:
     spec:
       containers:
       - name: clickhouse
-        image: clickhouse/clickhouse-server:24.3
+        image: clickhouse/clickhouse-server:26.3
         ports:
         - containerPort: 8123
           name: http
@@ -308,9 +218,6 @@ spec:
         - name: config
           mountPath: /etc/clickhouse-server/config.d/custom.xml
           subPath: config.xml
-        - name: users
-          mountPath: /etc/clickhouse-server/users.d/custom.xml
-          subPath: users.xml
         resources:
           requests:
             memory: "16Gi"
@@ -319,19 +226,15 @@ spec:
             memory: "32Gi"
             cpu: "8"
         livenessProbe:
-          exec:
-            command:
-            - clickhouse-client
-            - --query
-            - SELECT 1
+          httpGet:
+            path: /ping
+            port: 8123
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
-          exec:
-            command:
-            - clickhouse-client
-            - --query
-            - SELECT 1
+          httpGet:
+            path: /ping
+            port: 8123
           initialDelaySeconds: 10
           periodSeconds: 5
   volumeClaimTemplates:
@@ -350,12 +253,6 @@ spec:
       items:
       - key: config.xml
         path: config.xml
-  - name: users
-    configMap:
-      name: clickhouse-config
-      items:
-      - key: users.xml
-        path: users.xml
 ```
 
 #### Service
@@ -382,37 +279,20 @@ spec:
 #### Deployment
 
 ```bash
-# Apply manifests
 kubectl apply -f k8s/clickhouse/
-
-# Check status
 kubectl get pods -n clickhouse
 kubectl get svc -n clickhouse
-
-# Get connection string
-kubectl get svc clickhouse -n clickhouse
 ```
 
-### Вариант 3: Managed Cloud (Recommended for Production)
-
-#### ClickHouse Cloud
+### Вариант 3: ClickHouse Cloud (Managed)
 
 ```bash
-# Sign up at https://clickhouse.com/cloud
+# Sign up at https://clickhouse.cloud/
 # Create cluster via UI or CLI
 
-# CLI installation
-curl - https://cli.clickhouse.com | sh
-
-# Create cluster
-clickhouse cloud cluster create \
-  --name=catvrf-analytics \
-  --region=us-east-1 \
-  --nodes=3 \
-  --type=m-medium
-
-# Get connection string
-clickhouse cloud cluster list
+# CLI
+curl https://cli.clickhouse.com | sh
+clickhouse cloud cluster create --name=catvrf-bigdata --region=us-east-1
 ```
 
 #### Environment Variables
@@ -420,94 +300,74 @@ clickhouse cloud cluster list
 ```env
 CLICKHOUSE_HOST=your-cluster.clickhouse.cloud
 CLICKHOUSE_PORT=8443
-CLICKHOUSE_DATABASE=catvrf_analytics
+CLICKHOUSE_DATABASE=catvrf_bigdata
 CLICKHOUSE_USERNAME=default
 CLICKHOUSE_PASSWORD=your_password
-CLICKHOUSE_TIMEOUT=30
-CLICKHOUSE_CONNECT_TIMEOUT=10
 ```
 
 ## Инициализация базы данных
 
-После развертывания ClickHouse, выполните миграции:
-
 ```bash
-# Запустить миграции ClickHouse
-php artisan migrate --path=database/migrations/clickhouse
+# Нативная установка
+clickhouse-client --query 'CREATE DATABASE IF NOT EXISTS catvrf_bigdata'
+clickhouse-client --database catvrf_bigdata --queries-file database/clickhouse/bigdata_schema.sql
 
-# Проверить создание таблиц
-clickhouse-client --host=CLICKHOUSE_HOST --user=catvrf_admin --password=PASSWORD \
-  --query="SHOW TABLES FROM catvrf_analytics"
+# Проверить
+clickhouse-client --database catvrf_bigdata --query 'SHOW TABLES'
 ```
 
 ## Мониторинг
 
 ### Prometheus Integration
 
-```xml
-<!-- config/clickhouse/config.xml -->
-<clickhouse>
-    <prometheus>
-        <endpoint>/metrics</endpoint>
-        <port>9363</port>
-        <events>true</events>
-        <asynchronous_metrics>true</asynchronous_metrics>
-        <status_info>true</status_info>
-    </prometheus>
-</clickhouse>
+ClickHouse встроенный endpoint:
+
+```bash
+curl http://localhost:9363/metrics
 ```
 
-### Grafana Dashboard
+### Grafana Cloud
 
-Import dashboard from: https://grafana.com/grafana/dashboards/
+Sign up at https://grafana.com/auth/sign-up/cloud/ (free tier).
 
-Key metrics to monitor:
-- ClickHouse insert latency
-- Queue size for SyncQuotaUsageToClickHouseJob
-- Redis-ClickHouse drift count
-- Alert firing rate
+Key metrics:
+- Insert latency
+- Query performance
 - Disk usage
 - Memory usage
-- Query performance
+- Event volume
 
 ## Backup and Recovery
 
 ### Backup
 
 ```bash
-# Использовать clickhouse-backup
-clickhouse-backup create catvrf_analytics_$(date +%Y%m%d)
-
-# Backup to S3
-clickhouse-backup upload catvrf_analytics_$(date +%Y%m%d)
+clickhouse-backup create catvrf_bigdata_$(date +%Y%m%d)
+clickhouse-backup upload catvrf_bigdata_$(date +%Y%m%d)
 ```
 
 ### Recovery
 
 ```bash
-# List backups
 clickhouse-backup list
-
-# Restore from backup
-clickhouse-backup restore catvrf_analytics_20240417
+clickhouse-backup restore catvrf_bigdata_20260428
 ```
 
 ## Security
 
 ### Network Security
-
 - Ограничить доступ по IP
 - Использовать VPN или private network
 - Настроить firewall rules
 
 ### Authentication
 
-- Использовать сильные пароли
-- Включить SSL/TLS
-- Настроить RBAC
+```sql
+CREATE USER bigdata_user IDENTIFIED BY 'secure_password';
+GRANT SELECT, INSERT ON catvrf_bigdata.* TO bigdata_user;
+```
 
 ### Data Encryption
-
 - At rest: ClickHouse native encryption
 - In transit: SSL/TLS
 
@@ -539,48 +399,45 @@ clickhouse-backup restore catvrf_analytics_20240417
 ### Common Issues
 
 1. **Connection refused**
-   - Проверить, что ClickHouse запущен
+   - Проверить, что ClickHouse запущен: `curl http://localhost:8123/ping`
    - Проверить firewall rules
    - Проверить порт (8123 for HTTP, 9000 for native)
 
-2. **Out of memory**
+2. **User mismatch error**
+   - Запускать под пользователем clickhouse: `sudo -u clickhouse clickhouse-server ...`
+   - Проверить права: `sudo chown -R clickhouse:clickhouse /var/lib/clickhouse`
+
+3. **Out of memory**
    - Увеличить memory limit
    - Оптимизировать запросы
-   - Увеличить кэш
 
-3. **Slow queries**
+4. **Slow queries**
    - Проверить explain plan
    - Добавить индексы
    - Оптимизировать partitioning
 
-4. **Disk full**
-   - Настроить TTL
-   - Увеличить disk size
-   - Очистить старые данные
-
 ### Logs
 
 ```bash
-# Docker
-docker logs catvrf-clickhouse
+# Нативная установка
+tail -f /var/log/clickhouse-server/clickhouse-server.log
+tail -f /var/log/clickhouse-server/clickhouse-server.err.log
 
 # Kubernetes
 kubectl logs -n clickhouse -l app=clickhouse
 
-# Direct access
-tail -f /var/log/clickhouse-server/clickhouse-server.log
+# WSL (из Windows)
+wsl -d Ubuntu -- bash -c "sudo tail -f /var/log/clickhouse-server/clickhouse-server.log"
 ```
 
 ## Масштабирование
 
 ### Horizontal Scaling
-
 - Добавить реплики в StatefulSet
 - Настроить replication
 - Использовать distributed tables
 
 ### Vertical Scaling
-
 - Увеличить CPU/memory limits
 - Увеличить disk size
 - Оптимизировать кэш
@@ -588,16 +445,10 @@ tail -f /var/log/clickhouse-server/clickhouse-server.log
 ## Следующие шаги
 
 1. Выбрать вариант развертывания
-2. Развернуть ClickHouse кластер
-3. Настроить мониторинг
-4. Настроить backup
-5. Выполнить миграции
-6. Настроить environment variables
-7. Запустить scheduler jobs
-8. Мониторить производительность
-
-## Контакты
-
-Для вопросов по развертыванию:
-- DevOps Team: devops@catvrf.ru
-- Database Team: dba@catvrf.ru
+2. Развернуть ClickHouse
+3. Создать базу данных `catvrf_bigdata`
+4. Выполнить миграции
+5. Настроить мониторинг
+6. Настроить backup
+7. Настроить environment variables
+8. Запустить scheduler jobs

@@ -1,84 +1,89 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources;
 
-use Filament\Resources\Resource;
+use App\Filament\Resources\BaseOptimizedResource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms;
 use Filament\Tables;
+use App\Domains\Auto\Filament\Resources\PartWarrantyResource\Pages\CreatePartWarranty;
+use App\Domains\Auto\Filament\Resources\PartWarrantyResource\Pages\EditPartWarranty;
+use App\Domains\Auto\Filament\Resources\PartWarrantyResource\Pages\ListPartWarranties;
+use Illuminate\Database\Eloquent\Builder;
 
-final class PartWarrantyResource extends Resource
+final class PartWarrantyResource extends BaseOptimizedResource
 {
-
     protected static ?string $model = PartWarranty::class;
 
-        protected static ?string $navigationLabel = 'Гарантия на запчасти';
+    protected static ?string $navigationLabel = 'Гарантия на запчасти';
 
-        protected static ?string $pluralModelLabel = 'Гарантии на запчасти';
+    protected static ?string $pluralModelLabel = 'Гарантии на запчасти';
 
-        protected static ?string $navigationGroup = 'Авто';
+    protected static ?string $navigationGroup = 'Авто';
 
-        public static function form(Form $form): Form
-        {
-            return $form->schema([
-                Forms\Components\Section::make('Информация о гарантии')
-                    ->schema([
-                        Forms\Components\Select::make('auto_part_id')
-                            ->label('Запчасть')
-                            ->relationship('autoPart', 'name')
-                            ->searchable()
-                            ->required(),
+    public static function form(Form $form): Form
+    {
+        return $form->schema([
+            Forms\Components\Section::make('Информация о гарантии')
+                ->schema([
+                    Forms\Components\Select::make('auto_part_id')
+                        ->label('Запчасть')
+                        ->relationship('autoPart', 'name')
+                        ->searchable()
+                        ->required(),
 
-                        Forms\Components\Select::make('client_id')
-                            ->label('Клиент')
-                            ->relationship('client', 'name')
-                            ->searchable()
-                            ->required(),
+                    Forms\Components\Select::make('client_id')
+                        ->label('Клиент')
+                        ->relationship('client', 'name')
+                        ->searchable()
+                        ->required(),
 
-                        Forms\Components\Select::make('warranty_type')
-                            ->label('Тип гарантии')
-                            ->options([
-                                'manufacturer' => 'Производителя',
-                                'dealer' => 'Дилерская',
-                                'extended' => 'Расширенная',
-                            ])
-                            ->required(),
+                    Forms\Components\Select::make('warranty_type')
+                        ->label('Тип гарантии')
+                        ->options([
+                            'manufacturer' => 'Производителя',
+                            'dealer' => 'Дилерская',
+                            'extended' => 'Расширенная',
+                        ])
+                        ->required(),
 
-                        Forms\Components\TextInput::make('warranty_number')
-                            ->label('Номер гарантии')
-                            ->required()
-                            ->unique(PartWarranty::class, 'warranty_number', ignoreRecord: true),
+                    Forms\Components\TextInput::make('warranty_number')
+                        ->label('Номер гарантии')
+                        ->required()
+                        ->unique(PartWarranty::class, 'warranty_number', ignoreRecord: true),
 
-                        Forms\Components\DatePicker::make('start_date')
-                            ->label('Дата начала')
-                            ->required(),
+                    Forms\Components\DatePicker::make('start_date')
+                        ->label('Дата начала')
+                        ->required(),
 
-                        Forms\Components\TextInput::make('warranty_months')
-                            ->label('Срок гарантии (месяцы)')
-                            ->numeric()
-                            ->minValue(1)
-                            ->maxValue(60)
-                            ->required(),
+                    Forms\Components\TextInput::make('warranty_months')
+                        ->label('Срок гарантии (месяцы)')
+                        ->numeric()
+                        ->minValue(1)
+                        ->maxValue(60)
+                        ->required(),
 
-                        Forms\Components\Select::make('claim_status')
-                            ->label('Статус претензии')
-                            ->options([
-                                'none' => 'Нет претензий',
-                                'pending' => 'Рассматривается',
-                                'approved' => 'Одобрено',
-                                'rejected' => 'Отклонено',
-                            ])
-                            ->default('none')
-                            ->required(),
+                    Forms\Components\Select::make('claim_status')
+                        ->label('Статус претензии')
+                        ->options([
+                            'none' => 'Нет претензий',
+                            'pending' => 'Рассматривается',
+                            'approved' => 'Одобрено',
+                            'rejected' => 'Отклонено',
+                        ])
+                        ->default('none')
+                        ->required(),
 
-                        Forms\Components\Textarea::make('claim_description')
-                            ->label('Описание претензии')
-                            ->visible(fn ($get) => $get('claim_status') !== 'none')
-                            ->columnSpanFull(),
-                    ]),
-            ]);
-        }
+                    Forms\Components\Textarea::make('claim_description')
+                        ->label('Описание претензии')
+                        ->visible(fn ($get) => $get('claim_status') !== 'none')
+                        ->columnSpanFull(),
+                ]),
+        ]);
+    }
 
     public static function table(Table $table): Table
     {
@@ -158,14 +163,22 @@ final class PartWarrantyResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Domains\Auto\Filament\Resources\PartWarrantyResource\Pages\ListPartWarranties::route('/'),
-            'create' => \App\Domains\Auto\Filament\Resources\PartWarrantyResource\Pages\CreatePartWarranty::route('/create'),
-            'edit' => \App\Domains\Auto\Filament\Resources\PartWarrantyResource\Pages\EditPartWarranty::route('/{record}/edit'),
+            'index' => ListPartWarranties::route('/'),
+            'create' => CreatePartWarranty::route('/create'),
+            'edit' => EditPartWarranty::route('/{record}/edit'),
         ];
     }
 
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
+    }
+
+    /**
+     * Relations to eager load for Auto
+     */
+    protected static function getEagerLoading(): array
+    {
+        return [];
     }
 }

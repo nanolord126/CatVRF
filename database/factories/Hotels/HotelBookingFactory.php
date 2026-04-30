@@ -26,7 +26,7 @@ final class HotelBookingFactory extends Factory
             'tenant_id' => 1,
             'hotel_id' => 1,
             'user_id' => 1,
-            'booking_number' => 'BK-' . strtoupper($this->faker->bothify('??########')),
+            'booking_number' => 'BK-'.strtoupper($this->faker->bothify('??########')),
             'room_type_id' => 1,
             'guest_name' => $this->faker->name(),
             'guest_email' => $this->faker->email(),

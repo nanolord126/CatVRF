@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Hobby;
 
@@ -11,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Tests\TestCase;
+use App\Domains\HobbyAndCraft\Hobby\DTOs\VolumeOrderDto;
 
 /**
  * HobbyDomainIntegrationTest (Layer 9/9)
@@ -23,34 +26,10 @@ class HobbyDomainIntegrationTest extends TestCase
     use RefreshDatabase;
 
     private HobbyDomainService $hobbyService;
+
     private $testStore;
+
     private $testCategory;
-
-    /**
-     * Set up tests.
-     */
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->hobbyService = app(HobbyDomainService::class);
-
-        // 1. Seed store and category
-        $this->testStore = HobbyStore::create([
-            'name' => 'DIY Master',
-            'contact_email' => 'test@hobby.com',
-            'tenant_id' => 1,
-            'correlation_id' => (string) Str::uuid()
-        ]);
-
-        $this->testCategory = HobbyCategory::create([
-            'name' => 'Woodworking',
-            'description' => 'Tools and materials for wood crafting',
-            'tenant_id' => 1,
-            'correlation_id' => (string) Str::uuid()
-        ]);
-
-        Log::channel('audit')->info('Hobby Integration Test Set Up complete.');
-    }
 
     /**
      * Test L3: Product Upsert through Domain Service.
@@ -74,7 +53,7 @@ class HobbyDomainIntegrationTest extends TestCase
 
         $this->assertDatabaseHas('hobby_products', [
             'sku' => 'HW-CHISEL-001',
-            'price_b2b' => 95000
+            'price_b2b' => 95000,
         ]);
 
         $this->assertEquals('intermediate', $product->skill_level);
@@ -100,11 +79,11 @@ class HobbyDomainIntegrationTest extends TestCase
             'stock_quantity' => 100,
             'skill_level' => 'beginner',
             'tenant_id' => 1,
-            'correlation_id' => (string) Str::uuid()
+            'correlation_id' => (string) Str::uuid(),
         ]);
 
         // 2. Order for 2 units (B2C price)
-        $orderDtoB2C = new \App\Domains\HobbyAndCraft\Hobby\DTOs\VolumeOrderDto(
+        $orderDtoB2C = new VolumeOrderDto(
             productId: $product->id,
             quantity: 2,
             userId: 1,
@@ -115,7 +94,7 @@ class HobbyDomainIntegrationTest extends TestCase
         $this->assertEquals(1000000, $orderB2C->total_amount); // 5000 * 2 = 10000
 
         // 3. Order for 6 units (B2B price triggered)
-        $orderDtoB2B = new \App\Domains\HobbyAndCraft\Hobby\DTOs\VolumeOrderDto(
+        $orderDtoB2B = new VolumeOrderDto(
             productId: $product->id,
             quantity: 6,
             userId: 1,
@@ -140,7 +119,7 @@ class HobbyDomainIntegrationTest extends TestCase
         $response = $this->postJson('/api/hobby/match', [
             'skill_level' => 'beginner',
             'budget' => 15000, // 150.00 RUB
-            'tags' => ['Painting', 'Beginner']
+            'tags' => ['Painting', 'Beginner'],
         ]);
 
         // API should return 200 (Mocked response from Controller logic)
@@ -148,5 +127,31 @@ class HobbyDomainIntegrationTest extends TestCase
         $response->assertJsonStructure(['success', 'matched_kits', 'correlation_id']);
 
         Log::channel('audit')->info('AI API Integration Test Simulation Passed (Hobby).');
+    }
+
+    /**
+     * Set up tests.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->hobbyService = app(HobbyDomainService::class);
+
+        // 1. Seed store and category
+        $this->testStore = HobbyStore::create([
+            'name' => 'DIY Master',
+            'contact_email' => 'test@hobby.com',
+            'tenant_id' => 1,
+            'correlation_id' => (string) Str::uuid(),
+        ]);
+
+        $this->testCategory = HobbyCategory::create([
+            'name' => 'Woodworking',
+            'description' => 'Tools and materials for wood crafting',
+            'tenant_id' => 1,
+            'correlation_id' => (string) Str::uuid(),
+        ]);
+
+        Log::channel('audit')->info('Hobby Integration Test Set Up complete.');
     }
 }

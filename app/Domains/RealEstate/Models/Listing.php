@@ -1,14 +1,18 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Listing extends Model
 {
+    use TenantScoped;
 
     protected $table = 'real_estate_listings';
 
@@ -38,30 +42,28 @@ final class Listing extends Model
         'published_at' => 'datetime',
     ];
 
+    public function property(): BelongsTo
+    {
+        return $this->belongsTo(Property::class);
+    }
+
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(RentalContract::class);
+    }
+
+    public function b2bDeals(): HasMany
+    {
+        return $this->hasMany(B2BDeal::class);
+    }
+
     protected static function booted(): void
     {
-        static::creating(function (Listing $model) {
+        self::creating(function (Listing $model) {
             $model->uuid = $model->uuid ?? (string) Str::uuid();
             if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
                 $model->tenant_id = tenant()->id;
             }
         });
     }
-
-    public function property(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(Property::class);
-    }
-
-    public function contracts(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(RentalContract::class);
-    }
-
-    public function b2bDeals(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(B2BDeal::class);
-    }
-
-    
 }

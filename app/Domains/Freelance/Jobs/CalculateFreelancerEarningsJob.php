@@ -9,28 +9,37 @@ use Illuminate\Queue\SerializesModels;
 
 use Carbon\Carbon;
 
-
-
 use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Psr\Log\LoggerInterface;
-final class CalculateFreelancerEarningsJob
+use DateTime;
+
+final class CalculateFreelancerEarningsJob implements ShouldQueue
 {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public function __construct(
+        private readonly int $freelancerId,
+        private readonly string $correlationId,
+        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
+        private readonly FraudControlService $fraud,
+    ) {
+        $this->onQueue('default');
+    }
 
-    use \Illuminate\Foundation\Bus\Dispatchable, \Illuminate\Queue\InteractsWithQueue, \Illuminate\Bus\Queueable, \Illuminate\Queue\SerializesModels;
+    public function tags(): array
+    {
+        return ['freelance', 'job'];
+    }
 
-        public function __construct(public int $freelancerId = 0,
-            private string $correlationId = '',
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {
-            $this->onQueue('default');
-
-        }
-
-        public function handle(): void
+    public function handle(): void
         {
-            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            $correlationId = $this->correlationId;
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId);
             $this->db->transaction(function () {
-                $freelancer = Freelancer::find($this->freelancerId);
+                $freelancer = \App\Domains\Freelance\Models\Freelancer::find($this->freelancerId);
                 if (!$freelancer) {
                     $this->logger->warning('Freelancer not found for earnings calculation', [
                         'freelancer_id' => $this->freelancerId,
@@ -39,11 +48,11 @@ final class CalculateFreelancerEarningsJob
                     return;
                 }
 
-                $totalEarned = FreelanceContract::where('freelancer_id', $this->freelancerId)
+                $totalEarned = \App\Domains\Freelance\Models\FreelanceContract::where('freelancer_id', $this->freelancerId)
                     ->where('status', 'completed')
                     ->sum('amount_paid');
 
-                $completedJobs = FreelanceContract::where('freelancer_id', $this->freelancerId)
+                $completedJobs = \App\Domains\Freelance\Models\FreelanceContract::where('freelancer_id', $this->freelancerId)
                     ->where('status', 'completed')
                     ->count();
 
@@ -63,7 +72,15 @@ final class CalculateFreelancerEarningsJob
 
         public function retryUntil(): \DateTime
         {
-            return Carbon::now()->addHours(24);
+            return (new \Carbon\Carbon())->addHours(24);
         }
+
+
+    public function failed(\Throwable $exception): void
+    {
+        $this->logger->error('freelance job failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }
 

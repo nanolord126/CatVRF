@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Taxi\VehicleResource;
+
+use Illuminate\Support\Collection;
 
 use App\Domains\Auto\Taxi\Domain\Enums\VehicleClassEnum;
 use App\Domains\Auto\Taxi\Infrastructure\Eloquent\Models\Vehicle;
@@ -10,12 +13,16 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Filament\Tenant\Resources\Taxi\VehicleResource\Pages\CreateVehicle;
+use App\Filament\Tenant\Resources\Taxi\VehicleResource\Pages\EditVehicle;
+use App\Filament\Tenant\Resources\Taxi\VehicleResource\Pages\ListVehicles;
 
 final class VehicleResource extends Resource
 {
     protected static ?string $model = Vehicle::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-truck';
+
     protected static ?string $navigationGroup = 'Taxi Management';
 
     public static function form(Form $form): Form
@@ -27,7 +34,7 @@ final class VehicleResource extends Resource
                 Forms\Components\TextInput::make('license_plate')->required()->unique(ignoreRecord: true)->maxLength(20),
                 Forms\Components\Select::make('class')
                     ->options(
-                        collect(VehicleClassEnum::cases())
+                        new Collection(VehicleClassEnum::cases())
                             ->mapWithKeys(fn ($case) => [$case->value => $case->name])
                             ->toArray()
                     )
@@ -51,7 +58,7 @@ final class VehicleResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('class')
                     ->options(
-                        collect(VehicleClassEnum::cases())
+                        new Collection(VehicleClassEnum::cases())
                             ->mapWithKeys(fn ($case) => [$case->value => $case->name])
                             ->toArray()
                     ),
@@ -75,9 +82,9 @@ final class VehicleResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\Taxi\VehicleResource\Pages\ListVehicles::route('/'),
-            'create' => \App\Filament\Tenant\Resources\Taxi\VehicleResource\Pages\CreateVehicle::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\Taxi\VehicleResource\Pages\EditVehicle::route('/{record}/edit'),
+            'index' => ListVehicles::route('/'),
+            'create' => CreateVehicle::route('/create'),
+            'edit' => EditVehicle::route('/{record}/edit'),
         ];
     }
 }

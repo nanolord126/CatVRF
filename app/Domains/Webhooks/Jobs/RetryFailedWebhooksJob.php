@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Webhooks\Jobs;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\Webhooks\Models\WebhookDelivery;
 use App\Domains\Webhooks\Services\WebhookService;
@@ -9,15 +15,16 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
 final class RetryFailedWebhooksJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    public function __construct(
-        private readonly WebhookService $webhookService,
-    ) {}
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly WebhookService $webhookService,) {}
 
     public function onQueue(): string
     {
@@ -26,8 +33,8 @@ final class RetryFailedWebhooksJob implements ShouldQueue
 
     public function handle(): void
     {
-        $deliveries = WebhookDelivery::where('failed_at', '!=', null)
-            ->where('next_retry_at', '<=', now())
+        $WebhookDelivery::where('failed_at', '!=', null)
+            ->where('next_retry_at', '<=', CarbonImmutable::now())
             ->with('webhook')
             ->get();
 
@@ -41,7 +48,7 @@ final class RetryFailedWebhooksJob implements ShouldQueue
                         $delivery->correlation_id ?? ''
                     );
 
-                    $this->logger->info('Webhook retry succeeded', [
+                    $this->logger->$this->logger->info('Webhook retry succeeded', [
                         'delivery_id' => $delivery->id,
                     ]);
                 } catch (\Exception $e) {

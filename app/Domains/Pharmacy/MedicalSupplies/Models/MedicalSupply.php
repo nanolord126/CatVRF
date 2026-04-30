@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * MedicalSupply — CatVRF 2026 Component.
@@ -7,43 +9,36 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/medicalsupply
  */
 
-
 namespace App\Domains\Pharmacy\MedicalSupplies\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Carbon\CarbonImmutable;
+
 use Illuminate\Database\Eloquent\Model;
 
 final class MedicalSupply extends Model
 {
-
+    protected $table = 'medical_supplies';
 
-        protected $table = 'medical_supplies';
+    protected $fillable = [
+        'uuid', 'tenant_id', 'business_group_id', 'name', 'sku', 'price', 'current_stock',
+        'requires_prescription', 'description', 'correlation_id', 'tags',
+    ];
 
-        protected $fillable = [
-            'uuid', 'tenant_id', 'business_group_id', 'name', 'sku', 'price', 'current_stock',
-            'requires_prescription', 'description', 'correlation_id', 'tags',
-        ];
-
-        protected $casts = [
-            'tags' => 'json',
-            'price' => 'integer',
-            'current_stock' => 'integer',
-            'requires_prescription' => 'boolean',
-        ];
-
-        protected static function booted(): void
-        {
-            $this->addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', filament()?->getTenant()?->id ?? null));
-        }
+    protected $casts = [
+        'tags' => 'json',
+        'price' => 'integer',
+        'current_stock' => 'integer',
+        'requires_prescription' => 'boolean',
+    ];
 
     /**
      * Get the string representation of this instance.
@@ -52,7 +47,7 @@ final class MedicalSupply extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -63,8 +58,13 @@ final class MedicalSupply extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted(): void
+    {
+        $this->addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', filament()?->getTenant()?->id ?? null));
     }
 }

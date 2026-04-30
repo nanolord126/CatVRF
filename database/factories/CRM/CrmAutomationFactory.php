@@ -14,10 +14,11 @@ use Illuminate\Support\Str;
  */
 final class CrmAutomationFactory extends Factory
 {
-    protected $model = CrmAutomation::class;
-
     private const TRIGGER_TYPES = ['new_client', 'sleeping_client', 'birthday', 'purchase', 'segment_enter'];
+
     private const ACTION_TYPES = ['send_email', 'send_sms', 'send_push', 'assign_segment', 'notify_manager'];
+
+    protected $model = CrmAutomation::class;
 
     /**
      * @return array<string, mixed>

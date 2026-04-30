@@ -1,80 +1,90 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\MusicAndInstruments;
 
-use PHPUnit\Framework\TestCase;
+use Tests\BaseVerticalTestCase;
 
-/**
- * Unit tests for MusicAndInstrumentsService.
- *
- * @covers \App\Domains\MusicAndInstruments\Domain\Services\MusicAndInstrumentsService
- */
-final class MusicAndInstrumentsServiceTest extends TestCase
-{
-    public function test_class_is_final(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\MusicAndInstruments\Domain\Services\MusicAndInstrumentsService::class
-        );
-        $this->assertTrue($reflection->isFinal(), 'MusicAndInstrumentsService must be final');
-    }
+// Pest test using modern declarative syntax
+uses(BaseVerticalTestCase::class);
 
-    public function test_class_is_readonly(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\MusicAndInstruments\Domain\Services\MusicAndInstrumentsService::class
-        );
-        $this->assertTrue($reflection->isReadOnly(), 'MusicAndInstrumentsService must be readonly');
-    }
+beforeEach(function () {
+    $this->setVerticalContext('MusicAndInstruments');
+});
 
-    public function test_has_constructor_injection(): void
-    {
-        $reflection = new \ReflectionClass(
-            \App\Domains\MusicAndInstruments\Domain\Services\MusicAndInstrumentsService::class
-        );
-        $constructor = $reflection->getConstructor();
-        $this->assertNotNull($constructor, 'MusicAndInstrumentsService must have __construct');
-        $this->assertGreaterThan(0, $constructor->getNumberOfParameters());
-    }
+test('MusicAndInstrumentsService exists and is instantiable', function () {
+    $this->assertServiceExists('MusicAndInstrumentsService');
+});
 
-    public function test_create_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\MusicAndInstruments\Domain\Services\MusicAndInstrumentsService::class, 'create'),
-            'MusicAndInstrumentsService must implement create()'
-        );
-    }
+test('MusicAndInstrumentsService follows clean architecture', function () {
+    $this->assertCleanArchitecture('MusicAndInstrumentsService');
+});
 
-    public function test_update_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\MusicAndInstruments\Domain\Services\MusicAndInstrumentsService::class, 'update'),
-            'MusicAndInstrumentsService must implement update()'
-        );
-    }
+test('MusicAndInstrumentsService performs fraud check', function () {
+    $this->testServiceWithFraudCheck('MusicAndInstrumentsService', 'process', []);
+});
 
-    public function test_delete_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\MusicAndInstruments\Domain\Services\MusicAndInstrumentsService::class, 'delete'),
-            'MusicAndInstrumentsService must implement delete()'
-        );
-    }
+test('MusicAndInstrumentsService enforces quota limits', function () {
+    $this->testServiceWithQuota('MusicAndInstrumentsService', 'process', 1, 10, []);
+});
 
-    public function test_list_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\MusicAndInstruments\Domain\Services\MusicAndInstrumentsService::class, 'list'),
-            'MusicAndInstrumentsService must implement list()'
-        );
-    }
+test('MusicAndInstrumentsService handles concurrent operations', function () {
+    $this->assertNoRaceCondition(function () {
+        // Simulate concurrent operation
+        $service = app($this->getServiceClass('MusicAndInstrumentsService'));
+        $service->process([]);
+    }, 10);
+});
 
-    public function test_getById_method_exists(): void
-    {
-        $this->assertTrue(
-            method_exists(\App\Domains\MusicAndInstruments\Domain\Services\MusicAndInstrumentsService::class, 'getById'),
-            'MusicAndInstrumentsService must implement getById()'
-        );
-    }
+test('MusicAndInstrumentsService has proper caching', function () {
+    $cacheKey = 'musicandinstruments:data:1';
 
-}
+    $this->assertServiceCaching($cacheKey, function () {
+        $service = app($this->getServiceClass('MusicAndInstrumentsService'));
+
+        return $service->getData(1);
+    });
+});
+
+test('MusicAndInstrumentsService dispatches proper events', function () {
+    $eventClass = "App\Domains\MusicAndInstruments\Events\MusicAndInstrumentsProcessed";
+
+    $this->assertEventDispatched($eventClass, function () {
+        $service = app($this->getServiceClass('MusicAndInstrumentsService'));
+        $service->process([]);
+    });
+});
+
+test('MusicAndInstrumentsService dispatches proper jobs', function () {
+    $jobClass = "App\Domains\MusicAndInstruments\Jobs\ProcessMusicAndInstrumentsJob";
+
+    $this->assertJobDispatched($jobClass, function () {
+        $service = app($this->getServiceClass('MusicAndInstrumentsService'));
+        $service->processAsync([]);
+    });
+});
+
+test('MusicAndInstrumentsService handles errors gracefully', function () {
+    $this->assertErrorHandling(function () {
+        $service = app($this->getServiceClass('MusicAndInstrumentsService'));
+        $service->process([]);
+    }, \Exception::class);
+});
+
+test('MusicAndInstrumentsService logs operations', function () {
+    $this->assertServiceLogging(function () {
+        $service = app($this->getServiceClass('MusicAndInstrumentsService'));
+        $service->process([]);
+    }, 'MusicAndInstrumentsService processed');
+});
+
+test('MusicAndInstrumentsService data is PII compliant', function () {
+    $data = [
+        'user_id' => 1,
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+    ];
+
+    $this->assertVerticalDataPiiCompliant($data);
+});

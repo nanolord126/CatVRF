@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
@@ -9,6 +10,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Carbon\CarbonImmutable;
 
 final class BeautyController extends Controller
 {
@@ -27,7 +29,7 @@ final class BeautyController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        $this->logger->info('Салон красоты listed', [
+        $this->logger->$this->logger->info('Салон красоты listed', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'count' => $items->total(),
@@ -57,15 +59,17 @@ final class BeautyController extends Controller
                 'tenant_id' => $request->get('tenant_id'),
                 'uuid' => (string) Str::uuid(),
                 'correlation_id' => $correlationId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
-            if (isset($data['tags'])) { $data['tags'] = json_encode($data['tags']); }
+            if (isset($data['tags'])) {
+                $data['tags'] = json_encode($data['tags']);
+            }
 
             return $this->db->table('beauty_salons')->insertGetId($data);
         });
 
-        $this->logger->info('Салон красоты created', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Салон красоты created', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'id' => $id, 'message' => 'Салон красоты создан(а)'], 201);
     }
@@ -95,8 +99,10 @@ final class BeautyController extends Controller
         ]);
 
         $this->db->transaction(function () use ($validated, $id, $request) {
-            $data = array_merge($validated, ['updated_at' => now()]);
-            if (isset($data['tags'])) { $data['tags'] = json_encode($data['tags']); }
+            $data = array_merge($validated, ['updated_at' => CarbonImmutable::now()]);
+            if (isset($data['tags'])) {
+                $data['tags'] = json_encode($data['tags']);
+            }
 
             $this->db->table('beauty_salons')
                 ->where('id', $id)
@@ -104,7 +110,7 @@ final class BeautyController extends Controller
                 ->update($data);
         });
 
-        $this->logger->info('Салон красоты updated', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Салон красоты updated', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Салон красоты обновлён(а)']);
     }
@@ -120,7 +126,7 @@ final class BeautyController extends Controller
                 ->delete();
         });
 
-        $this->logger->info('Салон красоты deleted', ['correlation_id' => $correlationId, 'id' => $id]);
+        $this->logger->$this->logger->info('Салон красоты deleted', ['correlation_id' => $correlationId, 'id' => $id]);
 
         return new JsonResponse(['correlation_id' => $correlationId, 'message' => 'Салон красоты удалён(а)']);
     }

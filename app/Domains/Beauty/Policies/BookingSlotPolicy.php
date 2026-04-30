@@ -1,6 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Policies;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use App\Domains\Beauty\Models\BookingSlot;
 use App\Models\User;
@@ -10,12 +14,16 @@ final class BookingSlotPolicy
 {
     use HandlesAuthorization;
 
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function viewAny(User $user): bool
     {
         return $user->can('view_any_beauty::booking_slot');
     }
 
-    public function view(User $user, BookingSlot $slot): bool
+    public function $this->viewFactory->make(User $user, BookingSlot $slot): bool
     {
         if ($user->can('view_any_beauty::booking_slot')) {
             return true;
@@ -35,7 +43,7 @@ final class BookingSlotPolicy
 
     public function hold(User $user, BookingSlot $slot): bool
     {
-        if (!$user->can('create_beauty::booking_slot')) {
+        if (! $user->can('create_beauty::booking_slot')) {
             return false;
         }
 
@@ -43,7 +51,7 @@ final class BookingSlotPolicy
             return false;
         }
 
-        if (!$slot->isAvailable()) {
+        if (! $slot->isAvailable()) {
             return false;
         }
 
@@ -52,7 +60,7 @@ final class BookingSlotPolicy
 
     public function release(User $user, BookingSlot $slot): bool
     {
-        if (!$user->can('update_beauty::booking_slot')) {
+        if (! $user->can('update_beauty::booking_slot')) {
             return false;
         }
 
@@ -73,7 +81,7 @@ final class BookingSlotPolicy
 
     public function confirm(User $user, BookingSlot $slot): bool
     {
-        if (!$user->can('update_beauty::booking_slot')) {
+        if (! $user->can('update_beauty::booking_slot')) {
             return false;
         }
 
@@ -86,7 +94,7 @@ final class BookingSlotPolicy
 
     public function update(User $user, BookingSlot $slot): bool
     {
-        if (!$user->can('update_beauty::booking_slot')) {
+        if (! $user->can('update_beauty::booking_slot')) {
             return false;
         }
 
@@ -107,7 +115,7 @@ final class BookingSlotPolicy
 
     public function delete(User $user, BookingSlot $slot): bool
     {
-        if (!$user->can('delete_beauty::booking_slot')) {
+        if (! $user->can('delete_beauty::booking_slot')) {
             return false;
         }
 
@@ -120,7 +128,7 @@ final class BookingSlotPolicy
 
     public function restore(User $user, BookingSlot $slot): bool
     {
-        if (!$user->can('restore_beauty::booking_slot')) {
+        if (! $user->can('restore_beauty::booking_slot')) {
             return false;
         }
 
@@ -133,7 +141,7 @@ final class BookingSlotPolicy
 
     public function forceDelete(User $user, BookingSlot $slot): bool
     {
-        if (!$user->can('force_delete_beauty::booking_slot')) {
+        if (! $user->can('force_delete_beauty::booking_slot')) {
             return false;
         }
 

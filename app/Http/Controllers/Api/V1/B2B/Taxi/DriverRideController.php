@@ -24,9 +24,7 @@ final class DriverRideController
         private readonly FinishRideUseCase $finishRideUseCase,
         private readonly RideRepositoryInterface $rideRepository,
         private readonly ResponseFactory $response,
-    ) {
-
-    }
+    ) {}
 
     public function accept(AcceptRideFormRequest $request, string $rideId): JsonResponse
     {

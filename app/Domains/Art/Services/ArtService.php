@@ -1,10 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Domains\Art\Services;
 
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 
-
+use Carbon\CarbonImmutable;
 
 use App\Domains\Art\Events\ProjectCreated;
 use App\Domains\Art\Models\Artwork;
@@ -22,22 +24,21 @@ use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
 
 final readonly class ArtService
 {
-    public function __construct(
+    public function __construct(private readonly BusDispatcher $bus,
         private readonly FraudControlService $fraud,
         private readonly FraudMLService $fraudML,
         private readonly RecommendationService $recommendation,
         private readonly DemandForecastService $demandForecast,
-        private readonly \Illuminate\Database\DatabaseManager $db,
+        private readonly DatabaseManager $db,
         private readonly ConfigRepository $config,
         private readonly RateLimiter $rateLimiter,
         private readonly Request $request,
         private readonly LoggerInterface $logger,
-        private readonly Guard $guard,
-    ) {
-    }
+        private readonly Guard $guard,) {}
 
     public function createProject(array $payload): Project
     {
@@ -64,20 +65,20 @@ final readonly class ArtService
                 'budget_cents' => (int) ($payload['budget_cents'] ?? 0),
                 'status' => $payload['status'] ?? 'draft',
                 'mode' => $audience,
-                'deadline_at' => isset($payload['deadline_at']) ? Carbon::parse($payload['deadline_at']) : Carbon::now()->addWeeks(2),
+                'deadline_at' => isset($payload['deadline_at']) ? Carbon::parse($payload['deadline_at']) : CarbonImmutable::now()->addWeeks(2),
                 'preferences' => $payload['preferences'] ?? [],
                 'tags' => $payload['tags'] ?? [],
                 'meta' => $payload['meta'] ?? [],
             ]);
 
-            $this->logger->info('Art project created', [
+            $this->logger->$this->logger->info('Art project created', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'audience' => $audience,
                 'project_id' => $project->id,
             ]);
 
-            ProjectCreated::dispatch($project, $correlationId);
+            ProjectCreated::$this->bus->dispatch($project, $correlationId);
 
             return $project;
         });
@@ -112,7 +113,7 @@ final readonly class ArtService
                 'meta' => $data['meta'] ?? [],
             ]);
 
-            $this->logger->info('Artwork attached to project', [
+            $this->logger->$this->logger->info('Artwork attached to project', [
                 'correlation_id' => $correlationId,
                 'project_id' => $project->id,
                 'artwork_id' => $artwork->id,
@@ -146,7 +147,7 @@ final readonly class ArtService
                 'meta' => $data['meta'] ?? [],
             ]);
 
-            $this->logger->info('Project review saved', [
+            $this->logger->$this->logger->info('Project review saved', [
                 'correlation_id' => $correlationId,
                 'project_id' => $project->id,
                 'review_id' => $review->id,
@@ -160,11 +161,11 @@ final readonly class ArtService
 
     private function determineAudience(array $payload): string
     {
-        if (!empty($payload['mode']) && in_array($payload['mode'], ['b2b', 'b2c'], true)) {
+        if (! empty($payload['mode']) && in_array($payload['mode'], ['b2b', 'b2c'], true)) {
             return $payload['mode'];
         }
 
-        if (!empty($payload['inn']) || !empty($payload['business_card_id'])) {
+        if (! empty($payload['inn']) || ! empty($payload['business_card_id'])) {
             return 'b2b';
         }
 
@@ -174,9 +175,11 @@ final readonly class ArtService
     private function enforceRateLimit(int $tenantId, string $audience, string $correlationId): void
     {
         $key = "art:{$audience}:tenant:{$tenantId}:correlation:{$correlationId}";
-        $allowed = $this->rateLimiter->attempt($key, $perMinute = 10, static function (): bool { return true; }, 60);
+        $allowed = $this->rateLimiter->attempt($key, $perMinute = 10, static function (): bool {
+            return true;
+        }, 60);
 
-        if (!$allowed) {
+        if (! $allowed) {
             $this->logger->warning('Art vertical rate limit hit', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
@@ -222,7 +225,7 @@ final readonly class ArtService
                 'tags' => $payload['tags'] ?? [],
             ],
             correlationId: $correlationId
-    );
+        );
 
         if (($decision['decision'] ?? 'allow') !== 'allow') {
             $this->logger->warning('FraudML blocked art operation', [
@@ -253,15 +256,15 @@ final readonly class ArtService
                     'audience' => $audience,
                 ],
                 correlationId: $correlationId
-    );
+            );
 
             $forecast = $this->demandForecast->forecastForItem(
                 itemId: $project->id,
-                dateFrom: Carbon::now(),
-                dateTo: Carbon::now()->addDays(7),
+                dateFrom: CarbonImmutable::now(),
+                dateTo: CarbonImmutable::now()->addDays(7),
                 context: ['use_for_critical' => false],
                 correlationId: $correlationId
-    );
+            );
 
             $project->forceFill([
                 'meta' => array_merge($project->meta ?? [], [

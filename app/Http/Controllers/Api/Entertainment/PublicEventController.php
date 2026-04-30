@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Entertainment;
+
+use Illuminate\Contracts\Events\Dispatcher as EventDispatcher;
+
+use Carbon\CarbonImmutable;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Log\LogManager;
@@ -9,99 +15,103 @@ use Illuminate\Contracts\Routing\ResponseFactory;
 
 final class PublicEventController extends Controller
 {
-
-    public function __construct(
-            private readonly BookingService $bookingService,
-            private readonly LogManager $logger,
-            private readonly Guard $guard,
-            private readonly ResponseFactory $response,
-    ) {
+    public function __construct(private readonly EventDispatcher $eventDispatcher,
+        private readonly BookingService $bookingService,
+        private readonly LogManager $logger,
+        private readonly Guard $guard,
+        private readonly ResponseFactory $response,) {}
 
+    /**
+     * Список активных заведений
+     */
+    public function listVenues(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        try {
+            $venues = Venue::where('is_active', true)
+                ->where('tenant_id', tenant()->id)
+                ->orderBy('rating', 'desc')
+                ->get();
+
+            return $this->response->json([
+                'success' => true,
+                'data' => $venues,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Failed to list venues', [
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $this->response->json(['error' => 'Internal Server Error'], 500);
+        }
     }
-        /**
-         * Список активных заведений
-         */
-        public function listVenues(Request $request): JsonResponse
-        {
-            $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
-            try {
-                $venues = Venue::where('is_active', true)
-                    ->where('tenant_id', tenant()->id)
-                    ->orderBy('rating', 'desc')
-                    ->get();
-                return $this->response->json([
-                    'success' => true,
-                    'data' => $venues,
-                    'correlation_id' => $correlationId
-                ]);
-            } catch (\Throwable $e) {
-                $this->logger->channel('audit')->error('Failed to list venues', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId
-                ]);
-                return $this->response->json(['error' => 'Internal Server Error'], 500);
-            }
-        }
-        /**
-         * Поиск событий
-         */
-        public function searchEvents(Request $request): JsonResponse
-        {
-            $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
-            try {
-                $query = Event::where('tenant_id', tenant()->id)
-                    ->where('status', 'on_sale')
-                    ->with('venue');
-                if ($request->has('venue_id')) {
-                    $query->where('venue_id', $request->get('venue_id'));
-                }
-                $events = $query->orderBy('start_at', 'asc')->paginate(15);
-                return $this->response->json([
-                    'success' => true,
-                    'data' => $events,
-                    'correlation_id' => $correlationId
-                ]);
-            } catch (\Throwable $e) {
-                $this->logger->channel('audit')->error('Event search failed', [
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId
-                ]);
-                return $this->response->json(['error' => 'Search failed'], 500);
-            }
-        }
-        /**
-         * Инициация бронирования
-         */
-        public function book(BookSeatRequest $request): JsonResponse
-        {
-            $correlationId = $request->get('correlation_id', (string) Str::uuid());
-            try {
-                $booking = $this->bookingService->createBooking(
-                    userId: $this->guard->id() ?? 0, // Fallback for guest if allowed
-                    eventId: $request->integer('event_id'),
-                    seats: $request->get('seats'),
-                    correlationId: $correlationId
-                );
-                return $this->response->json([
-                    'success' => true,
-                    'booking_uuid' => $booking->uuid,
-                    'total_amount' => $booking->total_amount_kopecks,
-                    'expires_at' => now()->addMinutes(20)->toIso8601String(),
-                    'correlation_id' => $correlationId
-                ], 201);
-            } catch (\Exception $e) {
-                $this->logger->channel('audit')->error($e->getMessage(), [
-                    'exception' => $e::class,
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'correlation_id' => request()->header('X-Correlation-ID'),
-                ]);
 
-                return $this->response->json([
-                    'success' => false,
-                    'error' => $e->getMessage(),
-                    'correlation_id' => $correlationId
-                ], 400);
+    /**
+     * Поиск событий
+     */
+    public function searchEvents(Request $request): JsonResponse
+    {
+        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+        try {
+            $query = $this->eventDispatcher->where('tenant_id', tenant()->id)
+                ->where('status', 'on_sale')
+                ->with('venue');
+            if ($request->has('venue_id')) {
+                $query->where('venue_id', $request->get('venue_id'));
             }
+            $events = $query->orderBy('start_at', 'asc')->paginate(15);
+
+            return $this->response->json([
+                'success' => true,
+                'data' => $events,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->channel('audit')->error('Event search failed', [
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $this->response->json(['error' => 'Search failed'], 500);
         }
+    }
+
+    /**
+     * Инициация бронирования
+     */
+    public function book(BookSeatRequest $request): JsonResponse
+    {
+        $correlationId = $request->get('correlation_id', (string) Str::uuid());
+        try {
+            $booking = $this->bookingService->createBooking(
+                userId: $this->guard->id() ?? 0, // Fallback for guest if allowed
+                eventId: $request->integer('event_id'),
+                seats: $request->get('seats'),
+                correlationId: $correlationId
+            );
+
+            return $this->response->json([
+                'success' => true,
+                'booking_uuid' => $booking->uuid,
+                'total_amount' => $booking->total_amount_kopecks,
+                'expires_at' => CarbonImmutable::now()->addMinutes(20)->toIso8601String(),
+                'correlation_id' => $correlationId,
+            ], 201);
+        } catch (\Exception $e) {
+            $this->logger->channel('audit')->error($e->getMessage(), [
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'correlation_id' => request()->header('X-Correlation-ID'),
+            ]);
+
+            return $this->response->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 400);
+        }
+    }
 }

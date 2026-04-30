@@ -1,56 +1,48 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Medical\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
+use Carbon\CarbonImmutable;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 
 final class B2BMedicalStorefront extends Model
 {
+    use TenantScoped;
 
-
+    protected $table = 'b2b_medical_storefronts';
 
-        protected $table = 'b2b_medical_storefronts';
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'business_group_id',
+        'company_name',
+        'inn',
+        'description',
+        'service_categories',
+        'wholesale_discount',
+        'min_order_amount',
+        'is_verified',
+        'is_active',
+        'correlation_id',
+        'tags',
+    ];
 
-        protected $fillable = [
-            'uuid',
-            'tenant_id',
-            'business_group_id',
-            'company_name',
-            'inn',
-            'description',
-            'service_categories',
-            'wholesale_discount',
-            'min_order_amount',
-            'is_verified',
-            'is_active',
-            'correlation_id',
-            'tags',
-        ];
+    protected $casts = [
+        'service_categories' => 'json',
+        'tags' => 'json',
+        'is_verified' => 'boolean',
+        'is_active' => 'boolean',
+        'wholesale_discount' => 'decimal:2',
+    ];
 
-        protected $casts = [
-            'service_categories' => 'json',
-            'tags' => 'json',
-            'is_verified' => 'boolean',
-            'is_active' => 'boolean',
-            'wholesale_discount' => 'decimal:2',
-        ];
-
-        protected static function booted_disabled(): void
-        {
-            static::addGlobalScope('tenant', function ($query) {
-                if (function_exists('tenant') && tenant() && tenant()->id) {
-                    $query->where('tenant_id', tenant()->id);
-                }
-            });
-        }
-
-        public function b2bOrders(): HasMany
-        {
-            return $this->hasMany(B2BMedicalOrder::class, 'b2b_medical_storefront_id');
-        }
+    public function b2bOrders(): HasMany
+    {
+        return $this->hasMany(B2BMedicalOrder::class, 'b2b_medical_storefront_id');
+    }
 
     /**
      * Get the string representation of this instance.
@@ -59,7 +51,7 @@ final class B2BMedicalStorefront extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -70,8 +62,17 @@ final class B2BMedicalStorefront extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted_disabled(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            if (function_exists('tenant') && tenant() && tenant()->id) {
+                $query->where('tenant_id', tenant()->id);
+            }
+        });
     }
 }

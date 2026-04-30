@@ -1,8 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Listeners;
-use Illuminate\Bus\Queueable;
-use Illuminate\Foundation\Bus\Dispatchable;
+
+use Psr\Log\LoggerInterface;
+
+use Carbon\CarbonImmutable;
 
 use App\Events\OrderCompletedEvent;
 use App\Events\PaymentProcessedEvent;
@@ -11,39 +15,32 @@ use App\Events\UserRegisteredEvent;
 use App\Services\Analytics\AdvancedAnalyticsService;
 use App\Services\Analytics\SegmentationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Cache\CacheManager;
 
 final class AnalyticsEventListener implements ShouldQueue
 {
-
     public int $tries = 3;
+
     public int $timeout = 300; // 5 минут
 
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly AdvancedAnalyticsService $analyticsService,
         private readonly SegmentationService $segmentationService,
-        private readonly LogManager $logger,
         private readonly CacheManager $cache,
-    )
-    {
+    ) {
         // Implementation required by canon
     }
 
     /**
      * Handle the event.
-     *
-     * @param object $event
-     * @return void
      */
     public function handle(object $event): void
     {
         $correlationId = $event->correlationId ?? (string) Str::uuid();
-        $this->logger->channel('audit')->info('Analytics event received for handling', [
+        $this->logger->channel('audit')->$this->logger->info('Analytics event received for handling', [
             'event_class' => get_class($event),
             'correlation_id' => $correlationId,
         ]);
@@ -79,12 +76,12 @@ final class AnalyticsEventListener implements ShouldQueue
 
             $this->segmentationService->segmentCustomers($tenantId, ['by_value' => true, 'by_behavior' => true], ['correlation_id' => $correlationId]);
 
-            $this->logger->channel('audit')->info('Analytics cache invalidated after order completed', [
+            $this->logger->channel('audit')->$this->logger->info('Analytics cache invalidated after order completed', [
                 'tenant_id' => $tenantId,
                 'order_id' => $event->order->id,
                 'correlation_id' => $correlationId,
                 'amount' => $event->order->total_price,
-                'timestamp' => now()->toIso8601String()
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ]);
         } catch (\Throwable $e) {
             $this->logger->channel('analytics_errors')->error('Failed to invalidate analytics cache', [
@@ -92,7 +89,7 @@ final class AnalyticsEventListener implements ShouldQueue
                 'order_id' => $event->order->id,
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }
@@ -118,20 +115,20 @@ final class AnalyticsEventListener implements ShouldQueue
                 }
             }
 
-            $this->logger->channel('audit')->info('Analytics cache invalidated after payment processed', [
+            $this->logger->channel('audit')->$this->logger->info('Analytics cache invalidated after payment processed', [
                 'tenant_id' => $tenantId,
                 'payment_id' => $event->payment->id,
                 'correlation_id' => $correlationId,
                 'status' => $event->payment->status,
                 'amount' => $event->payment->amount,
-                'timestamp' => now()->toIso8601String()
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ]);
         } catch (\Throwable $e) {
             $this->logger->channel('analytics_errors')->error('Failed to handle payment analytics event', [
                 'tenant_id' => $tenantId,
                 'payment_id' => $event->payment->id,
                 'correlation_id' => $correlationId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -152,18 +149,18 @@ final class AnalyticsEventListener implements ShouldQueue
                 $this->segmentationService->segmentCustomers($tenantId, ['by_value' => true, 'by_behavior' => true], ['correlation_id' => $correlationId]);
             }
 
-            $this->logger->channel('audit')->info('Analytics updated after user registration', [
+            $this->logger->channel('audit')->$this->logger->info('Analytics updated after user registration', [
                 'tenant_id' => $tenantId,
                 'user_id' => $event->user->id,
                 'correlation_id' => $correlationId,
                 'email' => $event->user->email,
-                'timestamp' => now()->toIso8601String()
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ]);
         } catch (\Throwable $e) {
             $this->logger->channel('analytics_errors')->error('Failed to handle user registration analytics', [
                 'user_id' => $event->user->id,
                 'correlation_id' => $correlationId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -183,19 +180,19 @@ final class AnalyticsEventListener implements ShouldQueue
             $this->cache->forget("ratings:summary:{$tenantId}");
             $this->cache->forget("analytics:metrics:{$tenantId}:ratings:*");
 
-            $this->logger->channel('audit')->info('Analytics cache invalidated after review submitted', [
+            $this->logger->channel('audit')->$this->logger->info('Analytics cache invalidated after review submitted', [
                 'tenant_id' => $tenantId,
                 'review_id' => $event->review->id,
                 'correlation_id' => $correlationId,
                 'rating' => $event->review->rating,
-                'timestamp' => now()->toIso8601String()
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
             ]);
         } catch (\Throwable $e) {
             $this->logger->channel('analytics_errors')->error('Failed to handle review analytics event', [
                 'tenant_id' => $tenantId,
                 'review_id' => $event->review->id,
                 'correlation_id' => $correlationId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }

@@ -1,21 +1,15 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\RealEstate;
 
 use Tests\TestCase;
 use Modules\RealEstate\Services\AI\RealEstateDesignConstructorService;
-use Illuminate\Support\Str;
 
 final class RealEstateDesignConstructorServiceTest extends TestCase
 {
     private RealEstateDesignConstructorService $aiConstructor;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->aiConstructor = app(RealEstateDesignConstructorService::class);
-    }
 
     public function test_analyze_property_data(): void
     {
@@ -208,5 +202,12 @@ final class RealEstateDesignConstructorServiceTest extends TestCase
         $this->assertArrayHasKey('phases', $timeline);
         $this->assertArrayHasKey('estimated_completion', $timeline);
         $this->assertGreaterThan(0, $timeline['total_weeks']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->aiConstructor = app(RealEstateDesignConstructorService::class);
     }
 }

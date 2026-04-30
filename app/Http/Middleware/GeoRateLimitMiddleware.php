@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Redis;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**

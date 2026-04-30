@@ -1,10 +1,13 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Resources;
 
 use App\Domains\Beauty\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Carbon\CarbonImmutable;
 
 /**
  * AppointmentResource — API-представление записи к мастеру.
@@ -19,7 +22,6 @@ final class AppointmentResource extends JsonResource
     /**
      * Трансформация модели в массив для API-ответа.
      *
-     * @param Request $request
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -48,15 +50,14 @@ final class AppointmentResource extends JsonResource
     /**
      * Дополнительные метаданные в ответе.
      *
-     * @param \Illuminate\Http\Request $request
      * @return array<string, mixed>
      */
-    public function with(\Illuminate\Http\Request $request): array
+    public function with(Request $request): array
     {
         return [
             'meta' => [
                 'correlation_id' => $request->attributes->get('correlation_id'),
-                'generated_at'   => now()->toIso8601String(),
+                'generated_at'   => CarbonImmutable::now()->toIso8601String(),
             ],
         ];
     }

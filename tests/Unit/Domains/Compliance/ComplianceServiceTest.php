@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Compliance;
 
@@ -8,46 +10,22 @@ use App\Services\Compliance\MercuryService;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use Illuminate\Database\DatabaseManager;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\LogManager;
 use Tests\TestCase;
 
 final class ComplianceServiceTest extends TestCase
 {
     private ComplianceRequirementService $service;
+
     private MdlpService $mdlp;
+
     private MercuryService $mercury;
+
     private DatabaseManager $db;
+
     private AuditService $audit;
+
     private FraudControlService $fraud;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->db = app(DatabaseManager::class);
-        $this->audit = app(AuditService::class);
-        $this->fraud = app(FraudControlService::class);
-        
-        $this->service = new ComplianceRequirementService(
-            $this->db,
-            app(LogManager::class),
-            $this->audit,
-            $this->fraud,
-        );
-
-        $this->mdlp = new MdlpService(
-            $this->db,
-            app(LogManager::class),
-            $this->audit,
-        );
-
-        $this->mercury = new MercuryService(
-            $this->db,
-            app(LogManager::class),
-            $this->audit,
-        );
-    }
 
     public function test_record_compliance_requirement(): void
     {
@@ -247,6 +225,34 @@ final class ComplianceServiceTest extends TestCase
             'id' => $recordId,
             'status' => 'revoked',
         ]);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->db = app(DatabaseManager::class);
+        $this->audit = app(AuditService::class);
+        $this->fraud = app(FraudControlService::class);
+
+        $this->service = new ComplianceRequirementService(
+            $this->db,
+            app(LogManager::class),
+            $this->audit,
+            $this->fraud,
+        );
+
+        $this->mdlp = new MdlpService(
+            $this->db,
+            app(LogManager::class),
+            $this->audit,
+        );
+
+        $this->mercury = new MercuryService(
+            $this->db,
+            app(LogManager::class),
+            $this->audit,
+        );
     }
 
     protected function tearDown(): void

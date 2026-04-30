@@ -1,8 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Food\DTOs;
 
 use PHPUnit\Framework\TestCase;
+use App\Domains\Food\DTOs\CreateFoodOrderDto;
 
 /**
  * Unit tests for CreateFoodOrderDto.
@@ -14,7 +17,7 @@ final class CreateFoodOrderDtoTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Food\DTOs\CreateFoodOrderDto::class
+            CreateFoodOrderDto::class
         );
         $this->assertTrue($reflection->isFinal(), 'CreateFoodOrderDto must be final');
         $this->assertTrue($reflection->isReadOnly(), 'CreateFoodOrderDto must be readonly');
@@ -23,11 +26,11 @@ final class CreateFoodOrderDtoTest extends TestCase
     public function test_constructor_properties(): void
     {
         $reflection = new \ReflectionClass(
-            \App\Domains\Food\DTOs\CreateFoodOrderDto::class
+            CreateFoodOrderDto::class
         );
         $constructor = $reflection->getConstructor();
         $this->assertNotNull($constructor);
-        $params = array_map(fn($p) => $p->getName(), $constructor->getParameters());
+        $params = array_map(fn ($p) => $p->getName(), $constructor->getParameters());
         $this->assertContains('restaurantId', $params, 'Constructor must have restaurantId');
         $this->assertContains('customerId', $params, 'Constructor must have customerId');
         $this->assertContains('items', $params, 'Constructor must have items');
@@ -38,7 +41,7 @@ final class CreateFoodOrderDtoTest extends TestCase
         $this->assertContains('correlationId', $params, 'Constructor must have correlationId');
     }
 
-    public function test_has_toArray_method(): void
+    public function test_has_to_array_method(): void
     {
         $this->assertTrue(
             method_exists($this->getDtoClass(), 'toArray'),
@@ -48,6 +51,6 @@ final class CreateFoodOrderDtoTest extends TestCase
 
     private function getDtoClass(): string
     {
-        return \App\Domains\Food\DTOs\CreateFoodOrderDto::class;
+        return CreateFoodOrderDto::class;
     }
 }

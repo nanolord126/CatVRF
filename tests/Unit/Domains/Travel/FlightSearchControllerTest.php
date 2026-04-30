@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Travel;
 
@@ -9,6 +11,7 @@ use App\Domains\Travel\Http\Controllers\FlightSearchController;
  * Unit tests for FlightSearchController.
  *
  * @covers \App\Domains\Travel\Http\Controllers\FlightSearchController
+ *
  * @group travel-controllers
  * @group flight-search
  */
@@ -17,7 +20,7 @@ final class FlightSearchControllerTest extends TestCase
     public function test_class_has_search_method(): void
     {
         $class = $this->getControllerClass();
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             $this->markTestSkipped("Class {$class} not found");
         }
         $methods = get_class_methods($class);
@@ -27,7 +30,7 @@ final class FlightSearchControllerTest extends TestCase
     public function test_class_has_airports_method(): void
     {
         $class = $this->getControllerClass();
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             $this->markTestSkipped("Class {$class} not found");
         }
         $methods = get_class_methods($class);
@@ -37,7 +40,7 @@ final class FlightSearchControllerTest extends TestCase
     public function test_class_has_show_method(): void
     {
         $class = $this->getControllerClass();
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             $this->markTestSkipped("Class {$class} not found");
         }
         $methods = get_class_methods($class);
@@ -47,7 +50,7 @@ final class FlightSearchControllerTest extends TestCase
     public function test_class_has_get_airports_mock_method(): void
     {
         $class = $this->getControllerClass();
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             $this->markTestSkipped("Class {$class} not found");
         }
         $methods = get_class_methods($class);
@@ -57,7 +60,7 @@ final class FlightSearchControllerTest extends TestCase
     public function test_class_is_final(): void
     {
         $class = $this->getControllerClass();
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             $this->markTestSkipped("Class {$class} not found");
         }
         $reflection = new \ReflectionClass($class);

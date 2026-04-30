@@ -1,54 +1,25 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\DentalClinicResource\Pages;
 
+use Psr\Log\LoggerInterface;
 
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\DatabaseManager;
-use Psr\Log\LoggerInterface;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Log\LogManager;
 
 final class EditDentalClinic extends EditRecord
 {
-    public function __construct(
-        private readonly DatabaseManager $db,
-        private readonly LoggerInterface $logger,
-    ) {}
-
-
     protected static string $resource = DentalClinicResource::class;
 
-        protected function getHeaderActions(): array
-        {
-            return [
-                Actions\ViewAction::make(),
-                Actions\DeleteAction::make(),
-                Actions\ForceDeleteAction::make(),
-                Actions\RestoreAction::make(),
-            ];
-        }
-
-        protected function handleRecordUpdate(\Illuminate\Database\Eloquent\Model $record, array $data): \Illuminate\Database\Eloquent\Model
-        {
-            return $this->db->transaction(function () use ($record, $data) {
-                $oldName = $record->name;
-                $record = parent::handleRecordUpdate($record, $data);
-
-                \Illuminate\Support\Facades\Log::channel('audit')->info('Dental Clinic Updated', [
-                    'clinic_id' => $record->id,
-                    'old_name' => $oldName,
-                    'new_name' => $record->name,
-                    'correlation_id' => $record->correlation_id
-                ]);
-
-                return $record;
-            });
-        }
-
-        protected function getRedirectUrl(): string
-        {
-            return $this->getResource()::getUrl('index');
-        }
+    public function __construct(private readonly LoggerInterface $logger,
+        private readonly DatabaseManager $db,
+        private readonly LogManager $log,) {}
 
     /**
      * Get the string representation of this instance.
@@ -57,7 +28,7 @@ final class EditDentalClinic extends EditRecord
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -68,8 +39,40 @@ final class EditDentalClinic extends EditRecord
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\ViewAction::make(),
+            Actions\DeleteAction::make(),
+            Actions\ForceDeleteAction::make(),
+            Actions\RestoreAction::make(),
+        ];
+    }
+
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        return $this->db->transaction(function () use ($record, $data) {
+            $oldName = $record->name;
+            $record = parent::handleRecordUpdate($record, $data);
+
+            $this->log->channel('audit')->$this->logger->info('Dental Clinic Updated', [
+                'clinic_id' => $record->id,
+                'old_name' => $oldName,
+                'new_name' => $record->name,
+                'correlation_id' => $record->correlation_id,
+            ]);
+
+            return $record;
+        });
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }

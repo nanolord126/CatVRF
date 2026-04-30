@@ -15,23 +15,24 @@ use DomainException;
 
 final class ViewingAppointment
 {
-    private ViewingStatusEnum $status;
+    private readonly ViewingStatusEnum $status;
 
     /** @var list<object> */
-    private array $domainEvents = [];
+    private readonly array $domainEvents = [];
 
     public function __construct(
-        private readonly ViewingId         $id,
-        private readonly PropertyId        $propertyId,
-        private readonly AgentId           $agentId,
-        private readonly int               $clientId,
-        private readonly int               $tenantId,
-        private DateTimeImmutable          $scheduledAt,
-        private readonly string            $clientName,
-        private readonly string            $clientPhone,
-        private readonly ?string           $notes,
-        private readonly string            $correlationId,
-        ViewingStatusEnum                  $status = ViewingStatusEnum::Pending) {
+        private readonly ViewingId $id,
+        private readonly PropertyId $propertyId,
+        private readonly AgentId $agentId,
+        private readonly int $clientId,
+        private readonly int $tenantId,
+        private readonly DateTimeImmutable $scheduledAt,
+        private readonly string $clientName,
+        private readonly string $clientPhone,
+        private readonly ?string $notes,
+        private readonly string $correlationId,
+        ViewingStatusEnum $status = ViewingStatusEnum::Pending
+    ) {
         $this->status = $status;
     }
 
@@ -101,17 +102,60 @@ final class ViewingAppointment
         $this->scheduledAt = $newDateTime;
     }
 
-    public function getId(): ViewingId { return $this->id; }
-    public function getPropertyId(): PropertyId { return $this->propertyId; }
-    public function getAgentId(): AgentId { return $this->agentId; }
-    public function getClientId(): int { return $this->clientId; }
-    public function getTenantId(): int { return $this->tenantId; }
-    public function getScheduledAt(): DateTimeImmutable { return $this->scheduledAt; }
-    public function getClientName(): string { return $this->clientName; }
-    public function getClientPhone(): string { return $this->clientPhone; }
-    public function getNotes(): ?string { return $this->notes; }
-    public function getCorrelationId(): string { return $this->correlationId; }
-    public function getStatus(): ViewingStatusEnum { return $this->status; }
+    public function getId(): ViewingId
+    {
+        return $this->id;
+    }
+
+    public function getPropertyId(): PropertyId
+    {
+        return $this->propertyId;
+    }
+
+    public function getAgentId(): AgentId
+    {
+        return $this->agentId;
+    }
+
+    public function getClientId(): int
+    {
+        return $this->clientId;
+    }
+
+    public function getTenantId(): int
+    {
+        return $this->tenantId;
+    }
+
+    public function getScheduledAt(): DateTimeImmutable
+    {
+        return $this->scheduledAt;
+    }
+
+    public function getClientName(): string
+    {
+        return $this->clientName;
+    }
+
+    public function getClientPhone(): string
+    {
+        return $this->clientPhone;
+    }
+
+    public function getNotes(): ?string
+    {
+        return $this->notes;
+    }
+
+    public function getCorrelationId(): string
+    {
+        return $this->correlationId;
+    }
+
+    public function getStatus(): ViewingStatusEnum
+    {
+        return $this->status;
+    }
 
     /** @return list<object> */
     public function pullDomainEvents(): array

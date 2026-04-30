@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\E2E;
 
@@ -12,16 +14,10 @@ class SportsFraudDetectionE2ETest extends TestCase
     use RefreshDatabase;
 
     private Tenant $tenant;
-    private User $user;
-    private string $token;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create();
-        $this->token = $this->user->createToken('test')->plainTextToken;
-    }
+    private User $user;
+
+    private string $token;
 
     public function test_detect_rapid_booking_attempts(): void
     {
@@ -41,11 +37,11 @@ class SportsFraudDetectionE2ETest extends TestCase
 
         // First attempts should succeed, later ones should be rate limited or flagged
         $this->assertTrue($responses[0]->status() < 300);
-        
+
         // Later attempts should be rate limited (429) or have fraud score
         $lastResponse = $responses[4];
         $this->assertTrue(
-            $lastResponse->status() === 429 || 
+            $lastResponse->status() === 429 ||
             $lastResponse->status() >= 400 ||
             ($lastResponse->json('data.fraud_score') && $lastResponse->json('data.fraud_score') > 0.5)
         );
@@ -66,7 +62,7 @@ class SportsFraudDetectionE2ETest extends TestCase
 
         // Should be blocked or flagged as fraud
         $this->assertTrue(
-            $response->status() === 404 || 
+            $response->status() === 404 ||
             $response->status() === 422 ||
             ($response->json('data.fraud_score') && $response->json('data.fraud_score') > 0.7)
         );
@@ -142,7 +138,7 @@ class SportsFraudDetectionE2ETest extends TestCase
 
             // Should be prevented
             $this->assertTrue(
-                $secondBooking->status() === 409 || 
+                $secondBooking->status() === 409 ||
                 $secondBooking->status() === 422 ||
                 str_contains($secondBooking->json('message'), 'already booked')
             );
@@ -221,7 +217,7 @@ class SportsFraudDetectionE2ETest extends TestCase
 
             if ($booking->status() === 201 && $booking->json('data.uuid')) {
                 $uuid = $booking->json('data.uuid');
-                
+
                 // Immediately cancel
                 $cancel = $this->withHeader('Authorization', "Bearer {$this->token}")
                     ->postJson("/api/v1/sports/bookings/{$uuid}/cancel");
@@ -272,5 +268,13 @@ class SportsFraudDetectionE2ETest extends TestCase
             ]);
 
         $this->assertTrue($response->status() < 500);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create();
+        $this->token = $this->user->createToken('test')->plainTextToken;
     }
 }

@@ -14,12 +14,6 @@ final class FashionMannequinSizeAlgorithmServiceTest extends TestCase
 
     private FashionMannequinSizeAlgorithmService $service;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = app(FashionMannequinSizeAlgorithmService::class);
-    }
-
     public function test_calculate_ideal_size(): void
     {
         $result = $this->service->calculateIdealSize(1, 1, 1);
@@ -93,5 +87,11 @@ final class FashionMannequinSizeAlgorithmServiceTest extends TestCase
         $this->assertArrayHasKey('chest', $result);
         $this->assertArrayHasKey('waist', $result);
         $this->assertArrayHasKey('hips', $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(FashionMannequinSizeAlgorithmService::class);
     }
 }

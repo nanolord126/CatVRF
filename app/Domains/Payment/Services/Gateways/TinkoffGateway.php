@@ -12,10 +12,10 @@ use Psr\Log\LoggerInterface;
 final readonly class TinkoffGateway implements PaymentGatewayInterface
 {
     public function __construct(
-        private AuditService $audit,
-        private LoggerInterface $logger,
-        private string $terminalKey,
-        private string $secretKey,
+        private readonly AuditService $audit,
+        private readonly LoggerInterface $logger,
+        private readonly string $terminalKey,
+        private readonly string $secretKey,
     ) {}
 
     public function initPayment(
@@ -24,15 +24,15 @@ final readonly class TinkoffGateway implements PaymentGatewayInterface
         string $correlationId,
         string $description = '',
     ): array {
-        $this->logger->info('Tinkoff init payment called', [
+        $this->logger->$this->logger->info('Tinkoff init payment called', [
             'amount_kopecks' => $amountKopecks,
             'idempotency_key' => $idempotencyKey,
             'correlation_id' => $correlationId,
         ]);
 
         // Mock 3rd party API call
-        $mockProviderId = 'tnk_' . uniqid('', true);
-        $mockUrl = 'https://securepay.tinkoff.ru/rest/Authorize/' . $mockProviderId;
+        $mockProviderId = 'tnk_'.uniqid('', true);
+        $mockUrl = 'https://securepay.tinkoff.ru/rest/Authorize/'.$mockProviderId;
 
         $response = [
             'payment_id' => $mockProviderId,
@@ -86,7 +86,7 @@ final readonly class TinkoffGateway implements PaymentGatewayInterface
         string $correlationId,
     ): array {
         $response = [
-            'refund_id' => 'ref_' . uniqid('', true),
+            'refund_id' => 'ref_'.uniqid('', true),
             'status' => 'REFUNDED',
             'provider_response' => [
                 'OriginalPaymentId' => $providerPaymentId,

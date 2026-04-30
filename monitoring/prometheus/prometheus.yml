@@ -1,0 +1,164 @@
+# Prometheus Configuration for CatVRF
+# Мониторинг Laravel Horizon + Supermarket + CRM Sync
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'catvrf-production'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'
+          labels:
+            cluster: 'catvrf-production'
+
+# Alert rules
+rule_files:
+  - 'rules/*.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Alertmanager metrics
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+
+  # Laravel Horizon Exporter
+  - job_name: 'horizon'
+    static_configs:
+      - targets: ['horizon-exporter:9090']
+        labels:
+          service: 'horizon'
+          vertical: 'supermarket'
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+
+  # Laravel Application Metrics
+  - job_name: 'laravel-app'
+    static_configs:
+      - targets: ['app:9100']
+        labels:
+          service: 'laravel'
+          vertical: 'supermarket'
+    scrape_interval: 15s
+
+  # Redis Metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+    scrape_interval: 15s
+
+  # MySQL Metrics
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysql-exporter:9104']
+        labels:
+          service: 'mysql'
+    scrape_interval: 30s
+
+  # Node Exporter (Server metrics)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node'
+    scrape_interval: 15s
+
+  # CRM Health Check
+  - job_name: 'crm-health'
+    static_configs:
+      - targets: ['crm:8000']
+        labels:
+          service: 'crm'
+    metrics_path: '/health'
+    scrape_interval: 30s
+
+  # ==================== Big Data Monitoring ====================
+
+  # ClickHouse Exporter (official clickhouse_exporter)
+  - job_name: 'clickhouse'
+    static_configs:
+      - targets: ['clickhouse-exporter:9116']
+        labels:
+          service: 'clickhouse'
+          vertical: 'bigdata'
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+
+  # Kafka Exporter (kafka_exporter)
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+        labels:
+          service: 'kafka'
+          vertical: 'bigdata'
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+
+  # Spark Prometheus Exporter (Spark master/worker metrics)
+  - job_name: 'spark'
+    static_configs:
+      - targets: ['spark-master:4040', 'spark-worker-1:4041']
+        labels:
+          service: 'spark'
+          vertical: 'bigdata'
+    scrape_interval: 15s
+    metrics_path: '/metrics/prometheus'
+
+  # BigData Custom Exporter (Laravel /metrics/bigdata endpoint)
+  - job_name: 'bigdata-custom'
+    static_configs:
+      - targets: ['app:9100']
+        labels:
+          service: 'bigdata'
+          vertical: 'bigdata'
+    scrape_interval: 15s
+    metrics_path: '/metrics/bigdata'
+
+  # cAdvisor (Docker/Podman container metrics)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+        labels:
+          service: 'cadvisor'
+    scrape_interval: 15s
+
+  # Loki (self-monitoring)
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+        labels:
+          service: 'loki'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Tempo (tracing backend self-monitoring)
+  - job_name: 'tempo'
+    static_configs:
+      - targets: ['tempo:3200']
+        labels:
+          service: 'tempo'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # PySpark Job Metrics (pushgateway for ephemeral jobs)
+  - job_name: 'pyspark-jobs'
+    honor_labels: true
+    static_configs:
+      - targets: ['pushgateway:9091']
+        labels:
+          service: 'pyspark'
+          vertical: 'bigdata'
+    scrape_interval: 30s

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * LogInsuranceCompanyUpdated — CatVRF 2026 Component.
@@ -7,20 +9,20 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/loginsurancecompanyupdated
  */
 
-
 namespace App\Domains\Insurance\Listeners;
-
 
 use Psr\Log\LoggerInterface;
 use App\Domains\Insurance\Events\InsuranceCompanyUpdated;
+
 /**
  * Class LogInsuranceCompanyUpdated
  *
@@ -30,20 +32,19 @@ use App\Domains\Insurance\Events\InsuranceCompanyUpdated;
  * Event listener handling domain event side effects.
  * Runs asynchronously via queue when ShouldQueue is implemented.
  * All listeners maintain correlation_id chain.
- *
- * @package App\Domains\Insurance\Listeners
  */
 final class LogInsuranceCompanyUpdated
 {
     public function __construct(
-        private readonly LoggerInterface $logger) {}
+        private readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Handle the event.
      */
     public function handle(InsuranceCompanyUpdated $event): void
     {
-        $this->logger->info('InsuranceCompany updated', [
+        $this->logger->$this->logger->info('InsuranceCompany updated', [
             'model_id' => $event->insuranceCompany->id,
             'correlation_id' => $event->correlationId,
             'tenant_id' => $event->insuranceCompany->tenant_id ?? null,

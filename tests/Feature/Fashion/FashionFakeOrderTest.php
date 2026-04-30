@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Feature\Fashion;
 
@@ -6,21 +8,15 @@ use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
 
-final class FashionFakeOrderTest extends \Tests\TestCase
+final class FashionFakeOrderTest extends TestCase
 {
     use RefreshDatabase;
 
     private User $user;
+
     private Tenant $tenant;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-    }
 
     public function test_rejects_order_with_invalid_product_id(): void
     {
@@ -236,7 +232,7 @@ final class FashionFakeOrderTest extends \Tests\TestCase
         if ($response1->status() === 200 || $response1->status() === 201) {
             // Second order from different country
             $_SERVER['REMOTE_ADDR'] = '1.2.3.4'; // Simulate different IP
-            
+
             $response2 = $this->actingAs($this->user)
                 ->postJson('/api/fashion/orders', [
                     'items' => [['product_id' => 1, 'quantity' => 1]],
@@ -305,5 +301,13 @@ final class FashionFakeOrderTest extends \Tests\TestCase
             ]);
 
         $this->assertNotEquals(201, $response->status());
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
     }
 }

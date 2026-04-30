@@ -1,33 +1,40 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Marketing;
 
+use Psr\Log\LoggerInterface;
+
 use App\Models\ReferralReward;
 use App\Models\Referral;
-
-
 use Illuminate\Support\Str;
-use App\Services\FraudControlService;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
+use Illuminate\Routing\UrlGenerator;
 
 final class ReferralService
 {
+    private const BUSINESS_REFERRAL_BONUS = 50000; // 500 руб
+
+    private const CONSUMER_REFERRAL_BONUS = 100000; // 1000 руб
+
+    private const CONSUMER_TURNOVER_THRESHOLD = 1000000; // 10000 руб
+
     public function __construct(
+        private readonly LoggerInterface $logger,
         private readonly LogManager $logger,
         private readonly DatabaseManager $db,
+        private readonly UrlGenerator $url,
     ) {}
-
-    private const BUSINESS_REFERRAL_BONUS = 50000; // 500 руб
-    private const CONSUMER_REFERRAL_BONUS = 100000; // 1000 руб
-    private const CONSUMER_TURNOVER_THRESHOLD = 1000000; // 10000 руб
 
     public function generateReferralLink(int $referrerId, string $type = 'user'): string
     {
         $code = Str::upper(Str::random(8));
-        $link = route('referral.register', ['code' => $code]);
+        $link = $this->url->route('referral.register', ['code' => $code]);
 
-        $this->logger->channel('referral')->info('Referral link generated', [
+        $this->logger->channel('referral')->$this->logger->info('Referral link generated', [
             'referrer_id' => $referrerId,
             'type' => $type,
             'code' => $code,
@@ -39,10 +46,11 @@ final class ReferralService
     public function registerReferral(string $code, int $newUserId): bool
     {
         $this->fraud->check(new \stdClass());
+
         return $this->db->transaction(function () use ($code, $newUserId) {
             $referral = Referral::where('referral_code', $code)->first();
 
-            if (!$referral) {
+            if (! $referral) {
                 return false;
             }
 
@@ -51,7 +59,7 @@ final class ReferralService
                 'status' => 'registered',
             ]);
 
-            $this->logger->channel('referral')->info('Referral registered', [
+            $this->logger->channel('referral')->$this->logger->info('Referral registered', [
                 'referral_id' => $referral->id,
                 'referee_id' => $newUserId,
             ]);
@@ -95,13 +103,13 @@ final class ReferralService
                 'amount' => $referral->bonus_amount,
                 'type' => 'referral_bonus',
                 'status' => 'credited',
-                'credited_at' => now(),
+                'credited_at' => CarbonImmutable::now(),
                 'correlation_id' => $correlationId ?: Str::uuid()->toString(),
             ]);
 
             $referral->update(['status' => 'rewarded']);
 
-            $this->logger->channel('referral')->info('Bonus awarded', [
+            $this->logger->channel('referral')->$this->logger->info('Bonus awarded', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referralId,
                 'amount' => $referral->bonus_amount,

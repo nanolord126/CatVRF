@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Education;
 
@@ -13,27 +15,10 @@ use Mockery;
 final class LiveClassServiceTest extends TestCase
 {
     private LiveClassService $service;
+
     private FraudControlService $fraud;
+
     private AuditService $audit;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->fraud = Mockery::mock(FraudControlService::class);
-        $this->audit = Mockery::mock(AuditService::class);
-
-        $this->service = new LiveClassService(
-            $this->audit,
-            $this->fraud,
-        );
-    }
-
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
 
     public function test_create_live_session(): void
     {
@@ -151,5 +136,24 @@ final class LiveClassServiceTest extends TestCase
 
         $this->assertIsArray($history);
         $this->assertGreaterThan(0, count($history));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->fraud = Mockery::mock(FraudControlService::class);
+        $this->audit = Mockery::mock(AuditService::class);
+
+        $this->service = new LiveClassService(
+            $this->audit,
+            $this->fraud,
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 }

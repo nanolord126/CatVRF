@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Fashion;
 
@@ -14,17 +16,6 @@ final class FashionSocialMediaTrendServiceTest extends BaseTestCase
     use RefreshDatabase;
 
     private FashionSocialMediaTrendService $service;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->service = new FashionSocialMediaTrendService(
-            $this->app->make(AuditService::class),
-            $this->app->make(FraudControlService::class),
-            $this->app->make('Illuminate\Database\DatabaseManager'),
-        );
-    }
 
     public function test_collect_trend_data_returns_structure(): void
     {
@@ -53,6 +44,17 @@ final class FashionSocialMediaTrendServiceTest extends BaseTestCase
         $this->assertIsArray($result);
         $this->assertArrayHasKey('predictions', $result);
         $this->assertArrayHasKey('confidence', $result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = new FashionSocialMediaTrendService(
+            $this->app->make(AuditService::class),
+            $this->app->make(FraudControlService::class),
+            $this->app->make('Illuminate\Database\DatabaseManager'),
+        );
     }
 
     private function createFashionProduct(array $overrides = []): int

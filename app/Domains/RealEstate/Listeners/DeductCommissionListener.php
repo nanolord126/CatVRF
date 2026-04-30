@@ -1,40 +1,47 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Listeners;
 
-
+use Carbon\CarbonImmutable;
 
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+
 final class DeductCommissionListener
 {
     public function __construct(
-        private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard
+    ) {}
 
-
+
     public function handle(PropertySold $event): void
-        {
-            try {
-                $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
-                $this->db->transaction(function () use ($event) {
-                    $listing = $event->listing;
-                    $commission = (int) ($listing->sale_price * $listing->commission_percent / 100);
-                    // WalletService::debit($listing->property->owner_id, $commission, 'commission');
+    {
+        try {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
+            $this->db->transaction(function () use ($event) {
+                $listing = $event->listing;
+                $commission = (int) ($listing->sale_price * $listing->commission_percent / 100);
+                // WalletService::debit($listing->property->owner_id, $commission, 'commission');
 
-                    $this->logger->info('Commission deducted', [
-                        'property_id' => $listing->property_id,
-                        'commission' => $commission,
-                        'correlation_id' => $event->correlationId,
-                    ]);
-                });
-            } catch (\Throwable $e) {
-                $this->logger->error('Failed to deduct commission', [
-                    'error' => $e->getMessage(),
+                $this->logger->$this->logger->info('Commission deducted', [
+                    'property_id' => $listing->property_id,
+                    'commission' => $commission,
                     'correlation_id' => $event->correlationId,
                 ]);
-                throw $e;
-            }
+            });
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to deduct commission', [
+                'error' => $e->getMessage(),
+                'correlation_id' => $event->correlationId,
+            ]);
+            throw $e;
         }
+    }
 
     /**
      * Get the string representation of this instance.
@@ -43,7 +50,7 @@ final class DeductCommissionListener
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -54,8 +61,8 @@ final class DeductCommissionListener
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

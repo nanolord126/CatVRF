@@ -1,11 +1,16 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Notifications\Models;
+
+use Carbon\CarbonImmutable;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 final class Notification extends Model
 {
@@ -30,19 +35,6 @@ final class Notification extends Model
         'delivered_at' => 'datetime',
         'failed_at' => 'datetime',
     ];
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            $query->where('tenant_id', tenant()->id);
-        });
-
-        static::creating(function ($model) {
-            if (!$model->uuid) {
-                $model->uuid = \Illuminate\Support\Str::uuid()->toString();
-            }
-        });
-    }
 
     public function tenant(): BelongsTo
     {
@@ -71,8 +63,21 @@ final class Notification extends Model
 
     public function markAsRead(): void
     {
-        if (!$this->isRead()) {
-            $this->update(['read_at' => now()]);
+        if (! $this->isRead()) {
+            $this->update(['read_at' => CarbonImmutable::now()]);
         }
+    }
+
+    protected static function booted(): void
+    {
+        self::addGlobalScope('tenant', function ($query) {
+            $query->where('tenant_id', tenant()->id);
+        });
+
+        self::creating(function ($model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
+            }
+        });
     }
 }

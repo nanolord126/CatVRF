@@ -22,6 +22,8 @@ return [
 
     'expiry_days' => 365, // Bonuses expire after 1 year
 
+    'hold_period_days' => 14, // Bonuses are held for 14 days before becoming available
+
     'min_payout_amount' => 100, // Minimum amount for B2B bonus withdrawal
 
     /*
@@ -120,5 +122,25 @@ return [
     'cleanup' => [
         'expired_check_interval' => 'daily', // How often CleanupExpiredBonusesJob runs
         'batch_size' => 1000,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Float Yield Configuration
+    |--------------------------------------------------------------------------
+    | Float Yield - percentage income on user funds during 15-day hold.
+    |
+    | ВАЖНО: По законам РФ float yield выплачивается ТОЛЬКО в бонусных баллах,
+    | не в реальных деньгах. Вывод float yield как денежных средств запрещён.
+    |
+    | Platform earns ~0.018% daily (1.8% monthly), users earn ~0.012% daily (1.2% monthly).
+    */
+    'float' => [
+        'platform_daily_rate' => 0.00018,   // 1.8% in month (~6.57% annually) - conservative
+        'user_daily_rate' => 0.00012,       // 1.2% in month (~4.38% annually) - 60-70% of platform
+        'min_float_for_yield' => 500,       // minimum float amount to calculate yield
+        'payout_frequency' => 'daily',      // daily / weekly
+        'cache_ttl' => 3600,                // cache TTL for user float summaries (seconds)
+        'withdrawal_allowed' => false,      // ЗАПРЕЩЁНО по законам РФ - только бонусы
     ],
 ];

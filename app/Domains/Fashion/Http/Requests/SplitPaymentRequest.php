@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Http\Requests;
 
@@ -43,7 +45,7 @@ final class SplitPaymentRequest extends FormRequest
         $validator->after(function ($validator) {
             $splitConfig = $this->input('split_config');
             $total = ($splitConfig['client_share'] ?? 0) + ($splitConfig['brand_share'] ?? 0) + ($splitConfig['marketplace_share'] ?? 0);
-            
+
             if (abs($total - 1.0) > 0.01) {
                 $validator->errors()->add('split_config', 'Split shares must sum to 1.0 (100%)');
             }

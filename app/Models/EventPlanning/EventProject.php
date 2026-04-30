@@ -1,19 +1,21 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Models\EventPlanning;
 
-
-use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Models\User;
 
 final class EventProject extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $table = 'events_projects';
 
@@ -47,31 +49,6 @@ final class EventProject extends Model
     ];
 
     /**
-     * Boot logic for UUID and Tenant Scoping.
-     */
-    protected static function booted(): void
-    {
-        static::creating(function (EventProject $model) {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) Str::uuid();
-            }
-            if (empty($model->correlation_id)) {
-                $model->correlation_id = (string) Str::uuid();
-            }
-
-            if (empty($model->tenant_id)) {
-                $model->tenant_id = $this->guard->user()?->tenant_id;
-            }
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            if ($this->guard->check()) {
-                $query->where('tenant_id', $this->guard->user()?->tenant_id);
-            }
-        });
-    }
-
-    /**
      * Relation with Planner.
      */
     public function planner(): BelongsTo
@@ -92,6 +69,31 @@ final class EventProject extends Model
      */
     public function client(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'client_id');
+        return $this->belongsTo(User::class, 'client_id');
+    }
+
+    /**
+     * Boot logic for UUID and Tenant Scoping.
+     */
+    protected static function booted(): void
+    {
+        self::creating(function (EventProject $model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = (string) Str::uuid();
+            }
+
+            if (empty($model->tenant_id)) {
+                $model->tenant_id = $this->guard->user()?->tenant_id;
+            }
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            if ($this->guard->check()) {
+                $query->where('tenant_id', $this->guard->user()?->tenant_id);
+            }
+        });
     }
 }

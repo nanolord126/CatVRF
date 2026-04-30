@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\ML;
 
@@ -13,17 +15,10 @@ final class FraudMLFeatureStoreTest extends TestCase
 
     private FraudMLFeatureStore $featureStore;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->featureStore = app(FraudMLFeatureStore::class);
-        Redis::flushdb();
-    }
-
     public function test_store_features_saves_to_redis(): void
     {
         $features = ['amount_log' => 5.5, 'hour_of_day' => 14];
-        
+
         $this->featureStore->storeFeatures(
             'user',
             '123',
@@ -32,7 +27,7 @@ final class FraudMLFeatureStoreTest extends TestCase
         );
 
         $retrieved = $this->featureStore->getFeatures('user', '123');
-        
+
         $this->assertNotNull($retrieved);
         $this->assertEquals($features, $retrieved['features']);
         $this->assertArrayHasKey('timestamp', $retrieved);
@@ -42,44 +37,44 @@ final class FraudMLFeatureStoreTest extends TestCase
     public function test_get_features_returns_null_when_not_found(): void
     {
         $features = $this->featureStore->getFeatures('user', 'nonexistent');
-        
+
         $this->assertNull($features);
     }
 
     public function test_get_or_compute_features_computes_when_missing(): void
     {
         $computedFeatures = ['amount_log' => 3.2, 'hour_of_day' => 10];
-        
+
         $features = $this->featureStore->getOrComputeFeatures(
             'user',
             '456',
-            fn() => $computedFeatures,
+            fn () => $computedFeatures,
             'test-correlation'
         );
 
         $this->assertEquals($computedFeatures, $features);
-        
+
         // Second call should retrieve from cache
         $features2 = $this->featureStore->getOrComputeFeatures(
             'user',
             '456',
-            fn() => ['should_not_be_called' => true],
+            fn () => ['should_not_be_called' => true],
             'test-correlation'
         );
-        
+
         $this->assertEquals($computedFeatures, $features2);
     }
 
     public function test_invalidate_features_removes_from_redis(): void
     {
         $features = ['amount_log' => 4.5];
-        
+
         $this->featureStore->storeFeatures('user', '789', $features);
-        
+
         $this->assertNotNull($this->featureStore->getFeatures('user', '789'));
-        
+
         $this->featureStore->invalidateFeatures('user', '789');
-        
+
         $this->assertNull($this->featureStore->getFeatures('user', '789'));
     }
 
@@ -125,7 +120,7 @@ final class FraudMLFeatureStoreTest extends TestCase
         $this->assertArrayHasKey('tenant_id', $features);
         $this->assertArrayHasKey('user_id', $features);
         $this->assertEquals('payment', $features['operation_type']);
-        
+
         // Verify stored in multiple places
         $this->assertNotNull($this->featureStore->getFeatures('user', '100'));
         $this->assertNotNull($this->featureStore->getFeatures('tenant', '1'));
@@ -142,5 +137,12 @@ final class FraudMLFeatureStoreTest extends TestCase
         $this->assertArrayHasKey('total_features_stored', $stats);
         $this->assertArrayHasKey('redis_memory_usage', $stats);
         $this->assertGreaterThan(0, $stats['total_features_stored']);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->featureStore = app(FraudMLFeatureStore::class);
+        Redis::flushdb();
     }
 }

@@ -1,6 +1,12 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Services;
+
+use Carbon\CarbonImmutable;
+
+use App\Services\Fraud\FraudControlService;
 
 use App\Domains\Taxi\Models\Driver;
 use App\Domains\Taxi\Models\TaxiDriverSchedule;
@@ -16,7 +22,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * TaxiDriverPortalService - Production-ready driver portal for taxi operations
- * 
+ *
  * Features:
  * - Driver dashboard with key metrics
  * - Earnings tracking and breakdown
@@ -29,60 +35,59 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class TaxiDriverPortalService
 {
-    public function __construct(
+    public function __construct(private readonly FraudControlService $fraudControlService,
         private readonly AuditService $audit,
         private readonly DatabaseManager $db,
         private readonly TaxiFinanceService $financeService,
         private readonly TaxiAnalyticsService $analyticsService,
-        private readonly LoggerInterface $logger,
-    ) {}
+        private readonly LoggerInterface $logger,) {}
 
     /**
      * Get driver dashboard
      */
-    public function getDriverDashboard(int $driverId, string $correlationId = null): array
+    public function getDriverDashboard(int $driverId, ?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         $driver = Driver::findOrFail($driverId);
-        $today = now()->startOfDay();
-        
+        $today = CarbonImmutable::now()->startOfDay();
+
         // Today's rides
         $todayRides = TaxiRide::where('driver_id', $driverId)
             ->whereDate('created_at', $today)
             ->count();
-        
+
         $todayCompletedRides = TaxiRide::where('driver_id', $driverId)
             ->where('status', TaxiRide::STATUS_COMPLETED)
             ->whereDate('created_at', $today)
             ->count();
-        
+
         // Today's earnings
         $todayAnalytics = TaxiDriverAnalytics::where('driver_id', $driverId)
             ->where('date', $today)
             ->first();
-        
+
         $todayEarnings = $todayAnalytics ? $todayAnalytics->getNetIncomeInRubles() : 0;
-        
+
         // Wallet balance
         $wallet = TaxiDriverWallet::where('driver_id', $driverId)->first();
         $walletBalance = $wallet ? $wallet->getAvailableBalanceInRubles() : 0;
-        
+
         // Current schedule
         $currentSchedule = TaxiDriverSchedule::where('driver_id', $driverId)
             ->where('date', $today)
             ->where('status', TaxiDriverSchedule::STATUS_ACTIVE)
             ->first();
-        
+
         // Active ride
         $activeRide = TaxiRide::where('driver_id', $driverId)
             ->where('status', TaxiRide::STATUS_STARTED)
             ->first();
-        
+
         return [
             'driver' => [
                 'id' => $driver->id,
-                'name' => $driver->first_name . ' ' . $driver->last_name,
+                'name' => $driver->first_name.' '.$driver->last_name,
                 'rating' => $driver->rating,
                 'is_available' => $driver->is_available,
                 'is_active' => $driver->is_active,
@@ -117,15 +122,15 @@ final readonly class TaxiDriverPortalService
     /**
      * Get driver earnings breakdown
      */
-    public function getDriverEarnings(int $driverId, Carbon $startDate, Carbon $endDate, string $correlationId = null): array
+    public function getDriverEarnings(int $driverId, Carbon $startDate, Carbon $endDate, ?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         $analytics = TaxiDriverAnalytics::where('driver_id', $driverId)
             ->whereBetween('date', [$startDate, $endDate])
             ->orderBy('date')
             ->get();
-        
+
         return [
             'period' => [
                 'start_date' => $startDate->toDateString(),
@@ -170,10 +175,11 @@ final readonly class TaxiDriverPortalService
     /**
      * Create driver schedule
      */
-    public function createSchedule(int $driverId, array $data, string $correlationId = null): TaxiDriverSchedule
+    public function createSchedule(int $driverId, array $data, ?string $correlationId = null): TaxiDriverSchedule
     {
+        $this->fraudControlService->check('create', ['context' => __CLASS__]);
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         return $this->db->transaction(function () use ($driverId, $data, $correlationId) {
             $schedule = TaxiDriverSchedule::create([
                 'tenant_id' => tenant()->id ?? 1,
@@ -200,7 +206,7 @@ final readonly class TaxiDriverPortalService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Taxi driver schedule created', [
+            $this->logger->$this->logger->info('Taxi driver schedule created', [
                 'correlation_id' => $correlationId,
                 'schedule_uuid' => $schedule->uuid,
                 'driver_id' => $driverId,
@@ -214,10 +220,10 @@ final readonly class TaxiDriverPortalService
     /**
      * Upload driver document
      */
-    public function uploadDocument(int $driverId, array $data, string $correlationId = null): TaxiDriverDocument
+    public function uploadDocument(int $driverId, array $data, ?string $correlationId = null): TaxiDriverDocument
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         return $this->db->transaction(function () use ($driverId, $data, $correlationId) {
             $document = TaxiDriverDocument::create([
                 'tenant_id' => tenant()->id ?? 1,
@@ -246,7 +252,7 @@ final readonly class TaxiDriverPortalService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Taxi driver document uploaded', [
+            $this->logger->$this->logger->info('Taxi driver document uploaded', [
                 'correlation_id' => $correlationId,
                 'document_uuid' => $document->uuid,
                 'driver_id' => $driverId,
@@ -260,14 +266,14 @@ final readonly class TaxiDriverPortalService
     /**
      * Get driver documents
      */
-    public function getDriverDocuments(int $driverId, string $correlationId = null): array
+    public function getDriverDocuments(int $driverId, ?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         $documents = TaxiDriverDocument::where('driver_id', $driverId)
             ->orderBy('created_at', 'desc')
             ->get();
-        
+
         return [
             'driver_id' => $driverId,
             'total_documents' => $documents->count(),
@@ -299,22 +305,22 @@ final readonly class TaxiDriverPortalService
     /**
      * Get driver ride history
      */
-    public function getDriverRideHistory(int $driverId, ?Carbon $startDate = null, ?Carbon $endDate = null, int $perPage = 20, string $correlationId = null): array
+    public function getDriverRideHistory(int $driverId, ?Carbon $startDate = null, ?Carbon $endDate = null, int $perPage = 20, ?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         $query = TaxiRide::where('driver_id', $driverId);
-        
+
         if ($startDate) {
             $query->where('created_at', '>=', $startDate);
         }
-        
+
         if ($endDate) {
             $query->where('created_at', '<=', $endDate);
         }
-        
+
         $rides = $query->orderBy('created_at', 'desc')->paginate($perPage);
-        
+
         return [
             'driver_id' => $driverId,
             'total_rides' => $rides->total(),
@@ -343,24 +349,24 @@ final readonly class TaxiDriverPortalService
     /**
      * Toggle driver availability
      */
-    public function toggleAvailability(int $driverId, bool $available, string $correlationId = null): Driver
+    public function toggleAvailability(int $driverId, bool $available, ?string $correlationId = null): Driver
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         $driver = Driver::findOrFail($driverId);
-        
+
         $driver->update(['is_available' => $available]);
-        
+
         $this->audit->log(
             action: 'taxi_driver_availability_toggled',
             subjectType: Driver::class,
             subjectId: $driver->id,
-            oldValues: ['is_available' => !$available],
+            oldValues: ['is_available' => ! $available],
             newValues: ['is_available' => $available],
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Taxi driver availability toggled', [
+        $this->logger->$this->logger->info('Taxi driver availability toggled', [
             'correlation_id' => $correlationId,
             'driver_id' => $driverId,
             'is_available' => $available,
@@ -372,10 +378,10 @@ final readonly class TaxiDriverPortalService
     /**
      * Get driver performance report
      */
-    public function getDriverPerformanceReport(int $driverId, Carbon $startDate, Carbon $endDate, string $correlationId = null): array
+    public function getDriverPerformanceReport(int $driverId, Carbon $startDate, Carbon $endDate, ?string $correlationId = null): array
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         return $this->analyticsService->getDriverPerformanceReport($driverId, $startDate, $endDate, $correlationId);
     }
 }

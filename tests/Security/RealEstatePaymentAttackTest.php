@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Security;
 
@@ -16,30 +18,14 @@ final class RealEstatePaymentAttackTest extends SecurityTestCase
     use RefreshDatabase;
 
     private User $user;
+
     private User $attacker;
+
     private Tenant $tenant;
+
     private Property $property;
+
     private Wallet $wallet;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->attacker = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->property = Property::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'type' => 'apartment',
-            'area_sqm' => 75.5,
-            'price' => 10000000.00,
-        ]);
-        $this->wallet = Wallet::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'user_id' => $this->user->id,
-            'current_balance' => 50000000.00,
-        ]);
-    }
 
     public function test_double_spend_attack_prevented(): void
     {
@@ -79,7 +65,7 @@ final class RealEstatePaymentAttackTest extends SecurityTestCase
                 ->postJson("/api/real-estate/transactions/{$transaction->uuid}/release");
         }
 
-        $successfulReleases = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
+        $successfulReleases = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
         $this->assertLessThan(2, $successfulReleases, 'Race condition on escrow release should be prevented');
     }
 
@@ -140,8 +126,8 @@ final class RealEstatePaymentAttackTest extends SecurityTestCase
 
         $response = $this->actingAs($this->attacker)
             ->postJson("/api/real-state/transactions/{$transaction->uuid}/split", [
-            'splits' => $maliciousSplits,
-        ]);
+                'splits' => $maliciousSplits,
+            ]);
 
         $this->assertContains($response->status(), [403, 422], 'Malicious split payment should be blocked');
     }
@@ -159,9 +145,9 @@ final class RealEstatePaymentAttackTest extends SecurityTestCase
 
         $response = $this->actingAs($this->attacker)
             ->postJson("/api/real-estate/transactions/{$transaction->uuid}/release", [
-            'bypass_hold' => true,
-            'admin_override' => 'fake_token',
-        ]);
+                'bypass_hold' => true,
+                'admin_override' => 'fake_token',
+            ]);
 
         $this->assertContains($response->status(), [403, 401], 'Escrow hold bypass should be blocked');
     }
@@ -242,7 +228,7 @@ final class RealEstatePaymentAttackTest extends SecurityTestCase
                 ]);
         }
 
-        $successfulConfirms = collect($responses)->filter(fn($r) => $r->status() === 200)->count();
+        $successfulConfirms = collect($responses)->filter(fn ($r) => $r->status() === 200)->count();
         $this->assertLessThan(2, $successfulConfirms, 'Timing attack on payment confirmation should be prevented');
     }
 
@@ -284,8 +270,8 @@ final class RealEstatePaymentAttackTest extends SecurityTestCase
 
         $response = $this->actingAs($this->attacker)
             ->postJson("/api/real-estate/transactions/{$transaction->uuid}/cancel", [
-            'reason' => 'fraudulent_cancellation',
-        ]);
+                'reason' => 'fraudulent_cancellation',
+            ]);
 
         $this->assertContains($response->status(), [403, 422], 'Cancellation after release should be blocked');
     }
@@ -302,6 +288,7 @@ final class RealEstatePaymentAttackTest extends SecurityTestCase
                 $wallet->update([
                     'current_balance' => $wallet->current_balance - 5000000.00,
                 ]);
+
                 return $wallet->current_balance;
             });
         }
@@ -309,5 +296,25 @@ final class RealEstatePaymentAttackTest extends SecurityTestCase
         $this->wallet->refresh();
         $expectedBalance = $initialBalance - (5000000.00 * 3);
         $this->assertGreaterThanOrEqual(0, $this->wallet->current_balance, 'Balance should not go negative due to race condition');
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->tenant = Tenant::factory()->create();
+        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $this->attacker = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $this->property = Property::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'type' => 'apartment',
+            'area_sqm' => 75.5,
+            'price' => 10000000.00,
+        ]);
+        $this->wallet = Wallet::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->user->id,
+            'current_balance' => 50000000.00,
+        ]);
     }
 }

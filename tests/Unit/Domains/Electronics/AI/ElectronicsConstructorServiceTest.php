@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Electronics\AI;
 
@@ -8,6 +10,7 @@ use PHPUnit\Framework\TestCase;
  * Unit tests for ElectronicsConstructorService.
  *
  * @covers \App\Domains\Electronics\Services\AI\ElectronicsConstructorService
+ *
  * @group ai-constructors
  */
 final class ElectronicsConstructorServiceTest extends TestCase
@@ -15,7 +18,7 @@ final class ElectronicsConstructorServiceTest extends TestCase
     public function test_class_is_final_readonly(): void
     {
         $class = $this->getServiceClass();
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             $this->markTestSkipped("Class {$class} not found");
         }
         $reflection = new \ReflectionClass($class);
@@ -26,7 +29,7 @@ final class ElectronicsConstructorServiceTest extends TestCase
     public function test_has_analyze_method(): void
     {
         $class = $this->getServiceClass();
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             $this->markTestSkipped("Class {$class} not found");
         }
         $methods = get_class_methods($class);
@@ -43,7 +46,7 @@ final class ElectronicsConstructorServiceTest extends TestCase
     public function test_has_constructor_with_openai(): void
     {
         $class = $this->getServiceClass();
-        if (!class_exists($class)) {
+        if (! class_exists($class)) {
             $this->markTestSkipped("Class {$class} not found");
         }
         $constructor = (new \ReflectionClass($class))->getConstructor();
@@ -58,8 +61,11 @@ final class ElectronicsConstructorServiceTest extends TestCase
             'App\Domains\Electronics\Domain\Services\AI\ElectronicsConstructorService',
         ];
         foreach ($paths as $p) {
-            if (class_exists($p)) return $p;
+            if (class_exists($p)) {
+                return $p;
+            }
         }
+
         return $paths[0];
     }
 }

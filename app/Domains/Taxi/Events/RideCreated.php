@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * RideCreated — CatVRF 2026 Component.
@@ -7,31 +9,28 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/ridecreated
  */
 
-
 namespace App\Domains\Taxi\Events;
 
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Queue\SerializesModels;
+use Carbon\CarbonImmutable;
 
 final class RideCreated
 {
-
-    
-        public function __construct(
-            private readonly int $rideId,
-            private readonly string $driverId,
-            private readonly string $passengerId,
-            private readonly string $correlationId,
-            private array $metadata = []) {}
+    public function __construct(
+        private readonly int $rideId,
+        private readonly string $driverId,
+        private readonly string $passengerId,
+        private readonly string $correlationId,
+        private readonly array $metadata = []
+    ) {}
 
     /**
      * Get the string representation of this instance.
@@ -40,7 +39,7 @@ final class RideCreated
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -51,8 +50,8 @@ final class RideCreated
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

@@ -9,6 +9,7 @@ use App\Domains\RealEstate\Models\Property;
 use App\Models\Domains\RealEstate\RealEstateAgent;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 final class PropertyViewingFactory extends Factory
 {
@@ -21,7 +22,7 @@ final class PropertyViewingFactory extends Factory
         $isB2B = $this->faker->boolean(30);
 
         return [
-            'uuid' => \Illuminate\Support\Str::uuid(),
+            'uuid' => Str::uuid(),
             'tenant_id' => Property::factory()->create()->tenant_id,
             'business_group_id' => null,
             'property_id' => Property::factory(),
@@ -31,20 +32,20 @@ final class PropertyViewingFactory extends Factory
             'held_at' => $status === 'held' ? now() : null,
             'hold_expires_at' => $status === 'held' ? now()->addMinutes($isB2B ? 60 : 15) : null,
             'completed_at' => $status === 'completed' ? $scheduledAt->copy()->addHours(1) : null,
-            'cancelled_at' => in_array($status, ['cancelled', 'no_show']) ? $scheduledAt->copy()->subHours(rand(1, 24)) : null,
+            'cancelled_at' => in_array($status, ['cancelled', 'no_show'], true) ? $scheduledAt->copy()->subHours(rand(1, 24)) : null,
             'status' => $status,
             'is_b2b' => $isB2B,
-            'webrtc_room_id' => 'room_' . md5($this->faker->randomNumber() . $scheduledAt->format('Y-m-d H:i')),
+            'webrtc_room_id' => 'room_'.md5($this->faker->randomNumber().$scheduledAt->format('Y-m-d H:i')),
             'faceid_verified' => $this->faker->boolean(70),
-            'cancellation_reason' => in_array($status, ['cancelled', 'no_show']) ? $this->faker->randomElement(['client_cancelled', 'agent_cancelled', 'no_show']) : null,
-            'correlation_id' => \Illuminate\Support\Str::uuid(),
+            'cancellation_reason' => in_array($status, ['cancelled', 'no_show'], true) ? $this->faker->randomElement(['client_cancelled', 'agent_cancelled', 'no_show']) : null,
+            'correlation_id' => Str::uuid(),
             'metadata' => [
                 'preferred_contact_method' => $this->faker->randomElement(['phone', 'email', 'wechat', 'telegram']),
                 'number_of_attendees' => $this->faker->numberBetween(1, 4),
                 'special_requirements' => $this->faker->boolean(20) ? $this->faker->sentence() : null,
             ],
             'tags' => [
-                'priority_' . $this->faker->randomElement(['low', 'medium', 'high']),
+                'priority_'.$this->faker->randomElement(['low', 'medium', 'high']),
                 $isB2B ? 'b2b' : 'b2c',
             ],
         ];

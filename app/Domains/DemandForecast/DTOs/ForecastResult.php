@@ -15,7 +15,6 @@ declare(strict_types=1);
  * Properties are set via constructor and cannot be modified.
  *
  * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\DemandForecast\DTOs
  */
 final readonly class ForecastResult
 {
@@ -25,5 +24,6 @@ final readonly class ForecastResult
         public int $confidence_interval_upper,
         public float $confidence_score,
         public array $features_json,
-        public string $correlation_id) {}
+        public string $correlation_id
+    ) {}
 }

@@ -1,11 +1,14 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\ML;
 
-
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
+use App\Services\Security\AuditService;
 
 /**
  * AnonymizationService — GDPR / ФЗ-152 compliant.
@@ -20,8 +23,11 @@ use Illuminate\Support\Str;
  */
 final readonly class AnonymizationService
 {
+    use WithAuditLogging;
+
     public function __construct(
         private readonly ConfigRepository $config,
+        private readonly AuditService $auditService,
     ) {}
 
     /**
@@ -36,7 +42,7 @@ final readonly class AnonymizationService
             throw new \RuntimeException('anonymization_salt not configured');
         }
 
-        return hash('sha256', $userId . $salt);
+        return hash('sha256', $userId.$salt);
     }
 
     /**
@@ -72,7 +78,6 @@ final readonly class AnonymizationService
      *   city?: string,
      *   correlation_id: string,
      * } $rawEvent
-     * @return array
      */
     public function anonymizeEvent(array $rawEvent): array
     {
@@ -103,7 +108,7 @@ final readonly class AnonymizationService
      * Пакетная анонимизация коллекции событий.
      * Используется в AnnualAnonymizationJob и MLRecalculateJob.
      *
-     * @param  Collection<int, array> $events
+     * @param  Collection<int, array>  $events
      * @return Collection<int, array>
      */
     public function anonymizeBehaviorBatch(Collection $events): Collection
@@ -125,7 +130,7 @@ final readonly class AnonymizationService
             'vertical'           => $rawEvent['vertical'] ?? null,
             'device_type'        => $rawEvent['device_type'] ?? 'unknown',
             'city_hash'          => $this->hashCity($rawEvent['city'] ?? ''),
-            'created_at'         => $rawEvent['created_at'] ?? now()->toIso8601String(),
+            'created_at'         => $rawEvent['created_at'] ?? CarbonImmutable::now()->toIso8601String(),
             'correlation_id'     => $rawEvent['correlation_id'],
         ];
     }
@@ -144,12 +149,21 @@ final readonly class AnonymizationService
     }
 
     /**
+     * Проверка k-anonymity: минимум 5 пользователей в любой группе.
+     * Возвращает true, если группа достаточно большая.
+     */
+    public function checkKAnonymity(array $group, int $minK = 5): bool
+    {
+        return count($group) >= $minK;
+    }
+
+    /**
      * Псевдоанонимизация SessionId для хранения в аналитике.
      * Session-id не пересчитывается каждый раз — только маскируется.
      */
     public function pseudonymizeSession(string $sessionId): string
     {
-        return hash('sha256', $sessionId . $this->config->get('app.anonymization_salt'));
+        return hash('sha256', $sessionId.$this->config->get('app.anonymization_salt'));
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

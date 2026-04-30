@@ -1,0 +1,110 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Shared\Medical\Models;
+
+use App\Traits\TenantScoped;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Carbon\CarbonImmutable;
+
+final class MedicalConsumable extends Model
+{
+    use TenantScoped;
+
+    protected $table = 'medical_consumables';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'clinic_id',
+        'service_id',
+        'name',
+        'sku',
+        'category',
+        'stock_quantity',
+        'min_threshold',
+        'unit', // шт, мл, гр, уп
+        'price_per_unit',
+        'metadata',
+        'tags',
+        'correlation_id',
+    ];
+
+    protected $casts = [
+        'stock_quantity' => 'integer',
+        'min_threshold' => 'integer',
+        'price_per_unit' => 'integer',
+        'metadata' => 'array',
+        'tags' => 'array',
+    ];
+
+    /**
+     * Настройка логов для аудита.
+     */
+    /**
+     * Отношение: Клиника.
+     */
+    public function clinic(): BelongsTo
+    {
+        return $this->belongsTo(Clinic::class, 'clinic_id');
+    }
+
+    /**
+     * Отношение: Услуга (если расходник привязан к одной услуге).
+     */
+    public function medicalService(): BelongsTo
+    {
+        return $this->belongsTo(MedicalService::class, 'service_id');
+    }
+
+    /**
+     * Проверка: критический остаток.
+     */
+    public function isLowStock(): bool
+    {
+        return $this->stock_quantity <= $this->min_threshold;
+    }
+
+    /**
+     * Списание остатка.
+     */
+    public function decrementStock(int $amount, string $reason = 'appointment_usage'): void
+    {
+        if ($this->stock_quantity < $amount) {
+            throw new \RuntimeException("Insufficient stock for consumable: {$this->name}");
+        }
+
+        $this->decrement('stock_quantity', $amount);
+
+        // Регистрируем в аудите через metadata если нужно
+        $this->updateQuietly([
+            'metadata' => array_merge($this->metadata ?? [], [
+                'last_decrement' => [
+                    'amount' => $amount,
+                    'reason' => $reason,
+                    'at' => CarbonImmutable::now()->toIso8601String(),
+                ],
+            ]),
+        ]);
+    }
+
+    /**
+     * КАНОН: Global Scopes и События модели.
+     */
+    protected static function booted_disabled(): void
+    {
+        self::creating(function (MedicalConsumable $consumable) {
+            $consumable->uuid = $consumable->uuid ?? (string) Str::uuid();
+            $consumable->tenant_id = $consumable->tenant_id ?? (int) tenant()->id;
+            $consumable->correlation_id = $consumable->correlation_id ?? (string) Str::uuid();
+        });
+
+        self::addGlobalScope('tenant_id', function (Builder $builder) {
+            if (tenant()) {
+                $builder->where('tenant_id', tenant()->id);
+            }
+        });
+    }
+}

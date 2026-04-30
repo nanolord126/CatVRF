@@ -186,8 +186,9 @@ final class CrmAutomationResource extends Resource
 
                 Tables\Columns\TextColumn::make('conversion_rate')
                     ->label('CR%')
-                    ->getStateUsing(fn (CrmAutomation $record): string => $record->total_sent > 0
-                        ? round(($record->total_converted / $record->total_sent) * 100, 1) . '%'
+                    ->getStateUsing(
+                        fn (CrmAutomation $record): string => $record->total_sent > 0
+                        ? round(($record->total_converted / $record->total_sent) * 100, 1).'%'
                         : '—'
                     ),
 

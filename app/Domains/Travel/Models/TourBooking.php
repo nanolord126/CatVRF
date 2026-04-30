@@ -1,17 +1,23 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Travel\Models;
 
+use Carbon\CarbonImmutable;
+
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use App\Models\BusinessGroup;
+use App\Models\User;
 
 /**
  * Tourism Booking Model
- * 
+ *
  * Production-ready model for Tourism vertical with killer features:
  * - AI-personalized tours with embeddings
  * - Real-time availability hold with biometric verification
@@ -22,12 +28,12 @@ use Illuminate\Support\Str;
  * - ML-fraud detection for cancellations
  * - Wallet split payment + instant cashback
  * - CRM integration at every status
- * 
- * @package App\Domains\Travel\Models
  */
 final class TourBooking extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
+    use TenantScoped;
 
     protected $table = 'tourism_bookings';
 
@@ -95,23 +101,6 @@ final class TourBooking extends Model
         'end_date' => 'date',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(function (TourBooking $model) {
-            if (!$model->uuid) {
-                $model->uuid = Str::uuid()->toString();
-            }
-            if (!$model->correlation_id) {
-                $model->correlation_id = request()?->header('X-Correlation-ID', Str::uuid()->toString());
-            }
-        });
-
-        static::addGlobalScope('tenant', function ($query) {
-            $tenantId = function_exists('tenant') && tenant() ? tenant()->id : 1;
-            $query->where('tenant_id', $tenantId);
-        });
-    }
-
     public function tour(): BelongsTo
     {
         return $this->belongsTo(Tour::class);
@@ -119,12 +108,12 @@ final class TourBooking extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     public function businessGroup(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\BusinessGroup::class);
+        return $this->belongsTo(BusinessGroup::class);
     }
 
     /**
@@ -164,7 +153,7 @@ final class TourBooking extends Model
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -173,11 +162,28 @@ final class TourBooking extends Model
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
+            'class' => self::class,
             'id' => $this->id,
             'uuid' => $this->uuid,
             'status' => $this->status,
-            'timestamp' => now()->toIso8601String(),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
+    }
+
+    protected static function booted(): void
+    {
+        self::creating(function (TourBooking $model) {
+            if (! $model->uuid) {
+                $model->uuid = Str::uuid()->toString();
+            }
+            if (! $model->correlation_id) {
+                $model->correlation_id = request()?->header('X-Correlation-ID', Str::uuid()->toString());
+            }
+        });
+
+        self::addGlobalScope('tenant', function ($query) {
+            $tenantId = function_exists('tenant') && tenant() ? tenant()->id : 1;
+            $query->where('tenant_id', $tenantId);
+        });
     }
 }

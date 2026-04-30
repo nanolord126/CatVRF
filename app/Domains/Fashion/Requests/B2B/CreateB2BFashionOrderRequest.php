@@ -57,7 +57,7 @@ final class CreateB2BFashionOrderRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        if (!empty($this->inn) && !empty($this->business_card_id)) {
+        if (! empty($this->inn) && ! empty($this->business_card_id)) {
             $this->merge(['is_b2b' => true]);
         }
     }

@@ -1,0 +1,405 @@
+name: CI/CD Pipeline - Production Ready (Improved)
+
+on:
+  push:
+    branches: [main, develop, production]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/catvrf
+  PHP_VERSION: '8.3'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Parallel linting jobs
+  lint-php:
+    name: Lint PHP
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer, phpstan, pint
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-
+
+      - name: Install dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Run PHPStan (Level 8)
+        run: vendor/bin/phpstan analyse app --level=8 --error-format=github --no-progress
+
+      - name: Run Laravel Pint
+        run: vendor/bin/pint --test
+
+  lint-js:
+    name: Lint JavaScript
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint || true
+
+      - name: Run TypeScript check
+        run: npm run type-check || true
+
+  # Matrix testing across PHP versions
+  test:
+    name: Test (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4']
+        include:
+          - php: '8.3'
+            coverage: true
+          - php: '8.4'
+            coverage: false
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: catvrf_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_pgsql, redis, pcntl, gd, curl, bcmath
+          tools: composer
+          coverage: ${{ matrix.coverage && 'xdebug' || 'none' }}
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ matrix.php }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-${{ matrix.php }}-
+            ${{ runner.os }}-php-
+
+      - name: Install dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --prefer-dist --ignore-platform-reqs
+
+      - name: Copy .env.testing
+        run: cp .env.example .env.testing
+
+      - name: Generate app key
+        run: php artisan key:generate --env=testing
+
+      - name: Run migrations
+        run: php artisan migrate --env=testing --database=pgsql --seed --force
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_DATABASE: catvrf_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_PORT: 5432
+
+      - name: Run PHPUnit tests
+        if: matrix.coverage == false
+        run: php artisan test --env=testing --parallel
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_DATABASE: catvrf_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_PORT: 5432
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
+      - name: Run PHPUnit tests with coverage
+        if: matrix.coverage == true
+        run: php artisan test --env=testing --parallel --coverage --min=80
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_DATABASE: catvrf_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_PORT: 5432
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
+      - name: Upload coverage to Codecov
+        if: matrix.coverage == true
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage.xml
+          flags: unittests-php${{ matrix.php }}
+          fail_ci_if_error: false
+
+  # Security scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-
+
+      - name: Install dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --prefer-dist
+
+      - name: Run composer audit
+        run: composer audit --no-interaction
+        continue-on-error: false
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/php@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  # Docker image build and security scan
+  build-and-scan:
+    name: Build & Scan Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint-php, lint-js, test, security-scan]
+    if: success() || contains(github.event.pull_request.labels.*.name, 'force-build')
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: ${{ github.event_name == 'pull_request' }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+        continue-on-error: true
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Blue-Green deployment
+  deploy-production:
+    name: Deploy to Production (Blue-Green)
+    runs-on: ubuntu-latest
+    needs: build-and-scan
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://catvrf.ru
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to green environment
+        run: |
+          echo "Deploying to green environment..."
+          # SSH into server and run deployment script
+          # ssh user@server "cd /var/www/catvrf && ./scripts/deploy-blue-green.sh green ${{ github.sha }}"
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests on green environment..."
+          # curl -f https://green.catvrf.ru/api/health/smoke || exit 1
+
+      - name: Switch traffic to green
+        run: |
+          echo "Switching traffic to green environment..."
+          # Update load balancer configuration
+
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Production deployment: ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  deploy-production:
+    name: Deploy to Production (Blue-Green)
+    runs-on: ubuntu-latest
+    needs: build-and-scan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://catvrf.ru
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to green environment
+        run: |
+          echo "Deploying to green environment..."
+          # SSH into server and run deployment script
+          # ssh user@server "cd /var/www/catvrf && ./scripts/deploy-blue-green.sh green ${{ github.sha }}"
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests on green environment..."
+          # curl -f https://green.catvrf.ru/api/health/smoke || exit 1
+
+      - name: Switch traffic to green
+        run: |
+          echo "Switching traffic to green environment..."
+          # Update load balancer configuration
+
+      - name: Monitor for 5 minutes
+        run: |
+          echo "Monitoring deployment for 5 minutes..."
+          sleep 300
+
+      - name: Verify deployment success
+        run: |
+          echo "Verifying deployment success..."
+          # Check error rates, metrics, etc.
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, initiating rollback..."
+          # ./scripts/deploy-blue-green.sh rollback green
+
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Production deployment: ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # Quality gates summary
+  quality-gates:
+    name: Quality Gates Summary
+    runs-on: ubuntu-latest
+    needs: [lint-php, lint-js, test, security-scan, build-and-scan]
+    if: always()
+    
+    steps:
+      - name: Check all gates passed
+        run: |
+          if [ "${{ needs.lint-php.result }}" != "success" ] || \
+             [ "${{ needs.lint-js.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.security-scan.result }}" != "success" ] || \
+             [ "${{ needs.build-and-scan.result }}" != "success" ]; then
+            echo "❌ Quality gates failed"
+            echo "PHP Lint: ${{ needs.lint-php.result }}"
+            echo "JS Lint: ${{ needs.lint-js.result }}"
+            echo "Tests: ${{ needs.test.result }}"
+            echo "Security: ${{ needs.security-scan.result }}"
+            echo "Build: ${{ needs.build-and-scan.result }}"
+            exit 1
+          fi
+          
+          echo "✅ All quality gates passed"

@@ -15,6 +15,7 @@ use Psr\Log\LoggerInterface;
 final class EloquentAgentRepository implements AgentRepositoryInterface
 {
     public function __construct(private readonly LoggerInterface $logger) {}
+
     public function findById(AgentId $id): ?RealEstateAgent
     {
         $model = AgentModel::withoutGlobalScope('tenant')->find($id->getValue());
@@ -85,7 +86,7 @@ final class EloquentAgentRepository implements AgentRepositoryInterface
         AgentModel::withoutGlobalScope('tenant')
             ->updateOrCreate(['id' => $data['id']], $data);
 
-        $this->logger->info('AgentRepository::save', [
+        $this->logger->$this->logger->info('AgentRepository::save', [
             'agent_id'       => $data['id'],
             'is_active'      => $data['is_active'],
             'correlation_id' => $data['correlation_id'],
@@ -98,7 +99,7 @@ final class EloquentAgentRepository implements AgentRepositoryInterface
             ->where('id', $id->getValue())
             ->delete();
 
-        $this->logger->info('AgentRepository::delete', [
+        $this->logger->$this->logger->info('AgentRepository::delete', [
             'agent_id' => $id->getValue(),
         ]);
     }

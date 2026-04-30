@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\Tenancy;
 
@@ -9,10 +11,10 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
-use Illuminate\Log\LogManager;
 use Illuminate\Support\Facades\Hash;
 use Psr\Log\LoggerInterface;
 use Tests\TestCase;
+use Illuminate\Support\Str;
 
 /**
  * Tenant Middleware Test
@@ -20,6 +22,7 @@ use Tests\TestCase;
  * Production 2026 CANON - Multi-Tenant Security Tests
  *
  * @author CatVRF Team
+ *
  * @version 2026.04.17
  */
 final class TenantMiddlewareTest extends TestCase
@@ -27,26 +30,14 @@ final class TenantMiddlewareTest extends TestCase
     use RefreshDatabase;
 
     private TenantMiddleware $middleware;
+
     private DatabaseManager $db;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->db = app(DatabaseManager::class);
-        $logger = app(LoggerInterface::class);
-
-        $this->middleware = new TenantMiddleware(
-            $this->db,
-            $logger
-        );
-    }
 
     public function test_user_based_identification_with_valid_tenant(): void
     {
         // Create tenant
         $tenant = Tenant::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'name' => 'Test Tenant',
             'inn' => '1234567890',
             'is_active' => true,
@@ -106,7 +97,7 @@ final class TenantMiddlewareTest extends TestCase
         $this->expectExceptionMessage('Tenant not found or inactive');
 
         $tenant = Tenant::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'name' => 'Inactive Tenant',
             'inn' => '0987654321',
             'is_active' => false,
@@ -130,7 +121,7 @@ final class TenantMiddlewareTest extends TestCase
         config(['tenancy.identification.resolvers.header' => true]);
 
         $tenant = Tenant::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'name' => 'Test Tenant',
             'inn' => '1234567890',
             'is_active' => true,
@@ -138,7 +129,7 @@ final class TenantMiddlewareTest extends TestCase
         ]);
 
         $timestamp = time();
-        $signature = hash_hmac('sha256', $tenant->id . $timestamp, 'test_secret');
+        $signature = hash_hmac('sha256', $tenant->id.$timestamp, 'test_secret');
 
         $request = Request::create('/test', 'GET');
         $request->headers->set('X-Tenant-ID', $tenant->id);
@@ -169,7 +160,7 @@ final class TenantMiddlewareTest extends TestCase
         config(['tenancy.identification.resolvers.header' => true]);
 
         $tenant = Tenant::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'name' => 'Test Tenant',
             'inn' => '1234567890',
             'is_active' => true,
@@ -177,7 +168,7 @@ final class TenantMiddlewareTest extends TestCase
         ]);
 
         $timestamp = time() - 400; // 400 seconds ago (exceeds 300 second tolerance)
-        $signature = hash_hmac('sha256', $tenant->id . $timestamp, 'test_secret');
+        $signature = hash_hmac('sha256', $tenant->id.$timestamp, 'test_secret');
 
         $request = Request::create('/test', 'GET');
         $request->headers->set('X-Tenant-ID', $tenant->id);
@@ -195,7 +186,7 @@ final class TenantMiddlewareTest extends TestCase
         config(['tenancy.identification.resolvers.header' => true]);
 
         $tenant = Tenant::create([
-            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'id' => (string) Str::uuid(),
             'name' => 'Test Tenant',
             'inn' => '1234567890',
             'is_active' => true,
@@ -214,6 +205,19 @@ final class TenantMiddlewareTest extends TestCase
         $this->expectExceptionMessage('Invalid tenant signature');
 
         $this->middleware->handle($request, fn ($req) => response('OK'));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->db = app(DatabaseManager::class);
+        $logger = app(LoggerInterface::class);
+
+        $this->middleware = new TenantMiddleware(
+            $this->db,
+            $logger
+        );
     }
 
     protected function tearDown(): void

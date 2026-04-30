@@ -6,6 +6,9 @@ namespace App\Domains\HomeServices\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use App\Services\AuditService;
+use App\Services\FraudControlService;
+use Illuminate\Support\Str;
 
 /**
  * Class HomeServiceJobCollection
@@ -20,9 +23,8 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
  * - Audit logging with correlation_id
  * - Tenant and BusinessGroup scoping
  *
- * @see \App\Services\FraudControlService
- * @see \App\Services\AuditService
- * @package App\Domains\HomeServices\Http\Resources
+ * @see FraudControlService
+ * @see AuditService
  */
 final class HomeServiceJobCollection extends ResourceCollection
 {
@@ -44,7 +46,7 @@ final class HomeServiceJobCollection extends ResourceCollection
             'data' => $this->collection,
             'meta' => [
                 'total' => $this->collection->count(),
-                'correlation_id' => $request->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid()),
+                'correlation_id' => $request->header('X-Correlation-ID', (string) Str::uuid()),
                 'api_version' => 'v1',
             ],
         ];

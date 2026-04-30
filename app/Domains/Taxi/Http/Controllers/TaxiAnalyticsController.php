@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Taxi\Http\Controllers;
 
@@ -25,7 +27,7 @@ final class TaxiAnalyticsController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'analytics' => $analytics,
         ]);
@@ -43,7 +45,7 @@ final class TaxiAnalyticsController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'analytics' => $analytics,
         ]);
@@ -62,7 +64,7 @@ final class TaxiAnalyticsController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'analytics' => $analytics,
         ]);
@@ -82,7 +84,7 @@ final class TaxiAnalyticsController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'report' => $report,
         ]);
@@ -99,7 +101,7 @@ final class TaxiAnalyticsController extends Controller
             correlationId: $request->header('X-Correlation-ID'),
         );
 
-        return response()->json([
+        return new JsonResponse([
             'success' => true,
             'prediction' => $prediction,
         ]);

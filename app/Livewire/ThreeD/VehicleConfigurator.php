@@ -1,17 +1,30 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\ThreeD;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Livewire\Component;
 
 final class VehicleConfigurator extends Component
 {
-    private int $vehicleId;
-    private array $vehicleData = [];
-    private string $selectedColor = '#000000';
-    private string $selectedInterior = 'black';
-    private array $selectedOptions = [];
-    private float $price = 0;
+    private readonly int $vehicleId;
+
+    private readonly array $vehicleData = [];
+
+    private readonly string $selectedColor = '#000000';
+
+    private readonly string $selectedInterior = 'black';
+
+    private readonly array $selectedOptions = [];
+
+    private readonly float $price = 0;
+
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
     public function mount(int $vehicleId): void
     {
@@ -52,7 +65,7 @@ final class VehicleConfigurator extends Component
 
     public function toggleOption(int $optionId): void
     {
-        if (in_array($optionId, $this->selectedOptions)) {
+        if (in_array($optionId, $this->selectedOptions, true)) {
             $this->selectedOptions = array_diff($this->selectedOptions, [$optionId]);
             $this->price -= $this->vehicleData['options'][$optionId - 1]['price'];
         } else {
@@ -63,6 +76,6 @@ final class VehicleConfigurator extends Component
 
     public function render()
     {
-        return view('livewire.three-d.vehicle-configurator');
+        return $this->viewFactory->make('livewire.three-d.vehicle-configurator');
     }
 }

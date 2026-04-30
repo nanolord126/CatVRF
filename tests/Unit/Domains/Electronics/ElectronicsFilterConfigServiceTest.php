@@ -17,17 +17,8 @@ final class ElectronicsFilterConfigServiceTest extends BaseTestCase
     use RefreshDatabase;
 
     private ElectronicsFilterConfigService $service;
+
     private Cache|MockObject $cache;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->cache = $this->createMock(Cache::class);
-        $this->service = new ElectronicsFilterConfigService(
-            $this->cache,
-        );
-    }
 
     public function test_get_all_types_returns_all_electronics_types(): void
     {
@@ -347,5 +338,15 @@ final class ElectronicsFilterConfigServiceTest extends BaseTestCase
             $this->assertIsArray($config->secondaryFilters);
             $this->assertIsArray($config->sortOptions);
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->cache = $this->createMock(Cache::class);
+        $this->service = new ElectronicsFilterConfigService(
+            $this->cache,
+        );
     }
 }

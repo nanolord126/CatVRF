@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Services\Geo;
 
@@ -13,13 +15,6 @@ final class GeoTrackingStreamServiceTest extends TestCase
 
     private GeoTrackingStreamService $streamService;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->streamService = app(GeoTrackingStreamService::class);
-        Redis::flushdb();
-    }
-
     public function test_add_location_update_returns_message_id(): void
     {
         $messageId = $this->streamService->addLocationUpdate(
@@ -30,7 +25,7 @@ final class GeoTrackingStreamServiceTest extends TestCase
             speed: 30.5,
             bearing: 45.0,
         );
-        
+
         $this->assertIsString($messageId);
         $this->assertNotEmpty($messageId);
     }
@@ -44,9 +39,9 @@ final class GeoTrackingStreamServiceTest extends TestCase
             lat: 55.75,
             lon: 37.62,
         );
-        
+
         $updates = $this->streamService->readEntityUpdates(1, 'courier', 10);
-        
+
         $this->assertIsArray($updates);
         $this->assertNotEmpty($updates);
     }
@@ -54,14 +49,14 @@ final class GeoTrackingStreamServiceTest extends TestCase
     public function test_create_consumer_group(): void
     {
         $this->expectNotToPerformAssertions();
-        
+
         $this->streamService->createConsumerGroup('test_consumer');
     }
 
     public function test_read_from_consumer_group_returns_array(): void
     {
         $this->streamService->createConsumerGroup('test_consumer');
-        
+
         // Add a message to stream
         $this->streamService->addLocationUpdate(
             entityId: 1,
@@ -69,9 +64,9 @@ final class GeoTrackingStreamServiceTest extends TestCase
             lat: 55.75,
             lon: 37.62,
         );
-        
+
         $messages = $this->streamService->readFromConsumerGroup('test_consumer', 1, 100);
-        
+
         $this->assertIsArray($messages);
     }
 
@@ -84,16 +79,16 @@ final class GeoTrackingStreamServiceTest extends TestCase
             lat: 55.75,
             lon: 37.62,
         );
-        
+
         $acknowledged = $this->streamService->acknowledgeMessage($messageId);
-        
+
         $this->assertIsBool($acknowledged);
     }
 
     public function test_get_stream_info_returns_array(): void
     {
         $info = $this->streamService->getStreamInfo();
-        
+
         $this->assertIsArray($info);
         $this->assertArrayHasKey('length', $info);
         $this->assertArrayHasKey('groups', $info);
@@ -102,7 +97,7 @@ final class GeoTrackingStreamServiceTest extends TestCase
     public function test_trim_stream(): void
     {
         $this->expectNotToPerformAssertions();
-        
+
         $this->streamService->trimStream(100);
     }
 
@@ -117,9 +112,9 @@ final class GeoTrackingStreamServiceTest extends TestCase
                 lon: 37.62,
             );
         }
-        
+
         $deleted = $this->streamService->deleteOldMessages(24);
-        
+
         $this->assertIsInt($deleted);
     }
 
@@ -131,16 +126,23 @@ final class GeoTrackingStreamServiceTest extends TestCase
             lat: 55.75,
             lon: 37.62,
         );
-        
+
         $doctorId = $this->streamService->addLocationUpdate(
             entityId: 2,
             entityType: 'doctor',
             lat: 55.76,
             lon: 37.63,
         );
-        
+
         $this->assertIsString($courierId);
         $this->assertIsString($doctorId);
         $this->assertNotEquals($courierId, $doctorId);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->streamService = app(GeoTrackingStreamService::class);
+        Redis::flushdb();
     }
 }

@@ -1,0 +1,82 @@
+{{ define "email.default.html" }}
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .alert { padding: 20px; margin: 10px 0; border-radius: 5px; }
+        .critical { background-color: #ffebee; border-left: 5px solid #f44336; }
+        .warning { background-color: #fff3e0; border-left: 5px solid #ff9800; }
+        .info { background-color: #e8f5e9; border-left: 5px solid #4caf50; }
+        .label { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>CatVRF Alert Notification</h2>
+    
+    {{ range .Alerts }}
+    <div class="alert {{ if eq .Labels.severity "critical" }}critical{{ else if eq .Labels.severity "warning" }}warning{{ else }}info{{ end }}">
+        <h3>{{ .Labels.alertname }} - {{ .Labels.severity | toUpper }}</h3>
+        <p><span class="label">Summary:</span> {{ .Annotations.summary }}</p>
+        <p><span class="label">Description:</span> {{ .Annotations.description }}</p>
+        
+        <h4>Details:</h4>
+        <ul>
+            <li><span class="label">Cluster:</span> {{ .Labels.cluster }}</li>
+            <li><span class="label">Service:</span> {{ .Labels.service }}</li>
+            {{ if .Labels.vertical }}<li><span class="label">Vertical:</span> {{ .Labels.vertical }}</li>{{ end }}
+            {{ if .Labels.queue }}<li><span class="label">Queue:</span> {{ .Labels.queue }}</li>{{ end }}
+            <li><span class="label">Started:</span> {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}</li>
+        </ul>
+        
+        {{ if .Annotations.runbook }}
+        <p><a href="{{ .Annotations.runbook }}">📖 View Runbook</a></p>
+        {{ end }}
+        {{ if .Annotations.grafana }}
+        <p><a href="{{ .Annotations.grafana }}">📊 View in Grafana</a></p>
+        {{ end }}
+    </div>
+    {{ end }}
+    
+    <hr>
+    <p><small>This is an automated alert from CatVRF Monitoring System.</small></p>
+</body>
+</html>
+{{ end }}
+
+{{ define "email.crm.html" }}
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .alert { padding: 20px; margin: 10px 0; border-radius: 5px; background-color: #e3f2fd; border-left: 5px solid #2196f3; }
+        .label { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>🔄 CRM Alert Notification</h2>
+    
+    {{ range .Alerts }}
+    <div class="alert">
+        <h3>{{ .Labels.alertname }} - {{ .Labels.severity | toUpper }}</h3>
+        <p><span class="label">Summary:</span> {{ .Annotations.summary }}</p>
+        <p><span class="label">Description:</span> {{ .Annotations.description }}</p>
+        
+        <h4>Details:</h4>
+        <ul>
+            <li><span class="label">Service:</span> {{ .Labels.service }}</li>
+            <li><span class="label">Started:</span> {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}</li>
+        </ul>
+        
+        {{ if .Annotations.runbook }}
+        <p><a href="{{ .Annotations.runbook }}">📖 View Runbook</a></p>
+        {{ end }}
+    </div>
+    {{ end }}
+    
+    <hr>
+    <p><small>CRM Team - CatVRF Monitoring</small></p>
+</body>
+</html>
+{{ end }}

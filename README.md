@@ -1,9 +1,9 @@
 # 🐱 CatVRF — Мультивертикальный AI-маркетплейс
 
-> **Версия:** 2026 Q1 · **Статус:** Active Development · **Лицензия:** MIT  
-> **Production Readiness:** 5.5/10 — Средняя готовность, работа в прогрессе
+> **Версия:** 2026 Q2 · **Статус:** Active Development · **Лицензия:** MIT  
+> **Production Readiness:** 7.0/10 — Высокая готовность, финальные доработки
 
-CatVRF — это **масштабируемый мультитенантный маркетплейс** с поддержкой **33+ бизнес-вертикалей** (красота, еда, медицина, такси, отели, логистика и десятки других). Каждая вертикаль имеет собственный AI-конструктор, B2C/B2B логику, антифрод-систему и кошелёк.
+CatVRF — это **масштабируемый мультитенантный маркетплейс** с поддержкой **38 бизнес-вертикалей** (красота, еда, медицина, такси, отели, логистика, CRM и десятки других). Каждая вертикаль имеет собственный AI-конструктор, B2C/B2B логику, антифрод-систему, кошелёк, IoT-интеграцию и compliance-мониторинг.
 
 ---
 
@@ -70,7 +70,7 @@ CatVRF — это **масштабируемый мультитенантный 
 
 **Multi-tenancy.** Каждый бизнес — это отдельный тенант. Данные одного тенанта физически недоступны другому. Изоляция обеспечивается пакетом `stancl/tenancy` и глобальными Eloquent-scope'ами во всех моделях.
 
-**33+ бизнес-вертикали.** Красота, еда, медицина, такси, отели, логистика, фитнес, юридические услуги и десятки других доменов. Каждый домен живёт в `modules/{Vertical}/` и следует Clean Architecture + DDD.
+**38 бизнес-вертикалей.** Красота, еда, медицина, такси, отели, логистика, фитнес, CRM, маркетплейс и десятки других доменов. Каждый домен живёт в `modules/{Vertical}/` и следует Clean Architecture + DDD.
 
 **AI-конструкторы.** У каждой вертикали есть собственный сервис-оркестратор (`...ConstructorService`), который принимает фото или параметры, отправляет их в OpenAI Vision / GigaChat Vision, получает анализ, смешивает с профилем вкусов пользователя (`UserTasteProfile`) и возвращает персонализированные рекомендации товаров или услуг вместе со ссылкой на AR/3D-превью.
 
@@ -83,6 +83,14 @@ CatVRF — это **масштабируемый мультитенантный 
 **Аналитика через ClickHouse.** Все события (просмотры, добавления в корзину, покупки, использование AI, рекламные клики) пишутся в ClickHouse в анонимизированном виде. Это позволяет строить дашборды по миллиардам событий за секунды.
 
 **Реалтайм через Echo + Redis.** Обновления позиции курьера, изменения остатков товара, входящие сообщения — всё это транслируется через Laravel Echo (WebSocket) и Redis, без долгого polling.
+
+**IoT-интеграция (Restaurant vertical).** Поддержка MQTT, Modbus TCP, WebSocket для умных ресторанов: датчики температуры, весовые датчики, умные холодильники, KDS-дисплеи, реалтайм-мониторинг оборудования.
+
+**Compliance-мониторинг.** Поддержка 152-ФЗ (персональные данные), ФЗ-115 (AML/KYC), ФЗ-161 (национальная платёжная система), 54-ФЗ (онлайн-кассы). Интеграция с Росфинмониторингом.
+
+**BigData Observability.** 9-слойная архитектура мониторинга: PipelineHealth, DataFreshness, CLVModelDrift, QueryPerformance, Prometheus exporter, OpenTelemetry tracing, self-healing.
+
+**CRM-система (CatCRM).** Полноценная CRM-система для управления клиентами, лидами, сделками, аналитикой. Интеграция с внешними CRM-системами (AmoCRM, Bitrix24), автоматическое распределение лидов, сегментация клиентов, RFM-аналитика.
 
 ---
 
@@ -1246,6 +1254,322 @@ $this->bigData->insertEvent([
 
 ---
 
+## 🌐 IoT-интеграция (Restaurant Vertical)
+
+Restaurant vertical поддерживает полноценную IoT-интеграцию для умных ресторанов:
+
+### Поддерживаемые протоколы
+
+- **MQTT** — основной протокол для реалтайм-телеметрии (датчики температуры, весы, KDS)
+- **Modbus TCP** — промышленное оборудование (умные холодильники, конвектоматы)
+- **WebSocket** — реалтайм дашборды и KDS-дисплеи
+- **HTTP/REST** — современные смарт-устройства
+
+### Основные компоненты
+
+- `IoTDevice` — модель устройства с alert_level (normal, warning, critical)
+- `IoTTelemetry` — телеметрия с устройств (температура, вес, статус)
+- `MqttClientService` — MQTT клиент (php-mqtt/client)
+- `ModbusClientService` — Modbus TCP операции
+- `IoTHubService` — оркестратор IoT-устройств
+- `IoTRealTimeMonitor` — Livewire компонент для реалтайм мониторинга
+- `IoTAlertTriggered` — событие для алертов
+
+### Типы устройств
+
+- Температурные датчики (холодильники, витрины)
+- Весовые датчики (продуктовые весы)
+- KDS-дисплеи (Kitchen Display System)
+- Умные холодильники
+- Конвектоматы и печи
+- POS-терминалы
+
+### Конфигурация
+
+```env
+# .env.example.iot
+MQTT_BROKER_HOST=localhost
+MQTT_BROKER_PORT=1883
+MQTT_USERNAME=catvrf_iot
+MQTT_PASSWORD=secret
+MQTT_TLS_ENABLED=false
+
+MODBUS_HOST=192.168.1.100
+MODBUS_PORT=502
+
+IOT_ALERTS_ENABLED=true
+IOT_ALERT_WEBHOOK_URL=https://hooks.slack.com/services/...
+```
+
+**Документация:** [RESTAURANT_IOT_SETUP.md](modules/Restaurant/RESTAURANT_IOT_SETUP.md)
+
+---
+
+## 🛡️ Compliance-мониторинг
+
+Система поддерживает российское законодательство в сфере персональных данных и платежей:
+
+### Поддерживаемые федеральные законы
+
+- **152-ФЗ** — Персональные данные (анонимизация, consent management, Roskomnadzor)
+- **ФЗ-115** — AML/KYC мониторинг (risk scoring, Росфинмониторинг, подозрительные операции)
+- **ФЗ-161** — Национальная платёжная система (лимиты транзакций)
+- **54-ФЗ** — Онлайн-кассы (фискализация, retry логика)
+
+### Compliance API endpoints
+
+```text
+GET    /api/compliance/personal-data/check          — проверка 152-ФЗ
+GET    /api/compliance/personal-data/audit-report    — аудит-отчёт
+POST   /api/compliance/pii/deletion-request          — запрос на удаление
+GET    /api/compliance/aml/check                     — AML/KYC проверка
+GET    /api/compliance/aml/user-checks               — проверки пользователя
+POST   /api/compliance/aml/report-to-rosfinmonitoring — отчёт в Росфинмониторинг
+GET    /api/compliance/fiscal/receipts               — фискальные чеки (54-ФЗ)
+POST   /api/compliance/fiscal/retry                  — повторная отправка чека
+```
+
+### Доменная интеграция
+
+ComplianceController интегрируется с доменными сервисами:
+- `App\Domains\Payments\AML\AMLService` — AML/KYC логика
+- `AmlCheck`, `SuspiciousOperation` — доменные модели
+- `ReportToRosfinmonitoringJob` — асинхронная отправка отчётов
+
+### Frontend компоненты
+
+- `ComplianceDashboard.vue` — общий dashboard с compliance score
+- `AMLChecksViewer.vue` — ФЗ-115 AML/KYC с фильтрацией и риск-скорингом
+- `FiscalReceiptsViewer.vue` — 54-ФЗ фискальные чеки с retry
+- `PaymentRulesManagement.vue` — ФЗ-161 правила транзакций
+
+**Документация:** [docs/compliance/](docs/compliance/)
+
+---
+
+## 📊 BigData Observability
+
+9-слойная архитектура мониторинга BigData-систем:
+
+### Структура
+
+```text
+modules/BigData/
+├── Domain/
+│   ├── Entities/          PipelineHealth, DataFreshness, CLVModelDrift, QueryPerformance
+│   ├── Enums/             MonitoringEnums (HealthStatus, FreshnessStatus, DriftStatus)
+│   ├── Events/            AlertFired, PipelineStatusChanged, CLVDriftDetected
+│   ├── Interfaces/        MonitoringRepositoryInterface, AlertEvaluatorInterface
+│   ├── ValueObjects/      AlertResult, MetricThreshold
+│   └── DTOs/
+├── Application/
+│   ├── Services/          BigDataMonitoringFacade, BigDataAlertEvaluator
+│   ├── Jobs/              EvaluateAlertsJob, SelfHealJob, MaintenanceJob
+│   └── Listeners/
+├── Infrastructure/
+│   ├── ClickHouse/        ClickHouseClient, ClickHouseService
+│   ├── Kafka/             KafkaConsumerJob, KafkaProducerService
+│   ├── Exporters/         BigDataExporter (Prometheus format)
+│   ├── Repositories/      ClickHouseMonitoringRepository
+│   └── Tracing/           BigDataTracingService, BigDataTracingMiddleware
+└── Presentation/
+    ├── Http/Controllers/  MetricsController, MonitoringController
+    └── Routes/            monitoring.php
+```
+
+### API Usage
+
+```php
+BigData::monitor()->getPipelineHealth()
+BigData::monitor()->getDataFreshness('seller_metrics')
+BigData::monitor()->getCLVModelDrift()
+BigData::monitor()->getQueryPerformance('top_products')
+BigData::monitor()->alertIfLagOver('kafka.raw_events', 300)
+BigData::monitor()->evaluateAlerts()
+BigData::monitor()->selfHeal()
+```
+
+### BigData API endpoints
+
+```text
+GET    /metrics/bigdata                    — Prometheus scrape (no auth)
+GET    /api/bigdata/monitoring/snapshot    — Full snapshot
+GET    /api/bigdata/monitoring/pipeline    — Pipeline health
+GET    /api/bigdata/monitoring/freshness   — Data freshness
+GET    /api/bigdata/monitoring/clv-drift   — CLV drift
+GET    /api/bigdata/monitoring/query-perf  — Query performance
+POST   /api/bigdata/monitoring/self-heal   — Self-healing
+POST   /api/bigdata/monitoring/maintenance — CH maintenance
+```
+
+### Observability Stack
+
+- **Prometheus** — метрики (monitoring/prometheus/prometheus.yml)
+- **Grafana** — дашборды (monitoring/grafana/dashboards/)
+- **Alertmanager** — алерты (monitoring/alertmanager/)
+- **OpenTelemetry** — распределённый трейсинг (config/otel.php)
+
+**Документация:** [docs/BIGDATA_SRE_RUNBOOK.md](docs/BIGDATA_SRE_RUNBOOK.md)
+
+---
+
+## 🏢 CatCRM — CRM-система
+
+Полноценная CRM-система для управления клиентами, лидами, сделками и аналитикой.
+
+### Основные возможности
+
+- **Управление клиентами** — CustomerService с полным CRUD, сегментацией, историей взаимодействий
+- **Управление лидами** — автоматическое распределение лидов, lead scoring, конвертация в сделки
+- **Управление сделками** — B2B сделки, интеграция с Inventory, автоматическое создание котировок
+- **Интеграции** — AmoCRM, Bitrix24 через CRMIntegrationService
+- **RFM-аналитика** — сегментация клиентов по Recency, Frequency, Monetary
+- **Автоматизация** — авто-сегментация клиентов, автоматические отчёты
+- **B2B интеграции** — инвентарь, склад, персонал, складская логистика
+
+### CRM API endpoints
+
+```text
+GET    /api/crm/customers              — список клиентов
+POST   /api/crm/customers              — создание клиента
+PUT    /api/crm/customers/{id}         — обновление клиента
+GET    /api/crm/leads                  — список лидов
+POST   /api/crm/leads                  — создание лида
+POST   /api/crm/leads/{id}/convert     — конвертация в сделку
+GET    /api/crm/deals                  — список сделок
+POST   /api/crm/deals                  — создание сделки
+GET    /api/crm/analytics/rfm          — RFM-аналитика
+POST   /api/crm/integrations/sync      — синхронизация с внешней CRM
+```
+
+### Интегрированные сервисы
+
+- `CustomerService` — управление клиентами
+- `CRMInventoryIntegrationService` — интеграция с инвентарём
+- `CRMStaffIntegrationService` — интеграция с персоналом
+- `CRMWarehouseIntegrationService` — интеграция со складом
+- `AutoSegmentCustomersJob` — авто-сегментация
+- `SendCustomerAnalyticsReportJob` — отчёты
+
+**Документация:** [CRM_INTEGRATION_GUIDE.md](CRM_INTEGRATION_GUIDE.md), [CRM_PRODUCTION_READINESS.md](CRM_PRODUCTION_READINESS.md)
+
+---
+
+## 📦 Список вертикалей (38 модулей)
+
+### Продуктовые вертикали (28)
+
+- **BeautyMasters** — салоны красоты, парикмахерские, косметология, маникюр/педикюр, татуаж
+- **Restaurant** — рестораны, кафе, бары, столовые (с IoT-интеграцией: MQTT, Modbus, датчики температуры, KDS-дисплеи)
+- **Supermarket** — супермаркеты, продуктовые магазины, бакалея, свежие продукты
+- **Hotels** — отели, хостелы, гостевые дома, апарт-отели, бронирование номеров
+- **Taxi** — такси, каршеринг, пассажирские перевозки, геотрекинг водителей
+- **RealEstate** — недвижимость, аренда и продажа жилья, коммерческая недвижимость
+- **Dental** — стоматология, зубные клиники, ортодонтия, имплантация
+- **VetGrooming** — груминг для животных, стрижка, уход за шерстью, купание
+- **Veterinary** — ветеринарные клиники, диагностика, лечение животных
+- **Fitness** — фитнес-центры, спортзалы, йога, кроссфит, персональные тренировки
+- **Fashion** — мода, одежда, обувь, аксессуары, виртуальная примерка (AR)
+- **Flowers** — цветочные магазины, букеты, доставка цветов, подписка на цветы
+- **Media** — медиа-контент, фото- и видеосъёмка, монтаж, студии
+- **Video** — видео-конференции, стриминг, онлайн-встречи, вебинары
+- **Auto** — автотранспорт, аренда автомобилей, техобслуживание, автосервис
+- **Marketplace** — маркетплейс, агрегатор товаров и услуг от разных продавцов
+- **Loyalty** — программа лояльности, бонусы, кэшбэк, уровни участников
+- **Promo** — промо-акции, скидки, купоны, специальные предложения
+- **PromoCampaign** — рекламные кампании, маркетинговые акции, таргетинг
+- **Contraindications** — противопоказания к услугам, медицинские ограничения
+- **Recommendation** — рекомендательная система, персонализированные предложения
+- **DemandForecast** — прогнозирование спроса, аналитика трендов
+- **Geo** — геолокация, карты, определение местоположения, геозоны
+- **Analytics** — аналитика, отчёты, дашборды, метрики бизнеса
+- **BigData** — BigData мониторинг, обработка больших данных, ML-аналитика
+- **FraudDetection** — антифрод, защита от мошенничества, скоринг рисков
+- **AIConstructor** — AI-конструкторы для всех вертикалей (Vision API, рекомендации)
+- **Core** — ядро системы, общая функциональность, базовые сущности
+
+### Инфраструктурные модули (10)
+
+- **CatCRM** — CRM-система, управление клиентами, лидами, сделками, интеграция с AmoCRM/Bitrix24
+- **Wallet** — кошельки и балансы, транзакции, holds, выплаты
+- **Payment** — платежная система, интеграция с банками (Тинькофф, СБП, Сбер), вебхуки
+- **Cart** — корзина покупок, резервирование товаров, расчёт итоговой суммы
+- **Inventory** — управление инвентарём, остатки, резервы, FIFO
+- **Warehouse** — складская логистика, зоны, приёмка, отгрузка, инвентаризация
+- **Bonuses** — бонусная система, начисление и списание бонусов, правила
+- **Commissions** — комиссии, расчёт вознаграждений, выплаты поставщикам
+
+---
+
+## 📝 Audit Service
+
+Централизованный аудит-логинг интегрирован в 25+ сервисов 20 вертикалей.
+
+### Trait: WithAuditLogging
+
+```php
+use App\Traits\WithAuditLogging;
+
+final readonly class OrderService
+{
+    use WithAuditLogging;
+
+    public function create(CreateOrderDto $dto): Order
+    {
+        $order = Order::create($dto->toArray());
+
+        // Логирование создания
+        $this->logCreated(
+            entity: Order::class,
+            entityId: $order->id,
+            context: [
+                'user_id' => $dto->userId,
+                'tenant_id' => $dto->tenantId,
+                'amount' => $dto->amount,
+            ]
+        );
+
+        return $order;
+    }
+}
+```
+
+### Методы трейта
+
+- `logCreated()` — логирование создания сущности
+- `logUpdated()` — логирование обновления
+- `logDeleted()` — логирование удаления
+- `logAction()` — логирование кастомных действий
+- `logPayment()` — логирование платежей
+- `logAuth()` — логирование аутентификации
+- `generateCorrelationId()` — генерация correlation ID
+
+### Интегрированные сервисы (25+)
+
+- Restaurant: OrderService, ReservationService
+- Payment: PaymentService (modules и app)
+- Wallet: WalletService (modules и app)
+- BeautyMasters: AppointmentService
+- Taxi: TaxiRideService, TaxiService
+- RealEstate: PropertyBookingService
+- Fashion: FashionRecommendationEngineService
+- Hotels: BookingService
+- Loyalty: LoyaltyService
+- Analytics: RFMService
+- Dental: TreatmentPlanService
+- Flower: DemandForecastService
+- Video: VideoRoomService
+- VetGrooming: GroomingService
+- Media: MediaUploadService
+- Fitness: MembershipService
+- Inventory: FIFOShelfLifeService
+- Commissions: FinancesIntegrationService
+- Contraindications: ContraindicationService
+- Bonuses: WalletIntegrationService
+- CatCRM: CustomerService
+
+---
+
 ## 📊 Аналитика и маркетинг
 
 ### Аналитика
@@ -1531,8 +1855,15 @@ A: `correlation_id` — это уникальный UUID, который ген�
 |---|---|
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | Полный свод архитектурных правил («Библия проекта») |
 | [QUICKSTART.md](QUICKSTART.md) | Быстрый старт с примерами curl-запросов |
+| [START_HERE.md](START_HERE.md) | Начало работы для новых разработчиков |
+| [cloud-development-setup.md](cloud-development-setup.md) | Настройка облачной разработки (Codespaces, Gitpod) |
 | [docs/SECURITY.md](docs/SECURITY.md) | Политика безопасности и правила раскрытия уязвимостей |
 | [docs/SECURITY_IMPLEMENTATION_GUIDE.md](docs/SECURITY_IMPLEMENTATION_GUIDE.md) | Детальное руководство по внедрению мер безопасности |
+| [docs/compliance/](docs/compliance/) | Документация по compliance (152-ФЗ, ФЗ-115, ФЗ-161, 54-ФЗ) |
+| [docs/BIGDATA_SRE_RUNBOOK.md](docs/BIGDATA_SRE_RUNBOOK.md) | SRE runbook для BigData мониторинга |
+| [modules/Restaurant/RESTAURANT_IOT_SETUP.md](modules/Restaurant/RESTAURANT_IOT_SETUP.md) | Настройка IoT для Restaurant vertical |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Общая архитектура проекта |
+| [CANONICAL_SERVICES.md](CANONICAL_SERVICES.md) | Канонические сервисы проекта |
 | GitHub Issues | Баги, задачи, предложения |
 | Laravel Horizon | `/horizon` — мониторинг очередей (только в production) |
 | Laravel Telescope | `/telescope` — отладка запросов (только в development) |

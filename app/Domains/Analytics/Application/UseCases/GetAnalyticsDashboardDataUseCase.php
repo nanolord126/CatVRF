@@ -19,15 +19,12 @@ use Illuminate\Support\Collection;
  * - private readonly properties
  * - Constructor injection only
  * - correlation_id in all operations
- *
- * @package App\Domains\Analytics\Application\UseCases
  */
 final readonly class GetAnalyticsDashboardDataUseCase
 {
     public function __construct(
-        private AnalyticsEventRepositoryInterface $repository
-    ) {
-}
+        private readonly AnalyticsEventRepositoryInterface $repository
+    ) {}
 
     /**
      * Handle execute operation.

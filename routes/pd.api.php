@@ -8,8 +8,9 @@ use App\Http\Controllers\Api\PersonalDevelopment\PersonalDevelopmentApiControlle
 /**
  * PersonalDevelopment Category — Production 2026
  * Appends to API v1 middleware group (auth, tenant, rate-limit)
- * 
+ *
  * @version 1.0.0
+ *
  * @author CatVRF
  */
 Route::prefix('pd')->group(function () {
@@ -17,7 +18,7 @@ Route::prefix('pd')->group(function () {
     // 1. Программы и зачисления
     Route::get('/programs', [PersonalDevelopmentApiController::class, 'indexPrograms'])
         ->name('v1.pd.programs.index');
-        
+
     Route::post('/enroll', [PersonalDevelopmentApiController::class, 'enroll'])
         ->name('v1.pd.programs.enroll');
 

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\B2B\Resources;
 
@@ -10,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\Product;
 
 /**
  * B2BProductResource — просмотр каталога с оптовыми ценами.
@@ -23,11 +26,16 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class B2BProductResource extends Resource
 {
-    protected static ?string $model           = \App\Models\Product::class;
+    protected static ?string $model           = Product::class;
+
     protected static ?string $navigationIcon  = 'heroicon-o-cube';
+
     protected static ?string $navigationLabel = 'Каталог (B2B)';
+
     protected static ?string $slug            = 'b2b-products';
-    protected static ?int    $navigationSort  = 3;
+
+    protected static ?int $navigationSort  = 3;
+
     protected static ?string $navigationGroup = 'Продажи';
 
     public static function getEloquentQuery(): Builder
@@ -85,7 +93,7 @@ final class B2BProductResource extends Resource
 
                 Tables\Columns\TextColumn::make('b2b_price')
                     ->label('B2B цена')
-                    ->formatStateUsing(static fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(static fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('moq')
@@ -95,7 +103,7 @@ final class B2BProductResource extends Resource
 
                 Tables\Columns\TextColumn::make('stock')
                     ->label('Остаток')
-                    ->formatStateUsing(static fn ($state) => $state > 0 ? $state . ' шт.' : '–')
+                    ->formatStateUsing(static fn ($state) => $state > 0 ? $state.' шт.' : '–')
                     ->color(static fn ($state) => $state <= 0 ? 'danger' : ($state < 10 ? 'warning' : 'success')),
 
                 Tables\Columns\IconColumn::make('is_active')

@@ -1,19 +1,28 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\HR;
 
+use Psr\Log\LoggerInterface;
+
 use App\Services\FraudControlService;
-use App\Services\AuditService;
+use App\Services\Security\AuditService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Log\LogManager;
 use Illuminate\Contracts\Cache\Repository as Cache;
+use Carbon\CarbonImmutable;
+use App\Traits\WithAuditLogging;
 
 final readonly class ShiftSchedulingService
 {
+    use WithAuditLogging;
+
     public function __construct(
+        private readonly LoggerInterface $log,
         private readonly DatabaseManager $db,
         private readonly LogManager $logger,
-        private readonly AuditService $audit,
+        private readonly AuditService $auditService,
         private readonly FraudControlService $fraud,
         private readonly Cache $cache,
     ) {}
@@ -54,8 +63,8 @@ final readonly class ShiftSchedulingService
                 'status' => 'scheduled',
                 'correlation_id' => $correlationId,
                 'metadata' => json_encode($metadata),
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => CarbonImmutable::now(),
+                'updated_at' => CarbonImmutable::now(),
             ]);
 
             $this->audit->record(
@@ -71,7 +80,7 @@ final readonly class ShiftSchedulingService
                 correlationId: $correlationId,
             );
 
-            $this->logger->channel('audit')->info('Shift schedule created', [
+            $this->logger->channel('audit')->$this->logger->info('Shift schedule created', [
                 'shift_id' => $shiftId,
                 'employee_id' => $employeeId,
                 'shift_type' => $shiftType,
@@ -110,7 +119,7 @@ final readonly class ShiftSchedulingService
         int $tenantId,
         \DateTime $startTime,
         \DateTime $endTime,
-        string $skill = null,
+        ?string $skill,
         string $correlationId
     ): array {
         $query = $this->db->table('shift_schedules')
@@ -152,7 +161,7 @@ final readonly class ShiftSchedulingService
                 ->where('id', $shiftId)
                 ->update([
                     'status' => $status,
-                    'updated_at' => now(),
+                    'updated_at' => CarbonImmutable::now(),
                 ]);
 
             if ($updated) {
@@ -193,7 +202,7 @@ final readonly class ShiftSchedulingService
                 ->where('tenant_id', $tenantId)
                 ->first();
 
-            if (!$employee || !$employee->is_active) {
+            if (! $employee || ! $employee->is_active) {
                 continue;
             }
 
@@ -201,7 +210,7 @@ final readonly class ShiftSchedulingService
                 $date = clone $weekStart;
                 $date->modify("+$day days");
 
-                if (in_array($date->format('N'), json_decode($employee->working_days) ?? [1, 2, 3, 4, 5])) {
+                if (in_array($date->format('N'), json_decode($employee->working_days) ?? [1, 2, 3, 4, 5], true)) {
                     $startTime = clone $date;
                     $startTime->setTime(9, 0, 0);
 
@@ -223,7 +232,7 @@ final readonly class ShiftSchedulingService
             }
         }
 
-        $this->logger->channel('audit')->info('Weekly schedule generated', [
+        $this->logger->channel('audit')->$this->logger->info('Weekly schedule generated', [
             'tenant_id' => $tenantId,
             'shifts_count' => count($generatedShifts),
             'correlation_id' => $correlationId,

@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Delivery;
 
@@ -20,16 +22,16 @@ use PHPUnit\Framework\TestCase;
  */
 final class DeliveryStructureTest extends TestCase
 {
-    private const BASE = __DIR__ . '/../../../../app/Domains/Delivery';
+    private const BASE = __DIR__.'/../../../../app/Domains/Delivery';
 
     /* ================================================================== */
-    /*  Layer 1 — Models                                                   */
+    /*  Layer 1 — Models */
     /* ================================================================== */
 
     #[Test]
     public function layer1_models_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Models');
+        self::assertDirectoryExists(self::BASE.'/Models');
     }
 
     #[Test]
@@ -39,7 +41,7 @@ final class DeliveryStructureTest extends TestCase
 
         foreach ($required as $model) {
             // Ищем файлы содержащие class $model
-            $files = glob(self::BASE . '/Models/*.php');
+            $files = glob(self::BASE.'/Models/*.php');
             $found = false;
 
             foreach ($files as $file) {
@@ -49,11 +51,11 @@ final class DeliveryStructureTest extends TestCase
                 }
             }
 
-            if (!$found) {
+            if (! $found) {
                 // Модель может быть названа по-другому, проверяем что файл есть
                 $possiblePaths = [
-                    self::BASE . "/Models/{$model}.php",
-                    self::BASE . "/Models/{$model}Model.php",
+                    self::BASE."/Models/{$model}.php",
+                    self::BASE."/Models/{$model}Model.php",
                 ];
 
                 $fileExists = false;
@@ -66,44 +68,44 @@ final class DeliveryStructureTest extends TestCase
 
                 // Мягкая проверка — хотя бы модели-файлы должны быть
                 self::assertNotEmpty(
-                    glob(self::BASE . '/Models/*.php'),
-                    "Models directory must contain model files",
+                    glob(self::BASE.'/Models/*.php'),
+                    'Models directory must contain model files',
                 );
             }
         }
     }
 
     /* ================================================================== */
-    /*  Layer 2 — DTOs                                                     */
+    /*  Layer 2 — DTOs */
     /* ================================================================== */
 
     #[Test]
     public function layer2_dtos_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/DTOs');
+        self::assertDirectoryExists(self::BASE.'/DTOs');
     }
 
     #[Test]
     public function layer2_dto_files_present(): void
     {
-        $dtos = glob(self::BASE . '/DTOs/*.php');
+        $dtos = glob(self::BASE.'/DTOs/*.php');
         self::assertNotEmpty($dtos, 'Delivery domain must have DTO files');
     }
 
     /* ================================================================== */
-    /*  Layer 3 — Services                                                 */
+    /*  Layer 3 — Services */
     /* ================================================================== */
 
     #[Test]
     public function layer3_services_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Services');
+        self::assertDirectoryExists(self::BASE.'/Services');
     }
 
     #[Test]
     public function layer3_main_service_exists(): void
     {
-        $services = glob(self::BASE . '/Services/*.php');
+        $services = glob(self::BASE.'/Services/*.php');
         self::assertNotEmpty($services, 'Delivery domain must have service files');
     }
 
@@ -111,68 +113,68 @@ final class DeliveryStructureTest extends TestCase
     public function layer3_ai_constructor_directory_exists(): void
     {
         self::assertDirectoryExists(
-            self::BASE . '/Services/AI',
+            self::BASE.'/Services/AI',
             'AI-constructor directory must exist for Delivery domain',
         );
     }
 
     /* ================================================================== */
-    /*  Layer 4 — Requests                                                 */
+    /*  Layer 4 — Requests */
     /* ================================================================== */
 
     #[Test]
     public function layer4_requests_directory_exists(): void
     {
-        $path = self::BASE . '/Requests';
-        if (!is_dir($path)) {
-            $path = self::BASE . '/Http/Requests';
+        $path = self::BASE.'/Requests';
+        if (! is_dir($path)) {
+            $path = self::BASE.'/Http/Requests';
         }
 
         self::assertTrue(
-            is_dir(self::BASE . '/Requests') || is_dir(self::BASE . '/Http/Requests'),
+            is_dir(self::BASE.'/Requests') || is_dir(self::BASE.'/Http/Requests'),
             'Delivery domain must have Requests directory',
         );
     }
 
     /* ================================================================== */
-    /*  Layer 6 — Events                                                   */
+    /*  Layer 6 — Events */
     /* ================================================================== */
 
     #[Test]
     public function layer6_events_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Events');
+        self::assertDirectoryExists(self::BASE.'/Events');
     }
 
     #[Test]
     public function layer6_event_files_present(): void
     {
-        $events = glob(self::BASE . '/Events/*.php');
+        $events = glob(self::BASE.'/Events/*.php');
         self::assertNotEmpty($events, 'Delivery domain must have event files');
     }
 
     /* ================================================================== */
-    /*  Layer 7 — Listeners                                                */
+    /*  Layer 7 — Listeners */
     /* ================================================================== */
 
     #[Test]
     public function layer7_listeners_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Listeners');
+        self::assertDirectoryExists(self::BASE.'/Listeners');
     }
 
     /* ================================================================== */
-    /*  Layer 8 — Jobs                                                     */
+    /*  Layer 8 — Jobs */
     /* ================================================================== */
 
     #[Test]
     public function layer8_jobs_directory_exists(): void
     {
-        self::assertDirectoryExists(self::BASE . '/Jobs');
+        self::assertDirectoryExists(self::BASE.'/Jobs');
     }
 
     /* ================================================================== */
-    /*  Canon Compliance                                                    */
+    /*  Canon Compliance */
     /* ================================================================== */
 
     #[Test]
@@ -191,21 +193,21 @@ final class DeliveryStructureTest extends TestCase
 
             $content = file_get_contents($file->getPathname());
 
-            if (!str_contains($content, 'declare(strict_types=1)')) {
-                $violations[] = str_replace(self::BASE . '/', '', $file->getPathname());
+            if (! str_contains($content, 'declare(strict_types=1)')) {
+                $violations[] = str_replace(self::BASE.'/', '', $file->getPathname());
             }
         }
 
         self::assertEmpty(
             $violations,
-            'All PHP files must have declare(strict_types=1). Violations: ' . implode(', ', $violations),
+            'All PHP files must have declare(strict_types=1). Violations: '.implode(', ', $violations),
         );
     }
 
     #[Test]
     public function services_are_final(): void
     {
-        $serviceFiles = glob(self::BASE . '/Services/*.php') ?: [];
+        $serviceFiles = glob(self::BASE.'/Services/*.php') ?: [];
 
         foreach ($serviceFiles as $file) {
             $content = file_get_contents($file);
@@ -223,13 +225,13 @@ final class DeliveryStructureTest extends TestCase
     #[Test]
     public function services_use_constructor_injection(): void
     {
-        $serviceFiles = glob(self::BASE . '/Services/*.php') ?: [];
+        $serviceFiles = glob(self::BASE.'/Services/*.php') ?: [];
 
         foreach ($serviceFiles as $file) {
             $content = file_get_contents($file);
             $name = pathinfo($file, PATHINFO_FILENAME);
 
-            if (str_contains($content, 'class ') && !str_contains($content, 'interface ')) {
+            if (str_contains($content, 'class ') && ! str_contains($content, 'interface ')) {
                 self::assertStringNotContainsString(
                     'DB::',
                     $content,

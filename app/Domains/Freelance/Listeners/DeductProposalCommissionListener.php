@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\Listeners;
 
@@ -6,7 +8,6 @@ use App\Domains\Freelance\Events\ProposalAccepted;
 use App\Services\AuditService;
 use App\Services\WalletService;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -15,8 +16,6 @@ use Psr\Log\LoggerInterface;
  * Списывает комиссию платформы с фрилансера
  * при принятии его предложения клиентом.
  * Работает асинхронно через очередь.
- *
- * @package App\Domains\Freelance\Listeners
  */
 final readonly class DeductProposalCommissionListener implements ShouldQueue
 {
@@ -26,9 +25,9 @@ final readonly class DeductProposalCommissionListener implements ShouldQueue
     private const COMMISSION_RATE = 0.14;
 
     public function __construct(
-        private AuditService $audit,
-        private WalletService $wallet,
-        private LoggerInterface $logger,
+        private readonly AuditService $audit,
+        private readonly WalletService $wallet,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -67,7 +66,7 @@ final readonly class DeductProposalCommissionListener implements ShouldQueue
             correlationId: $correlationId,
         );
 
-        $this->logger->info('Freelance proposal commission deducted', [
+        $this->logger->$this->logger->info('Freelance proposal commission deducted', [
             'proposal_id' => $proposal->id,
             'freelancer_id' => $proposal->freelancer_id,
             'commission' => $commissionAmount,

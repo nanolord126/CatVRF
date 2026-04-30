@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 /**
  * PharmacyOrderCreated — CatVRF 2026 Component.
@@ -7,31 +9,28 @@
  * Implements tenant-aware, fraud-checked business logic
  * with full correlation_id tracing and audit logging.
  *
- * @package CatVRF
  * @version 2026.1
+ *
  * @author CatVRF Team
  * @license Proprietary
 
+ *
  * @see https://catvrf.ru/docs/pharmacyordercreated
  */
 
-
 namespace App\Domains\Pharmacy\Events;
 
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Queue\SerializesModels;
+use Carbon\CarbonImmutable;
 
 final class PharmacyOrderCreated
 {
-
-    
-        public function __construct(
-            private readonly int $pharmacyOrderId,
-            private readonly int $tenantId,
-            private readonly int $userId,
-            private readonly int $totalPrice,
-            private readonly string $correlationId) {}
+    public function __construct(
+        private readonly int $pharmacyOrderId,
+        private readonly int $tenantId,
+        private readonly int $userId,
+        private readonly int $totalPrice,
+        private readonly string $correlationId
+    ) {}
 
     /**
      * Get the string representation of this instance.
@@ -40,7 +39,7 @@ final class PharmacyOrderCreated
      */
     public function __toString(): string
     {
-        return static::class;
+        return self::class;
     }
 
     /**
@@ -51,8 +50,8 @@ final class PharmacyOrderCreated
     public function toDebugArray(): array
     {
         return [
-            'class' => static::class,
-            'timestamp' => now()->toIso8601String(),
+            'class' => self::class,
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 }

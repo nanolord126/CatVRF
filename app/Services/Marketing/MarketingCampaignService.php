@@ -1,17 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Services\Marketing;
 
+use Psr\Log\LoggerInterface;
 
 use Illuminate\Http\Request;
 use App\Services\AuditService;
 use App\Services\FraudControl\FraudControlService;
 use App\Services\WalletService;
-
-
 use Illuminate\Support\Str;
 use Illuminate\Log\LogManager;
 use Illuminate\Database\DatabaseManager;
+use Carbon\CarbonImmutable;
 
 /**
  * MarketingCampaignService — управление рекламными кампаниями.
@@ -25,14 +27,13 @@ use Illuminate\Database\DatabaseManager;
  */
 final readonly class MarketingCampaignService
 {
-    public function __construct(
+    public function __construct(private readonly LoggerInterface $logger,
         private readonly Request $request,
-        private FraudControlService $fraud,
-        private WalletService       $wallet,
-        private AuditService        $audit,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
         private readonly LogManager $logger,
-        private readonly DatabaseManager $db,
-    ) {}
+        private readonly DatabaseManager $db,) {}
 
     /**
      * Создать рекламную кампанию и списать бюджет с кошелька tenant'а.
@@ -52,7 +53,7 @@ final readonly class MarketingCampaignService
 
         $this->fraud->check($userId, 'marketing_campaign_create', $dto['budget_kopecks'], (string) $this->request->ip(), null, $correlationId);
 
-        return $this->db->transaction(function () use ($dto, $tenantId, $userId, $correlationId): array {
+        return $this->db->transaction(function () use ($dto, $tenantId, $correlationId): array {
             // Списание бюджета из Wallet tenant'а
             $debited = $this->wallet->debit(
                 walletId:      $dto['wallet_id'],
@@ -71,8 +72,8 @@ final readonly class MarketingCampaignService
                 'type'           => $dto['type'],
                 'status'         => 'active',
                 'correlation_id' => $correlationId,
-                'created_at'     => now(),
-                'updated_at'     => now(),
+                'created_at'     => CarbonImmutable::now(),
+                'updated_at'     => CarbonImmutable::now(),
             ]);
 
             $this->logger->channel('audit')->info('Marketing campaign created', [
@@ -94,7 +95,7 @@ final readonly class MarketingCampaignService
     {
         $this->db->table('marketing_campaigns')
             ->where('id', $campaignId)
-            ->increment('spent_kopecks', $amountKopecks, ['updated_at' => now()]);
+            ->increment('spent_kopecks', $amountKopecks, ['updated_at' => CarbonImmutable::now()]);
 
         $this->logger->channel('audit')->debug('Marketing spend recorded', [
             'campaign_id'    => $campaignId,
@@ -110,7 +111,7 @@ final readonly class MarketingCampaignService
     {
         $this->db->table('marketing_campaigns')
             ->where('id', $campaignId)
-            ->update(['status' => 'paused', 'updated_at' => now()]);
+            ->update(['status' => 'paused', 'updated_at' => CarbonImmutable::now()]);
 
         $this->logger->channel('audit')->info('Marketing campaign paused', [
             'campaign_id'    => $campaignId,

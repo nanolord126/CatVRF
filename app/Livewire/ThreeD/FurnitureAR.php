@@ -1,17 +1,30 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Livewire\ThreeD;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Livewire\Component;
 
 final class FurnitureAR extends Component
 {
-    private int $productId;
-    private array $furnitureData = [];
-    private string $selectedColor = 'brown';
-    private bool $showARView = false;
-    private bool $showPlacementGuide = false;
-    private array $roomDimensions = [];
+    private readonly int $productId;
+
+    private readonly array $furnitureData = [];
+
+    private readonly string $selectedColor = 'brown';
+
+    private readonly bool $showARView = false;
+
+    private readonly bool $showPlacementGuide = false;
+
+    private readonly array $roomDimensions = [];
+
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
 
     public function mount(int $productId): void
     {
@@ -45,13 +58,13 @@ final class FurnitureAR extends Component
 
     public function enableARView(): void
     {
-        $this->showARView = !$this->showARView;
+        $this->showARView = ! $this->showARView;
         $this->dispatch('ar-view-toggled', enabled: $this->showARView);
     }
 
     public function togglePlacementGuide(): void
     {
-        $this->showPlacementGuide = !$this->showPlacementGuide;
+        $this->showPlacementGuide = ! $this->showPlacementGuide;
     }
 
     public function addToCart(): void
@@ -68,6 +81,6 @@ final class FurnitureAR extends Component
 
     public function render()
     {
-        return view('livewire.three-d.furniture-ar');
+        return $this->viewFactory->make('livewire.three-d.furniture-ar');
     }
 }

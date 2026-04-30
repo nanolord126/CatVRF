@@ -1,0 +1,240 @@
+endpoints:
+  -
+    httpMethods:
+      - POST
+    uri: api/behavioral/collect
+    metadata:
+      groupName: Behavioral Biometrics
+      title: Collect behavioral signals
+      description: Collects behavioral signals (typing, mouse, touch) from frontend for anomaly detection.
+      authenticated: true
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+      X-CSRF-TOKEN: "{csrf_token}"
+    bodyParameters:
+      action:
+        description: The action being performed (e.g., login, registration, client_search)
+        type: string
+        required: true
+        example: login
+      signals:
+        description: Behavioral signals object
+        type: object
+        required: true
+        properties:
+          typing:
+            description: Typing dynamics data
+            type: object
+            properties:
+              events:
+                description: Array of typing events
+                type: array
+                items:
+                  type: object
+                  properties:
+                    key:
+                      type: string
+                    keyDown:
+                      type: boolean
+                    keyUp:
+                      type: boolean
+                    timestamp:
+                      type: integer
+          mouse:
+            description: Mouse dynamics data
+            type: object
+            properties:
+              events:
+                description: Array of mouse events
+                type: array
+                items:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    y:
+                      type: integer
+                    timestamp:
+                      type: integer
+                    type:
+                      type: string
+                      enum: [move, click, mousedown, mouseup]
+          touch:
+            description: Touch gesture data
+            type: object
+            properties:
+              events:
+                description: Array of touch events
+                type: array
+                items:
+                  type: object
+                  properties:
+                    x:
+                      type: integer
+                    y:
+                      type: integer
+                    identifier:
+                      type: integer
+                    action:
+                      type: string
+                      enum: [touchstart, touchmove, touchend]
+                    timestamp:
+                      type: integer
+                    force:
+                      type: number
+    responses:
+      -
+        status: 200
+        content:
+          application/json:
+            example:
+              success: true
+              correlation_id: "550e8400-e29b-41d4-a716-446655440000"
+              latency_ms: 15.5
+      -
+        status: 400
+        content:
+          application/json:
+            example:
+              success: false
+              error: "No signals provided"
+              correlation_id: "550e8400-e29b-41d4-a716-446655440000"
+      -
+        status: 401
+        content:
+          application/json:
+            example:
+              message: "Unauthenticated"
+      -
+        status: 503
+        content:
+          application/json:
+            example:
+              success: false
+              error: "Behavioral biometrics disabled"
+
+  -
+    httpMethods:
+      - GET
+    uri: api/behavioral/baseline
+    metadata:
+      groupName: Behavioral Biometrics
+      title: Get baseline status
+      description: Returns the user's behavioral baseline status and profile statistics.
+      authenticated: true
+    responses:
+      -
+        status: 200
+        content:
+          application/json:
+            example:
+              baseline:
+                typing:
+                  baseline_data:
+                    avg_key_hold_time: 85.5
+                    std_key_hold_time: 25.0
+                    avg_flight_time: 150.0
+                    std_flight_time: 50.0
+                    typing_speed: 45.0
+                    error_rate: 0.02
+                    rhythm_variance: 0.15
+                  sample_count: 25
+                  has_enough_samples: true
+                mouse:
+                  baseline_data:
+                    avg_velocity: 450.0
+                    std_velocity: 150.0
+                    avg_acceleration: 120.0
+                    movement_smoothness: 0.85
+                    curvature: 0.12
+                    click_frequency: 2.5
+                    path_efficiency: 0.78
+                  sample_count: 30
+                  has_enough_samples: true
+              has_baseline: true
+              profile_stats:
+                has_profile: true
+                sample_count: 55
+                is_mature: true
+                last_analyzed_at: "2026-04-23T10:30:00Z"
+                is_active: true
+
+  -
+    httpMethods:
+      - GET
+    uri: api/behavioral/session-score
+    metadata:
+      groupName: Behavioral Biometrics
+      title: Get session score
+      description: Returns the current session's behavioral similarity score.
+      authenticated: true
+    responses:
+      -
+        status: 200
+        content:
+          application/json:
+            example:
+              session_id: "abc123def456"
+              score: 0.85
+              has_score: true
+
+  -
+    httpMethods:
+      - DELETE
+    uri: api/behavioral/profile
+    metadata:
+      groupName: Behavioral Biometrics
+      title: Reset behavioral profile
+      description: Resets the user's behavioral profile (right to deletion / GDPR compliance).
+      authenticated: true
+    responses:
+      -
+        status: 200
+        content:
+          application/json:
+            example:
+              success: true
+              message: "Profile reset successfully"
+
+  -
+    httpMethods:
+      - PUT
+    uri: api/behavioral/consent
+    metadata:
+      groupName: Behavioral Biometrics
+      title: Update consent
+      description: Updates the user's consent for behavioral data collection.
+      authenticated: true
+    bodyParameters:
+      consent:
+        description: Whether the user consents to behavioral data collection
+        type: boolean
+        required: true
+        example: true
+    responses:
+      -
+        status: 200
+        content:
+          application/json:
+            example:
+              success: true
+              consent: true
+
+  -
+    httpMethods:
+      - GET
+    uri: api/behavioral/consent
+    metadata:
+      groupName: Behavioral Biometrics
+      title: Get consent status
+      description: Returns the user's current consent status for behavioral data collection.
+      authenticated: true
+    responses:
+      -
+        status: 200
+        content:
+          application/json:
+            example:
+              consent: true
+              version: "1.0"

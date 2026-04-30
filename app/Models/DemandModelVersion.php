@@ -3,18 +3,14 @@
 declare(strict_types=1);
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Версия ML-модели прогнозирования спроса
- *
- * @package App\Models
  */
 final class DemandModelVersion extends Model
 {
-
     protected $table = 'demand_model_versions';
 
     protected $fillable = [

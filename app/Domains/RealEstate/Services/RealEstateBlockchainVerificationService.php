@@ -1,26 +1,35 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Services;
+
+use Carbon\CarbonImmutable;
 
 use App\Domains\RealEstate\Models\Property;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 final readonly class RealEstateBlockchainVerificationService
 {
     private const CACHE_TTL_SECONDS = 3600;
+
     private const CONTRACT_ABI_VERSION = '1.0';
+
     private const BLOCKCHAIN_NETWORK = 'ethereum';
+
     private const GAS_PRICE_GWEI = 20;
+
     private const CONFIRMATION_BLOCKS = 12;
 
     public function __construct(
-        private FraudControlService $fraudControl,
-        private AuditService $audit
+        private readonly FraudControlService $fraudControl,
+        private readonly AuditService $audit,
+        private readonly CacheManager $cache,
+        private readonly DatabaseManager $db,
     ) {}
 
     public function verifyDocumentOnBlockchain(
@@ -40,7 +49,7 @@ final readonly class RealEstateBlockchainVerificationService
         );
 
         $cacheKey = "blockchain:verify:{$propertyId}:{$documentType}:{$documentHash}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return json_decode($cached, true);
@@ -48,7 +57,7 @@ final readonly class RealEstateBlockchainVerificationService
 
         $property = Property::findOrFail($propertyId);
 
-        $result = DB::transaction(function () use ($property, $propertyId, $documentType, $documentHash, $userId, $correlationId) {
+        $result = $this->db->transaction(function () use ($property, $propertyId, $documentType, $documentHash, $correlationId) {
             $verificationResult = $this->performBlockchainVerification($documentHash, $property, $correlationId);
 
             $verificationData = [
@@ -60,7 +69,7 @@ final readonly class RealEstateBlockchainVerificationService
                 'transaction_hash' => $verificationResult['transaction_hash'] ?? null,
                 'timestamp' => $verificationResult['timestamp'],
                 'network' => self::BLOCKCHAIN_NETWORK,
-                'verified_at' => now()->toIso8601String(),
+                'verified_at' => CarbonImmutable::now()->toIso8601String(),
                 'correlation_id' => $correlationId,
             ];
 
@@ -79,7 +88,7 @@ final readonly class RealEstateBlockchainVerificationService
             return $verificationData;
         });
 
-        Cache::put($cacheKey, json_encode($result), self::CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, json_encode($result), self::CACHE_TTL_SECONDS);
 
         return $result;
     }
@@ -112,7 +121,7 @@ final readonly class RealEstateBlockchainVerificationService
         $allVerified = true;
 
         foreach ($documentTypes as $documentType) {
-            $mockHash = hash('sha256', $property->id . $documentType . $property->created_at);
+            $mockHash = hash('sha256', $property->id.$documentType.$property->created_at);
             $result = $this->verifyDocumentOnBlockchain(
                 $propertyId,
                 $documentType,
@@ -122,7 +131,7 @@ final readonly class RealEstateBlockchainVerificationService
             );
             $verificationResults[$documentType] = $result;
 
-            if (!$result['verified']) {
+            if (! $result['verified']) {
                 $allVerified = false;
             }
         }
@@ -132,15 +141,15 @@ final readonly class RealEstateBlockchainVerificationService
             'verification_results' => $verificationResults,
             'all_verified' => $allVerified,
             'total_documents' => count($documentTypes),
-            'verified_count' => count(array_filter($verificationResults, fn($r) => $r['verified'])),
-            'verified_at' => now()->toIso8601String(),
+            'verified_count' => count(array_filter($verificationResults, fn ($r) => $r['verified'])),
+            'verified_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
         if ($allVerified) {
             $property->update([
                 'metadata->blockchain_verified' => true,
-                'metadata->blockchain_verification_date' => now()->toIso8601String(),
+                'metadata->blockchain_verification_date' => CarbonImmutable::now()->toIso8601String(),
             ]);
         }
 
@@ -176,7 +185,7 @@ final readonly class RealEstateBlockchainVerificationService
 
         $property = Property::findOrFail($propertyId);
 
-        $result = DB::transaction(function () use ($property, $propertyId, $documentHashes, $userId, $correlationId) {
+        $result = $this->db->transaction(function () use ($property, $propertyId, $documentHashes, $correlationId) {
             $contractAddress = $this->deploySmartContract($property, $documentHashes, $correlationId);
 
             $contractData = [
@@ -185,10 +194,10 @@ final readonly class RealEstateBlockchainVerificationService
                 'contract_abi_version' => self::CONTRACT_ABI_VERSION,
                 'network' => self::BLOCKCHAIN_NETWORK,
                 'document_hashes' => $documentHashes,
-                'deployed_at' => now()->toIso8601String(),
+                'deployed_at' => CarbonImmutable::now()->toIso8601String(),
                 'gas_used' => random_int(100000, 500000),
                 'gas_price_gwei' => self::GAS_PRICE_GWEI,
-                'transaction_hash' => '0x' . Str::random(64),
+                'transaction_hash' => '0x'.Str::random(64),
                 'correlation_id' => $correlationId,
             ];
 
@@ -251,7 +260,7 @@ final readonly class RealEstateBlockchainVerificationService
             'block_number' => $transactionResult['block_number'],
             'gas_used' => $transactionResult['gas_used'],
             'status' => $transactionResult['status'],
-            'executed_at' => now()->toIso8601String(),
+            'executed_at' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
@@ -286,7 +295,7 @@ final readonly class RealEstateBlockchainVerificationService
         );
 
         $cacheKey = "blockchain:contract:{$contractAddress}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
 
         if ($cached !== null) {
             return json_decode($cached, true);
@@ -297,11 +306,11 @@ final readonly class RealEstateBlockchainVerificationService
             'network' => self::BLOCKCHAIN_NETWORK,
             'block_number' => random_int(18000000, 19000000),
             'state' => $this->mockContractState(),
-            'last_updated' => now()->toIso8601String(),
+            'last_updated' => CarbonImmutable::now()->toIso8601String(),
             'correlation_id' => $correlationId,
         ];
 
-        Cache::put($cacheKey, json_encode($contractState), self::CACHE_TTL_SECONDS);
+        $this->cache->put($cacheKey, json_encode($contractState), self::CACHE_TTL_SECONDS);
 
         return $contractState;
     }
@@ -315,7 +324,7 @@ final readonly class RealEstateBlockchainVerificationService
                 'verified' => true,
                 'block_height' => 0,
                 'transaction_hash' => null,
-                'timestamp' => now()->toIso8601String(),
+                'timestamp' => CarbonImmutable::now()->toIso8601String(),
                 'note' => 'Blockchain verification bypassed (dev mode)',
             ];
         }
@@ -323,14 +332,14 @@ final readonly class RealEstateBlockchainVerificationService
         return [
             'verified' => true,
             'block_height' => random_int(18000000, 19000000),
-            'transaction_hash' => '0x' . Str::random(64),
-            'timestamp' => now()->toIso8601String(),
+            'transaction_hash' => '0x'.Str::random(64),
+            'timestamp' => CarbonImmutable::now()->toIso8601String(),
         ];
     }
 
     private function deploySmartContract(Property $property, array $documentHashes, string $correlationId): string
     {
-        $contractAddress = '0x' . Str::random(40);
+        $contractAddress = '0x'.Str::random(40);
 
         return $contractAddress;
     }
@@ -338,7 +347,7 @@ final readonly class RealEstateBlockchainVerificationService
     private function sendTransaction(string $contractAddress, string $methodName, array $methodParams, string $correlationId): array
     {
         return [
-            'transaction_hash' => '0x' . Str::random(64),
+            'transaction_hash' => '0x'.Str::random(64),
             'block_number' => random_int(18000000, 19000000),
             'gas_used' => random_int(50000, 200000),
             'status' => 'success',
@@ -348,10 +357,10 @@ final readonly class RealEstateBlockchainVerificationService
     private function mockContractState(): array
     {
         return [
-            'owner' => '0x' . Str::random(40),
+            'owner' => '0x'.Str::random(40),
             'status' => 'active',
             'document_count' => random_int(1, 10),
-            'last_transaction' => now()->subHours(random_int(1, 24))->toIso8601String(),
+            'last_transaction' => CarbonImmutable::now()->subHours(random_int(1, 24))->toIso8601String(),
             'balance' => (string) (random_int(0, 1000000000000000000) / 1000000000000000000),
         ];
     }

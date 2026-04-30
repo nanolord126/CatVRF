@@ -1,7 +1,10 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\B2B\Resources;
 
+use Carbon\CarbonImmutable;
 
 use Psr\Log\LoggerInterface;
 use App\Filament\B2B\Resources\B2BOrderResource\Pages;
@@ -11,10 +14,8 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\DateRangeFilter;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Models\Order;
 
 /**
  * B2BOrderResource — управление B2B-заказами.
@@ -29,16 +30,21 @@ use Illuminate\Support\Facades\Log;
  */
 final class B2BOrderResource extends Resource
 {
+    protected static ?string $model           = Order::class;
+
+    protected static ?string $navigationIcon  = 'heroicon-o-shopping-bag';
+
+    protected static ?string $navigationLabel = 'Заказы';
+
+    protected static ?string $slug            = 'b2b-orders';
+
+    protected static ?int $navigationSort  = 2;
+
+    protected static ?string $navigationGroup = 'Продажи';
+
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {}
-
-    protected static ?string $model           = \App\Models\Order::class;
-    protected static ?string $navigationIcon  = 'heroicon-o-shopping-bag';
-    protected static ?string $navigationLabel = 'Заказы';
-    protected static ?string $slug            = 'b2b-orders';
-    protected static ?int    $navigationSort  = 2;
-    protected static ?string $navigationGroup = 'Продажи';
 
     public static function getEloquentQuery(): Builder
     {
@@ -124,13 +130,13 @@ final class B2BOrderResource extends Resource
 
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('Сумма')
-                    ->formatStateUsing(static fn ($state) => number_format($state / 100, 2, '.', ' ') . ' ₽')
+                    ->formatStateUsing(static fn ($state) => number_format($state / 100, 2, '.', ' ').' ₽')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('due_date')
                     ->label('Срок оплаты')
                     ->date('d.m.Y')
-                    ->color(static fn ($record) => $record?->due_date && $record->due_date < now() ? 'danger' : null),
+                    ->color(static fn ($record) => $record?->due_date && $record->due_date < CarbonImmutable::now() ? 'danger' : null),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Создан')
@@ -166,7 +172,7 @@ final class B2BOrderResource extends Resource
                     ->label('Экспорт выбранных')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->action(static function ($records) {
-                        $this->logger->info('B2B bulk export', [
+                        $this->logger->$this->logger->info('B2B bulk export', [
                             'count'          => $records->count(),
                             'business_group' => session('active_business_group_id'),
                         ]);

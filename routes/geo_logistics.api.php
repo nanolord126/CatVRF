@@ -8,4 +8,3 @@ use App\Domains\GeoLogistics\Presentation\Http\Controllers\CreateShipmentControl
 Route::prefix('geo-logistics')->group(function () {
     Route::post('shipments', CreateShipmentController::class)->name('api.geo_logistics.shipments.store');
 });
-

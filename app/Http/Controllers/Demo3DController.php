@@ -1,11 +1,19 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Controllers;
+
+use Illuminate\Contracts\View\Factory as ViewFactory;
 
 use Illuminate\View\View;
 
 final class Demo3DController extends Controller
 {
+    public function __construct(
+        private readonly ViewFactory $viewFactory,
+    ) {}
+
     public function index(): View
     {
         $demoProducts = [
@@ -64,11 +72,13 @@ final class Demo3DController extends Controller
                 'tags' => ['furniture', 'chair', '3d', 'design'],
             ],
         ];
-        return view('3d-demo', [
+
+        return $this->viewFactory->make('3d-demo', [
             'products' => $demoProducts,
             'title' => 'CatVRF 3D Visualization Demo',
         ]);
     }
+
     public function product(int $id): View
     {
         $product = match ($id) {
@@ -80,6 +90,7 @@ final class Demo3DController extends Controller
             6 => ['name' => 'Chair', 'model' => '/storage/3d-models/Furniture/chair.glb'],
             default => ['name' => 'Unknown', 'model' => ''],
         };
-        return view('3d-product-detail', $product);
+
+        return $this->viewFactory->make('3d-product-detail', $product);
     }
 }

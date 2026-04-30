@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Electronics;
 
@@ -7,26 +9,19 @@ use App\Domains\Electronics\Models\WarrantyClaim;
 use App\Domains\Electronics\Services\WarrantyService;
 use App\Services\FraudControlService;
 use App\Services\InventoryManagementService;
-use App\Services\PaymentService;
-use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Tests\BaseTestCase;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 final class WarrantyServiceTest extends BaseTestCase
 {
     use RefreshDatabase;
 
     private WarrantyService $service;
-    private FraudControlService $fraudControl;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->service = $this->app->make(WarrantyService::class);
-        $this->fraudControl = $this->app->make(FraudControlService::class);
-    }
+    private FraudControlService $fraudControl;
 
     public function test_create_warranty_claim_creates_claim_record(): void
     {
@@ -206,7 +201,7 @@ final class WarrantyServiceTest extends BaseTestCase
 
     public function test_create_warranty_claim_throws_for_nonexistent_order(): void
     {
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        $this->expectException(ModelNotFoundException::class);
 
         $this->service->createWarrantyClaim(
             orderId: 99999,
@@ -218,7 +213,7 @@ final class WarrantyServiceTest extends BaseTestCase
 
     public function test_accept_for_repairs_throws_for_nonexistent_claim(): void
     {
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        $this->expectException(ModelNotFoundException::class);
 
         $this->service->acceptForRepair(
             claimId: 99999,
@@ -228,7 +223,7 @@ final class WarrantyServiceTest extends BaseTestCase
 
     public function test_finish_repairs_throws_for_nonexistent_claim(): void
     {
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        $this->expectException(ModelNotFoundException::class);
 
         $this->service->finishRepair(
             claimId: 99999,
@@ -253,5 +248,12 @@ final class WarrantyServiceTest extends BaseTestCase
         // Verify rate limiter was hit by checking cache
         $rateLimitKey = "electronics:warranty:{$order->id}";
         $this->assertTrue(Cache::store('rate-limiter')->has($rateLimitKey));
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = $this->app->make(WarrantyService::class);
+        $this->fraudControl = $this->app->make(FraudControlService::class);
     }
 }

@@ -1,33 +1,37 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Furniture\Services;
 
 use App\Domains\Furniture\Models\FurnitureOrder;
 use App\Domains\Furniture\Models\FurnitureItem;
+use App\Domains\Shared\Realtime\RealtimeTrackingAdapter;
 use App\Services\FraudControlService;
 use App\Services\AuditService;
 use App\Services\WalletService;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * FurnitureService — управление заказами мебели.
  *
  * Полный цикл: создание, завершение, отмена заказов
  * с fraud-check, wallet-интеграцией и audit-логированием.
- *
- * @package App\Domains\Furniture\Services
  */
 final readonly class FurnitureService
 {
     public function __construct(
-        private FraudControlService $fraud,
-        private WalletService $wallet,
-        private AuditService $audit,
-        private \Illuminate\Database\DatabaseManager $db,
-        private LoggerInterface $logger,
-        private Guard $guard,
+        private readonly FraudControlService $fraud,
+        private readonly WalletService $wallet,
+        private readonly AuditService $audit,
+        private readonly RealtimeTrackingAdapter $trackingAdapter,
+        private readonly DatabaseManager $db,
+        private readonly LoggerInterface $logger,
+        private readonly Guard $guard,
     ) {}
 
     /**
@@ -65,6 +69,8 @@ final readonly class FurnitureService
                 'total_kopecks' => $total,
                 'payout_kopecks' => $total - (int) ($total * 0.14),
                 'payment_status' => 'pending',
+                'delivery_address' => $deliveryAddress,
+                'delivery_cost' => $deliveryCost,
                 'items_json' => $items,
                 'tags' => ['furniture' => true],
             ]);
@@ -78,12 +84,21 @@ final readonly class FurnitureService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Furniture order created', [
+            $this->logger->$this->logger->info('Furniture order created', [
                 'order_id' => $order->id,
                 'seller_id' => $sellerId,
                 'total' => $total,
                 'correlation_id' => $correlationId,
             ]);
+
+            // Запуск реалтайм-трекинга доставки мебели
+            $this->trackingAdapter->startTracking([
+                'order_id' => $order->id,
+                'vertical' => 'furniture',
+                'sub_vertical' => null,
+                'courier_id' => null, // будет назначен позже
+                'buyer_id' => $userId,
+            ], $correlationId);
 
             return $order;
         });
@@ -130,7 +145,7 @@ final readonly class FurnitureService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Furniture order completed', [
+            $this->logger->$this->logger->info('Furniture order completed', [
                 'order_id' => $order->id,
                 'payout' => $order->payout_kopecks,
                 'correlation_id' => $correlationId,
@@ -180,7 +195,7 @@ final readonly class FurnitureService
                 correlationId: $correlationId,
             );
 
-            $this->logger->info('Furniture order cancelled', [
+            $this->logger->$this->logger->info('Furniture order cancelled', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -200,7 +215,23 @@ final readonly class FurnitureService
     /**
      * Получить список заказов клиента.
      */
-    public function getUserOrders(int $clientId): \Illuminate\Database\Eloquent\Collection
+    public function getUserOrders(int $clientId): Collection
+    {
+        return FurnitureOrder::where('client_id', $clientId)
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get();
+    }
+}
+    public function getOrder(int $orderId): FurnitureOrder
+    {
+        return FurnitureOrder::findOrFail($orderId);
+    }
+
+    /**
+     * Получить список заказов клиента.
+     */
+    public function getUserOrders(int $clientId): Collection
     {
         return FurnitureOrder::where('client_id', $clientId)
             ->orderBy('created_at', 'desc')

@@ -17,12 +17,11 @@ use Psr\Log\LoggerInterface;
  * - Key format: payment:idempotency:{correlation_id}
  * - TTL: 24 hours (configurable)
  * - Returns existing payment ID if already processed
- *
- * @package App\Domains\Payment\Services
  */
 final readonly class IdempotencyService
 {
     private const KEY_PREFIX = 'payment:idempotency:';
+
     private const DEFAULT_TTL = 86400; // 24 hours
 
     /**
@@ -44,17 +43,17 @@ final readonly class IdempotencyService
     LUA;
 
     public function __construct(
-        private RedisFactory $redis,
-        private LoggerInterface $logger,
+        private readonly RedisFactory $redis,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
      * Check if operation with given correlation ID was already processed.
      * If not, mark it as processing with the given payment ID.
      *
-     * @param string $correlationId Unique correlation ID for the operation
-     * @param int $paymentId Payment record ID to associate with this operation
-     * @param int|null $ttl TTL in seconds (default: 24 hours)
+     * @param  string  $correlationId  Unique correlation ID for the operation
+     * @param  int  $paymentId  Payment record ID to associate with this operation
+     * @param  int|null  $ttl  TTL in seconds (default: 24 hours)
      * @return int|null Existing payment ID if already processed, null otherwise
      */
     public function checkOrMark(string $correlationId, int $paymentId, ?int $ttl = null): ?int
@@ -71,7 +70,7 @@ final readonly class IdempotencyService
         );
 
         if ($existingPaymentId !== null) {
-            $this->logger->info('Idempotency check: operation already processed', [
+            $this->logger->$this->logger->info('Idempotency check: operation already processed', [
                 'correlation_id' => $correlationId,
                 'existing_payment_id' => $existingPaymentId,
                 'new_payment_id' => $paymentId,
@@ -80,7 +79,7 @@ final readonly class IdempotencyService
             return (int) $existingPaymentId;
         }
 
-        $this->logger->info('Idempotency check: operation marked as processing', [
+        $this->logger->$this->logger->info('Idempotency check: operation marked as processing', [
             'correlation_id' => $correlationId,
             'payment_id' => $paymentId,
             'ttl' => $ttl,
@@ -91,11 +90,6 @@ final readonly class IdempotencyService
 
     /**
      * Manually mark an operation as processed (for idempotency key recreation).
-     *
-     * @param string $correlationId
-     * @param int $paymentId
-     * @param int|null $ttl
-     * @return void
      */
     public function mark(string $correlationId, int $paymentId, ?int $ttl = null): void
     {
@@ -104,7 +98,7 @@ final readonly class IdempotencyService
 
         $this->redis->connection()->setex($key, $ttl, $paymentId);
 
-        $this->logger->info('Idempotency key manually set', [
+        $this->logger->$this->logger->info('Idempotency key manually set', [
             'correlation_id' => $correlationId,
             'payment_id' => $paymentId,
             'ttl' => $ttl,
@@ -114,7 +108,6 @@ final readonly class IdempotencyService
     /**
      * Check if operation exists without marking it.
      *
-     * @param string $correlationId
      * @return int|null Payment ID if exists, null otherwise
      */
     public function check(string $correlationId): ?int
@@ -127,9 +120,6 @@ final readonly class IdempotencyService
 
     /**
      * Delete idempotency key (use with caution - only for testing or manual recovery).
-     *
-     * @param string $correlationId
-     * @return void
      */
     public function delete(string $correlationId): void
     {
@@ -146,6 +136,6 @@ final readonly class IdempotencyService
      */
     private function key(string $correlationId): string
     {
-        return self::KEY_PREFIX . $correlationId;
+        return self::KEY_PREFIX.$correlationId;
     }
 }

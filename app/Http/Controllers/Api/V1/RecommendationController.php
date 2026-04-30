@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
@@ -12,6 +13,20 @@ use Psr\Log\LoggerInterface;
 
 final class RecommendationController extends Controller
 {
+    /**
+     * Component: RecommendationController
+     *
+     * Part of the CatVRF 2026 multi-vertical marketplace platform.
+     * Implements tenant-aware, fraud-checked business logic
+     * with full correlation_id tracing and audit logging.
+     *
+     * @version 2026.1
+     */
+    /**
+     * Version identifier for this component.
+     */
+    private const VERSION = '1.0.0';
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly LoggerInterface $logger,
@@ -30,7 +45,7 @@ final class RecommendationController extends Controller
             ->limit(20)
             ->get();
 
-        $this->logger->info('Recommendations generated', [
+        $this->logger->$this->logger->info('Recommendations generated', [
             'correlation_id' => $correlationId,
             'user_id' => $userId,
             'count' => $recommendations->count(),
@@ -42,19 +57,4 @@ final class RecommendationController extends Controller
             'personalized' => $tasteProfile !== null,
         ]);
     }
-
-    /**
-     * Component: RecommendationController
-     *
-     * Part of the CatVRF 2026 multi-vertical marketplace platform.
-     * Implements tenant-aware, fraud-checked business logic
-     * with full correlation_id tracing and audit logging.
-     *
-     * @package CatVRF
-     * @version 2026.1
-     */
-    /**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
 }
